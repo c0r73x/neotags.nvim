@@ -29,9 +29,11 @@ class Neotags(object):
             'pythonDocTest2'
         ])
 
+    def init(self):
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__ctags = self.__vim.eval('g:neotags_ctags_bin')
         self.__output = self.__vim.eval('g:neotags_file')
+        self.__vim.command('set tags+=%s' % self.__output)
 
         self.__pwd = self.__vim.eval('getcwd()')
 
@@ -44,6 +46,8 @@ class Neotags(object):
         self.__ctags_args.append('"%s"' % self.__pwd)
 
         if(self.__vim.eval('g:neotags_enabled')):
+            self.highlight()
+
             evupd = ','.join(self.__vim.eval('g:neotags_events_update'))
             evhl = ','.join(self.__vim.eval('g:neotags_events_highlight'))
 
