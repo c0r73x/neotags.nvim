@@ -18,7 +18,7 @@ class Neotags(object):
         self.__suffix = '\>'
         self.__is_running = False
 
-        self.__ignore = ','.join([
+        self.__ignore = [
             '.*String.*',
             '.*Comment.*',
             'cIncluded',
@@ -27,7 +27,7 @@ class Neotags(object):
             'cCppOutIf2',
             'pythonDocTest',
             'pythonDocTest2'
-        ])
+        ]
 
     def init(self):
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
@@ -94,10 +94,11 @@ class Neotags(object):
         for key, group in groups.items():
             prefix = self._exists(key, 'prefix', self.__prefix)
             suffix = self._exists(key, 'suffix', self.__suffix)
+            notin = self._exists(key, 'notin', [])
             hlgroup = self._exists(key, 'group', None)
 
             if hlgroup is not None:
-                self._highlight(hlgroup, group, prefix, suffix)
+                self._highlight(hlgroup, group, prefix, suffix, notin)
 
         self.__is_running = False
 
@@ -115,7 +116,7 @@ class Neotags(object):
         else:
             return default
 
-    def _highlight(self, key, group, prefix, suffix):
+    def _highlight(self, key, group, prefix, suffix, notin):
         current = []
 
         self.__vim.command('silent! syntax clear %s' % key)
@@ -128,7 +129,7 @@ class Neotags(object):
                 prefix,
                 '\|'.join(current),
                 suffix,
-                self.__ignore
+                ','.join(self.__ignore + notin)
             ), async=True)
 
     def _getTags(self, files):

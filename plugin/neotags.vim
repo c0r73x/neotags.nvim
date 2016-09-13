@@ -53,7 +53,11 @@ endif
 
 " C++ {{{1
 let g:neotags#cpp#c = {
-            \   'group': 'cppType'
+            \   'group': 'cppType',
+            \ }
+
+let g:neotags#cpp#m = {
+            \   'group': 'cppMember'
             \ }
 
 let g:neotags#cpp#g = g:neotags#cpp#c
@@ -70,14 +74,19 @@ let g:neotags#cpp#d = {
             \ }
 
 let g:neotags#cpp#f = {
-            \   'group': 'cppFunction'
+            \   'group': 'cppFunction',
+            \   'notin': ['cppTypeTag']
             \ }
 
 let g:neotags#cpp#p = g:neotags#cpp#f
 " 1}}}
 " C++ {{{1
 let g:neotags#c#c = {
-            \   'group': 'cType'
+            \   'group': 'cType',
+            \ }
+
+let g:neotags#c#m = {
+            \   'group': 'cMember'
             \ }
 
 let g:neotags#c#g = g:neotags#cpp#c
@@ -94,7 +103,8 @@ let g:neotags#c#d = {
             \ }
 
 let g:neotags#c#f = {
-            \   'group': 'cFunction'
+            \   'group': 'cFunction',
+            \   'notin': ['cTypeTag']
             \ }
 
 let g:neotags#c#p = g:neotags#cpp#f
@@ -173,9 +183,11 @@ highlight def link PythonClassTag pythonFunction
 
 highlight def link cEnum Identifier
 highlight def link cFunction Function
+highlight def link cMember Identifier
 
 highlight def link cppEnum Identifier
 highlight def link cppFunction Function
+highlight def link cppMember Identifier
 
 highlight def link shFunctionTag Operator
 highlight def link perlFunctionTag Operator
