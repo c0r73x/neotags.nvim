@@ -152,6 +152,17 @@ let g:neotags#javascript#f = {
             \   'group': 'javascriptFunction'
             \ }
 " 1}}}
+" vim {{{1
+let g:neotags#vim#a = {
+            \   'group': 'vimAutoGroup'
+            \ }
+
+let g:neotags#vim#c = {
+            \   'group': 'vimCommand',
+            \   'prefix': '\(\(^\|\s\):\?\)\@<=',
+            \   'suffix': '\(!\?\(\s\|$\)\)\@='
+            \ }
+" 1}}}
 
 highlight def link rubyModuleName Type
 highlight def link rubyClassName Type
@@ -174,5 +185,7 @@ highlight def link javaMethod Function
 highlight def link javaInterface Identifier
 
 highlight def link javascriptFunctionTag Identifier
+
+highlight def link vimAutoGroup vimAutoEvent
 
 let g:loaded_neotags = 1
