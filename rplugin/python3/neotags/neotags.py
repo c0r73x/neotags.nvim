@@ -30,10 +30,16 @@ class Neotags(object):
         ]
 
     def init(self):
+        if(not self.__vim.eval('exists("g:loaded_neotags")')):
+            return
+
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
+
         self.__ctags = self.__vim.eval('g:neotags_ctags_bin')
         self.__output = self.__vim.eval('g:neotags_file')
+
         self.__vim.command('set tags+=%s' % self.__output)
+        self.__exists_buffer = {}
 
         self.__pwd = self.__vim.eval('getcwd()')
 
@@ -89,18 +95,39 @@ class Neotags(object):
             self.__vim.command("echom 'No tag files found!'")
             return
 
-        groups = self._getTags(files)
+        groups, kinds = self._getTags(files)
+        order = self._tags_order()
 
-        for key, group in groups.items():
-            prefix = self._exists(key, 'prefix', self.__prefix)
-            suffix = self._exists(key, 'suffix', self.__suffix)
-            notin = self._exists(key, 'notin', [])
-            hlgroup = self._exists(key, 'group', None)
+        if not order:
+            order = kinds
 
-            if hlgroup is not None:
-                self._highlight(hlgroup, group, prefix, suffix, notin)
+        prevgroups = []
+
+        for key in order:
+            prefix = self._exists(key, '.prefix', self.__prefix)
+            suffix = self._exists(key, '.suffix', self.__suffix)
+            notin = self._exists(key, '.notin', [])
+            hlgroup = self._exists(key, '.group', None)
+
+            if hlgroup is not None and hlgroup in groups:
+                nohl = [n for n in prevgroups if not n == hlgroup] + notin
+                self._highlight(hlgroup, groups[hlgroup], prefix, suffix, nohl)
+
+                if(hlgroup not in prevgroups):
+                    prevgroups.append(hlgroup)
 
         self.__is_running = False
+
+    def _tags_order(self):
+        filetype = self.__vim.eval('&ft').lower()
+
+        if(len(filetype) > 0):
+            order = self._exists(filetype, '#order', None)
+
+            if order:
+                return [(filetype + '#') + s for s in list(order)]
+
+        return []
 
     def _run_ctags(self):
         os.system('%s %s > "%s"' % (
@@ -110,11 +137,20 @@ class Neotags(object):
         ))
 
     def _exists(self, kind, var, default):
-        r = self.__vim.eval('exists("g:neotags#%s.%s")' % (kind, var))
+        buffer = kind + var
+
+        if buffer in self.__exists_buffer:
+            return self.__exists_buffer[buffer]
+
+        r = self.__vim.eval('exists("g:neotags#%s")' % buffer)
         if r == 1:
-            return self.__vim.eval('g:neotags#%s.%s' % (kind, var))
+            self.__exists_buffer[buffer] = self.__vim.eval(
+                'g:neotags#%s' % buffer
+            )
         else:
-            return default
+            self.__exists_buffer[buffer] = default
+
+        return self.__exists_buffer[buffer]
 
     def _highlight(self, key, group, prefix, suffix, notin):
         current = []
@@ -125,7 +161,7 @@ class Neotags(object):
             current = group[i:i + 2048]
 
             self.__vim.command(self.__pattern % (
-                key + 'Tag',
+                key,
                 prefix,
                 '\|'.join(current),
                 suffix,
@@ -135,6 +171,7 @@ class Neotags(object):
     def _getTags(self, files):
         filetype = self.__vim.eval('&ft').lower()
         groups = {}
+        kinds = []
 
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
@@ -146,23 +183,28 @@ class Neotags(object):
                 lang = self._ctags_to_vim(entry['language'.encode('utf-8')])
 
                 if lang == filetype:
-                    kind = entry['kind'.encode('utf-8')]
-                    key = lang + "#" + kind.decode('utf-8')
+                    kind = lang + "#" + entry['kind'.encode('utf-8')].decode('utf-8')
 
-                    if key not in groups:
-                        groups[key] = []
+                    if kind not in kinds:
+                        kinds.append(kind)
 
-                    name = to_escape.sub(
-                        r'\\\g<0>',
-                        entry['name'].decode('utf-8')
-                    )
+                    hlgroup = self._exists(kind, '.group', None)
 
-                    if name not in groups[key]:
-                        groups[key].append(name)
+                    if hlgroup is not None:
+                        if hlgroup not in groups:
+                            groups[hlgroup] = []
+
+                        name = to_escape.sub(
+                            r'\\\g<0>',
+                            entry['name'].decode('utf-8')
+                        )
+
+                        if name not in groups[hlgroup]:
+                            groups[hlgroup].append(name)
 
                 status = t.next(entry)
 
-        return groups
+        return groups, kinds
 
     def _ctags_to_vim(self, lang):
         if lang is None:

@@ -52,12 +52,10 @@ if !exists('g:neotags_ctags_args')
 endif
 
 " C++ {{{1
-let g:neotags#cpp#c = {
-            \   'group': 'cppType',
-            \ }
+let g:neotags#cpp#order = 'cgstuedfpm'
 
-let g:neotags#cpp#m = {
-            \   'group': 'cppMember'
+let g:neotags#cpp#c = {
+            \   'group': 'cppTypeTag',
             \ }
 
 let g:neotags#cpp#g = g:neotags#cpp#c
@@ -65,28 +63,33 @@ let g:neotags#cpp#s = g:neotags#cpp#c
 let g:neotags#cpp#t = g:neotags#cpp#c
 let g:neotags#cpp#u = g:neotags#cpp#c
 
+let g:neotags#cpp#m = {
+            \   'group': 'cppMemberTag'
+            \ }
+
 let g:neotags#cpp#e = {
-            \   'group': 'cppEnum'
+            \   'group': 'cppEnumTag'
             \ }
 
 let g:neotags#cpp#d = {
-            \   'group': 'cppPreProc'
+            \   'group': 'cppPreProcTag'
             \ }
 
 let g:neotags#cpp#f = {
-            \   'group': 'cppFunction',
-            \   'notin': ['cppTypeTag']
+            \   'group': 'cppFunctionTag'
             \ }
 
 let g:neotags#cpp#p = g:neotags#cpp#f
 " 1}}}
-" C++ {{{1
+" C {{{1
+let g:neotags#c#order = 'cgstuedfpm'
+
 let g:neotags#c#c = {
-            \   'group': 'cType',
+            \   'group': 'cTypeTag',
             \ }
 
 let g:neotags#c#m = {
-            \   'group': 'cMember'
+            \   'group': 'cMemberTag'
             \ }
 
 let g:neotags#c#g = g:neotags#cpp#c
@@ -95,16 +98,15 @@ let g:neotags#c#t = g:neotags#cpp#c
 let g:neotags#c#u = g:neotags#cpp#c
 
 let g:neotags#c#e = {
-            \   'group': 'cEnum'
+            \   'group': 'cEnumTag'
             \ }
 
 let g:neotags#c#d = {
-            \   'group': 'cPreProc'
+            \   'group': 'cPreProcTag'
             \ }
 
 let g:neotags#c#f = {
-            \   'group': 'cFunction',
-            \   'notin': ['cTypeTag']
+            \   'group': 'cFunctionTag'
             \ }
 
 let g:neotags#c#p = g:neotags#cpp#f
@@ -112,66 +114,72 @@ let g:neotags#c#p = g:neotags#cpp#f
 " Python {{{1
 let g:neotags#python#m = {
             \   'prefix': '\(\.\|\<def\s\+\)\@<=',
-            \   'group': 'pythonMethod'
+            \   'group': 'pythonMethodTag'
             \ }
 let g:neotags#python#f = {
             \   'prefix': '\%(\<def\s\+\)\@<!\<',
-            \   'group': 'pythonFunction'
+            \   'group': 'pythonFunctionTag'
             \ }
 
 let g:neotags#python#c = {
-            \   'group': 'pythonClass'
+            \   'group': 'pythonClassTag'
             \ }
 " 1}}}
 " Ruby {{{1
 let g:neotags#ruby#m = {
-            \   'group': 'rubyModuleName',
+            \   'group': 'rubyModuleNameTag',
             \ }
 
 let g:neotags#ruby#c = {
-            \   'group': 'rubyClassName',
+            \   'group': 'rubyClassNameTag',
             \ }
 
 let g:neotags#ruby#f = {
-            \   'group': 'rubyMethodName',
+            \   'group': 'rubyMethodNameTag',
             \ }
 
 let g:neotags#ruby#F = g:neotags#ruby#f
 " 1}}}
 " Shell {{{1
 let g:neotags#sh#f = {
-            \   'group': 'shFunction',
+            \   'group': 'shFunctionTag',
             \   'suffix': '\(\w\|\s*()|()\)\@!'
             \ }
 " 1}}}
 " Java {{{1
 let g:neotags#java#c = {
-            \   'group': 'javaClass'
+            \   'group': 'javaClassTag'
             \ }
 
 let g:neotags#java#i = {
-            \   'group': 'javaInterface'
+            \   'group': 'javaInterfaceTag'
             \ }
 
 let g:neotags#java#m = {
-            \   'group': 'javaMethod'
+            \   'group': 'javaMethodTag'
             \ }
 " 1}}}
 " JavaScript {{{1
 let g:neotags#javascript#f = {
-            \   'group': 'javascriptFunction'
+            \   'group': 'javascriptFunctionTag'
             \ }
 " 1}}}
 " vim {{{1
 let g:neotags#vim#a = {
-            \   'group': 'vimAutoGroup'
+            \   'group': 'vimAutoGroupTag'
             \ }
 
-" let g:neotags#vim#c = {
-"             \   'group': 'vimCommand',
-"             \   'prefix': '\(\(^\|\s\):\?\)\@<=',
-"             \   'suffix': '\(!\?\(\s\|$\)\)\@='
-"             \ }
+let g:neotags#vim#c = {
+            \   'group': 'vimCommandTag',
+            \   'prefix': '\(\(^\|\s\):\?\)\@<=',
+            \   'suffix': '\(!\?\(\s\|$\)\)\@='
+            \ }
+" 1}}}
+" perl {{{1
+let g:neotags#perl#s = {
+            \   'group': 'perlFunctionTag',
+            \   'prefix': '\%(\<sub\s\*\)\@<!\%(>\|\s\|&\|^\)\@<=\<',
+            \ }
 " 1}}}
 
 highlight def link rubyModuleName Type
