@@ -181,6 +181,16 @@ let g:neotags#perl#s = {
             \   'prefix': '\%(\<sub\s\*\)\@<!\%(>\|\s\|&\|^\)\@<=\<',
             \ }
 " 1}}}
+" php {{{1
+let g:neotags#php#f = {
+            \   'group': 'phpFunctionsTag',
+            \   'suffix': '(\@='
+            \ }
+
+let g:neotags#php#c = {
+            \   'group': 'phpClassesTag'
+            \ }
+" 1}}}
 
 highlight def link rubyModuleName Type
 highlight def link rubyClassName Type
