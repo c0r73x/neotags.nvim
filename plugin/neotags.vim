@@ -167,11 +167,11 @@ let g:neotags#vim#a = {
             \   'group': 'vimAutoGroup'
             \ }
 
-let g:neotags#vim#c = {
-            \   'group': 'vimCommand',
-            \   'prefix': '\(\(^\|\s\):\?\)\@<=',
-            \   'suffix': '\(!\?\(\s\|$\)\)\@='
-            \ }
+" let g:neotags#vim#c = {
+"             \   'group': 'vimCommand',
+"             \   'prefix': '\(\(^\|\s\):\?\)\@<=',
+"             \   'suffix': '\(!\?\(\s\|$\)\)\@='
+"             \ }
 " 1}}}
 
 highlight def link rubyModuleName Type
