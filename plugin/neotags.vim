@@ -165,6 +165,8 @@ let g:neotags#javascript#f = {
             \ }
 " 1}}}
 " vim {{{1
+let g:neotags#vim#order = 'acf'
+
 let g:neotags#vim#a = {
             \   'group': 'vimAutoGroupTag'
             \ }
@@ -174,6 +176,17 @@ let g:neotags#vim#c = {
             \   'prefix': '\(\(^\|\s\):\?\)\@<=',
             \   'suffix': '\(!\?\(\s\|$\)\)\@='
             \ }
+
+let g:neotags#vim#f = {
+            \   'group': 'vimFuncNameTag',
+            \   'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
+            \   'filter': { 
+            \       'pattern': '(?i)(<sid>\w|\bs:\w)',
+            \       'group': 'vimScriptFuncNameTag',
+            \       'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)',
+            \   }
+            \ }
+
 " 1}}}
 " perl {{{1
 let g:neotags#perl#s = {

@@ -104,17 +104,30 @@ class Neotags(object):
         prevgroups = []
 
         for key in order:
-            prefix = self._exists(key, '.prefix', self.__prefix)
-            suffix = self._exists(key, '.suffix', self.__suffix)
-            notin = self._exists(key, '.notin', [])
             hlgroup = self._exists(key, '.group', None)
+            filter = self._exists(key, '.filter.group', None)
 
             if hlgroup is not None and hlgroup in groups:
+                prefix = self._exists(key, '.prefix', self.__prefix)
+                suffix = self._exists(key, '.suffix', self.__suffix)
+                notin = self._exists(key, '.notin', [])
+
                 nohl = [n for n in prevgroups if not n == hlgroup] + notin
                 self._highlight(hlgroup, groups[hlgroup], prefix, suffix, nohl)
 
                 if(hlgroup not in prevgroups):
                     prevgroups.append(hlgroup)
+
+            if filter is not None and filter in groups:
+                prefix = self._exists(key, '.filter.prefix', self.__prefix)
+                suffix = self._exists(key, '.filter.suffix', self.__suffix)
+                notin = self._exists(key, '.filter.notin', [])
+
+                nohl = [n for n in prevgroups if not n == filter] + notin
+                self._highlight(filter, groups[filter], prefix, suffix, nohl)
+
+                if(filter not in prevgroups):
+                    prevgroups.append(filter)
 
         self.__is_running = False
 
@@ -189,15 +202,29 @@ class Neotags(object):
                         kinds.append(kind)
 
                     hlgroup = self._exists(kind, '.group', None)
+                    fstr = self._exists(kind, '.filter.pattern', None)
+                    filter = None
+
+                    if fstr is not None:
+                        filter = re.compile(r"%s" % fstr)
 
                     if hlgroup is not None:
-                        if hlgroup not in groups:
-                            groups[hlgroup] = []
+
+                        pattern = entry['pattern'].decode('utf-8')
 
                         name = to_escape.sub(
                             r'\\\g<0>',
                             entry['name'].decode('utf-8')
                         )
+
+                        if filter is not None and filter.search(pattern):
+                            fgrp = self._exists(kind, '.filter.group', None)
+
+                            if fgrp is not None:
+                                hlgroup = fgrp
+
+                        if hlgroup not in groups:
+                            groups[hlgroup] = []
 
                         if name not in groups[hlgroup]:
                             groups[hlgroup].append(name)
