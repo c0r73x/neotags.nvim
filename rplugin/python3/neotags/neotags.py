@@ -239,7 +239,7 @@ class Neotags(object):
         )
 
         for file in files:
-            with open(file, 'r+') as f:
+            with open(file, 'r+', encoding='utf-8', errors='replace') as f:
                 for line in f:
                     self._parseLine(
                         line,
