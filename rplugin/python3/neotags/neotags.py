@@ -78,7 +78,22 @@ class Neotags(object):
 
         files = []
 
-        groups, kinds = self._getTags()
+        for f in self.__vim.eval('&tags').split(","):
+            f = re.sub(r';', '', f).encode('utf-8')
+
+            if(os.path.isfile(f)):
+                try:
+                    files.append(f)
+                except:
+                    self.__vim.command(
+                        'echom "Error: unable to open %s"' % f.decode('utf-8')
+                    )
+
+        if files is None:
+            self.__vim.command("echom 'No tag files found!'")
+            return
+
+        groups, kinds = self._getTags(files)
         order = self._tags_order()
 
         if not order:
@@ -164,63 +179,86 @@ class Neotags(object):
                 ','.join(self.__ignore + notin)
             ), async=True)
 
-    def _getTags(self):
+    def _parseLine(self, line, lang, groups, kinds, to_escape, pattern):
+        match = pattern.match(line)
+
+        if(match):
+            entry = {
+                'name': match.group(1),
+                'file': match.group(2),
+                'cmd': match.group(3),
+                'kind':  match.group(4)
+            }
+
+            kind = lang + "#" + entry['kind']
+
+            if kind not in kinds:
+                kinds.append(kind)
+
+            hlgroup = self._exists(kind, '.group', None)
+            fstr = self._exists(kind, '.filter.pattern', None)
+            filter = None
+
+            if fstr is not None:
+                filter = re.compile(r"%s" % fstr)
+
+            if hlgroup is not None:
+
+                cmd = entry['cmd']
+
+                name = to_escape.sub(
+                    r'\\\g<0>',
+                    entry['name']
+                )
+
+                if filter is not None and filter.search(cmd):
+                    fgrp = self._exists(kind, '.filter.group', None)
+
+                    if fgrp is not None:
+                        hlgroup = fgrp
+
+                if hlgroup not in groups:
+                    groups[hlgroup] = []
+
+                if name not in groups[hlgroup]:
+                    groups[hlgroup].append(name)
+
+    def _getTags(self, files):
         filetype = self.__vim.eval('&ft').lower()
         groups = {}
         kinds = []
 
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
-        vimtags = self.__vim.eval('taglist(".*")')
+        # vimtags = self.__vim.eval('taglist(".*")')
+        # for entry in vimtags:
 
-        for entry in vimtags:
-            if 'language' not in entry.keys():
-                continue;
+        lang = re.escape(self._vim_to_ctags(filetype))
+        pattern = re.compile(
+            '^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\tlanguage:%s' % lang,
+            re.IGNORECASE
+        )
 
-            lang = self._ctags_to_vim(entry['language'])
-
-            if lang == filetype:
-                kind = lang + "#" + entry['kind']
-
-                if kind not in kinds:
-                    kinds.append(kind)
-
-                hlgroup = self._exists(kind, '.group', None)
-                fstr = self._exists(kind, '.filter.pattern', None)
-                filter = None
-
-                if fstr is not None:
-                    filter = re.compile(r"%s" % fstr)
-
-                if hlgroup is not None:
-
-                    pattern = entry['cmd']
-
-                    name = to_escape.sub(
-                        r'\\\g<0>',
-                        entry['name']
+        for file in files:
+            with open(file, 'r+') as f:
+                for line in f:
+                    self._parseLine(
+                        line,
+                        filetype,
+                        groups,
+                        kinds,
+                        to_escape,
+                        pattern
                     )
-
-                    if filter is not None and filter.search(pattern):
-                        fgrp = self._exists(kind, '.filter.group', None)
-
-                        if fgrp is not None:
-                            hlgroup = fgrp
-
-                    if hlgroup not in groups:
-                        groups[hlgroup] = []
-
-                    if name not in groups[hlgroup]:
-                        groups[hlgroup].append(name)
 
         return groups, kinds
 
-    def _ctags_to_vim(self, lang):
+    def _vim_to_ctags(self, lang):
         if lang is None:
             return 'unknown'
 
-        if lang == 'C++':
-            return 'cpp'
-        elif lang == 'C#':
-            return 'cs'
+        if lang == 'cpp':
+            return 'C++'
+        elif lang == 'cs':
+            return 'C#'
         else:
-            return lang.lower()
+            return lang
