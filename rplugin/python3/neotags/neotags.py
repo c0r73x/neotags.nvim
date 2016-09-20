@@ -170,10 +170,12 @@ class Neotags(object):
         kinds = []
 
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
-
         vimtags = self.__vim.eval('taglist(".*")')
 
         for entry in vimtags:
+            if 'language' not in entry.keys():
+                continue;
+
             lang = self._ctags_to_vim(entry['language'])
 
             if lang == filetype:
@@ -218,7 +220,7 @@ class Neotags(object):
 
         if lang == 'C++':
             return 'cpp'
-        if lang == 'C#':
+        elif lang == 'C#':
             return 'cs'
         else:
             return lang.lower()
