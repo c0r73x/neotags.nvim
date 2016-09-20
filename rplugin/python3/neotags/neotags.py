@@ -28,57 +28,50 @@ class Neotags(object):
         ]
 
     def init(self):
-        if(not self.__vim.eval('exists("g:loaded_neotags")')):
+        if(not self.__vim.funcs.exists('loaded_neotags')):
             return
 
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
-
-        self.__ctags = self.__vim.eval('g:neotags_ctags_bin')
-        self.__output = self.__vim.eval('g:neotags_file')
-
-        self.__vim.command('set tags+=%s' % self.__output)
         self.__exists_buffer = {}
 
-        self.__pwd = self.__vim.eval('getcwd()')
-
-        self.__ctags_args = self.__vim.eval('g:neotags_ctags_args')
-
-        if(self.__vim.eval('g:neotags_recursive')):
-            self.__ctags_args.append('-R')
-
-        self.__ctags_args.append('-f-')
-        self.__ctags_args.append('"%s"' % self.__pwd)
-
-        if(self.__vim.eval('g:neotags_enabled')):
+        if(self.__vim.vars['neotags_enabled']):
             self.highlight()
 
-            evupd = ','.join(self.__vim.eval('g:neotags_events_update'))
-            evhl = ','.join(self.__vim.eval('g:neotags_events_highlight'))
+            evupd = ','.join(self.__vim.vars['neotags_events_update'])
+            evhl = ','.join(self.__vim.vars['neotags_events_highlight'])
 
             self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
             self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
 
     def update(self):
-        if(not self.__vim.eval('g:neotags_enabled')):
+        if(not self.__vim.vars['neotags_enabled']):
             return
 
-        if(self.__vim.eval('g:neotags_run_ctags')):
+        if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
         self.highlight()
 
     def highlight(self):
-        if(not self.__vim.eval('g:neotags_enabled')):
+        self.__exists_buffer = {}
+
+        if(not self.__vim.vars['neotags_enabled']):
             return
 
-        if(self.__is_running or not self.__vim.eval('g:neotags_highlight')):
+        if(self.__is_running or not self.__vim.vars['neotags_highlight']):
             return
+
+        neotags_file = self.__vim.vars['neotags_file']
+        tagfiles = self.__vim.eval('&tags').split(",")
+        if neotags_file not in tagfiles:
+            self.__vim.command('set tags+=%s' % neotags_file)
+            tagfiles.append(neotags_file)
 
         self.__is_running = True
 
         files = []
 
-        for f in self.__vim.eval('&tags').split(","):
+        for f in tagfiles:
             f = re.sub(r';', '', f).encode('utf-8')
 
             if(os.path.isfile(f)):
@@ -141,10 +134,18 @@ class Neotags(object):
         return []
 
     def _run_ctags(self):
+        ctags_args = self.__vim.vars['neotags_ctags_args']
+
+        if(self.__vim.vars['neotags_recursive']):
+            ctags_args.append('-R')
+
+        ctags_args.append('-f-')
+        ctags_args.append('"%s"' % self.__vim.funcs.getcwd())
+
         os.system('%s %s > "%s"' % (
-            self.__ctags,
-            ' '.join(self.__ctags_args),
-            self.__output
+            self.__vim.vars['neotags_ctags_bin'],
+            ' '.join(ctags_args),
+            self.__vim.vars['neotags_file']
         ))
 
     def _exists(self, kind, var, default):
@@ -153,10 +154,9 @@ class Neotags(object):
         if buffer in self.__exists_buffer:
             return self.__exists_buffer[buffer]
 
-        r = self.__vim.eval('exists("g:neotags#%s")' % buffer)
-        if r == 1:
+        if self.__vim.funcs.exists("neotags#%s" % buffer):
             self.__exists_buffer[buffer] = self.__vim.eval(
-                'g:neotags#%s' % buffer
+                'neotags#%s' % buffer
             )
         else:
             self.__exists_buffer[buffer] = default
@@ -229,8 +229,6 @@ class Neotags(object):
         kinds = []
 
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
-        # vimtags = self.__vim.eval('taglist(".*")')
-        # for entry in vimtags:
 
         lang = re.escape(self._vim_to_ctags(filetype))
         pattern = re.compile(
