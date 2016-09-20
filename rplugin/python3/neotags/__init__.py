@@ -17,12 +17,12 @@ class NeotagsHandlers(object):
 
     @neovim.autocmd('VimEnter', eval='expand("<afile>")', pattern='*', sync=True)
     def init(self, filename):
-        self.__neotags.init()
+        self.__vim.async_call(self.__neotags.init)
 
     @neovim.function('NeotagsHighlight')
     def highlight(self, args):
-        self.__neotags.highlight()
+        self.__vim.async_call(self.__neotags.highlight)
 
     @neovim.function('NeotagsUpdate')
     def update(self, args):
-        self.__neotags.update()
+        self.__vim.async_call(self.__neotags.update)

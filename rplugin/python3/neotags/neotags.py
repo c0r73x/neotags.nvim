@@ -50,7 +50,7 @@ class Neotags(object):
         self.__ctags_args.append('"%s"' % self.__pwd)
 
         if(self.__vim.eval('g:neotags_enabled')):
-            self.highlight()
+            #self.highlight()
 
             evupd = ','.join(self.__vim.eval('g:neotags_events_update'))
             evhl = ','.join(self.__vim.eval('g:neotags_events_highlight'))
