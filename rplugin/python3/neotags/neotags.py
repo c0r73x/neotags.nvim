@@ -7,8 +7,6 @@
 import os
 import re
 
-from ctags import CTags, TagEntry
-
 
 class Neotags(object):
 
@@ -80,22 +78,7 @@ class Neotags(object):
 
         files = []
 
-        for f in self.__vim.eval('&tags').split(","):
-            f = re.sub(r';', '', f).encode('utf-8')
-
-            if(os.path.isfile(f)):
-                try:
-                    files.append(CTags(f))
-                except:
-                    self.__vim.command(
-                        'echom "Error: unable to open %s"' % f.decode('utf-8')
-                    )
-
-        if files is None:
-            self.__vim.command("echom 'No tag files found!'")
-            return
-
-        groups, kinds = self._getTags(files)
+        groups, kinds = self._getTags()
         order = self._tags_order()
 
         if not order:
@@ -181,63 +164,57 @@ class Neotags(object):
                 ','.join(self.__ignore + notin)
             ), async=True)
 
-    def _getTags(self, files):
+    def _getTags(self):
         filetype = self.__vim.eval('&ft').lower()
         groups = {}
         kinds = []
 
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
-        for t in files:
-            entry = TagEntry()
-            status = t.first(entry)
+        vimtags = self.__vim.eval('taglist(".*")')
 
-            while status:
-                lang = self._ctags_to_vim(entry['language'.encode('utf-8')])
+        for entry in vimtags:
+            lang = self._ctags_to_vim(entry['language'])
 
-                if lang == filetype:
-                    kind = lang + "#" + entry['kind'.encode('utf-8')].decode('utf-8')
+            if lang == filetype:
+                kind = lang + "#" + entry['kind']
 
-                    if kind not in kinds:
-                        kinds.append(kind)
+                if kind not in kinds:
+                    kinds.append(kind)
 
-                    hlgroup = self._exists(kind, '.group', None)
-                    fstr = self._exists(kind, '.filter.pattern', None)
-                    filter = None
+                hlgroup = self._exists(kind, '.group', None)
+                fstr = self._exists(kind, '.filter.pattern', None)
+                filter = None
 
-                    if fstr is not None:
-                        filter = re.compile(r"%s" % fstr)
+                if fstr is not None:
+                    filter = re.compile(r"%s" % fstr)
 
-                    if hlgroup is not None:
+                if hlgroup is not None:
 
-                        pattern = entry['pattern'].decode('utf-8')
+                    pattern = entry['cmd']
 
-                        name = to_escape.sub(
-                            r'\\\g<0>',
-                            entry['name'].decode('utf-8')
-                        )
+                    name = to_escape.sub(
+                        r'\\\g<0>',
+                        entry['name']
+                    )
 
-                        if filter is not None and filter.search(pattern):
-                            fgrp = self._exists(kind, '.filter.group', None)
+                    if filter is not None and filter.search(pattern):
+                        fgrp = self._exists(kind, '.filter.group', None)
 
-                            if fgrp is not None:
-                                hlgroup = fgrp
+                        if fgrp is not None:
+                            hlgroup = fgrp
 
-                        if hlgroup not in groups:
-                            groups[hlgroup] = []
+                    if hlgroup not in groups:
+                        groups[hlgroup] = []
 
-                        if name not in groups[hlgroup]:
-                            groups[hlgroup].append(name)
-
-                status = t.next(entry)
+                    if name not in groups[hlgroup]:
+                        groups[hlgroup].append(name)
 
         return groups, kinds
 
     def _ctags_to_vim(self, lang):
         if lang is None:
             return 'unknown'
-
-        lang = lang.decode('utf-8')
 
         if lang == 'C++':
             return 'cpp'
