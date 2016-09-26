@@ -92,8 +92,6 @@ class Neotags(object):
         if not order:
             order = kinds
 
-        self.__vim.command("echom '%s'" % ','.join(order))
-
         prevgroups = []
 
         for key in order:
