@@ -92,13 +92,19 @@ class Neotags(object):
         if not order:
             order = kinds
 
+        self.__vim.command("echom '%s'" % ','.join(order))
+
         prevgroups = []
 
         for key in order:
+            self.__vim.command("echom '%s'" % key)
+
             hlgroup = self._exists(key, '.group', None)
             filter = self._exists(key, '.filter.group', None)
 
             if hlgroup is not None and hlgroup in groups:
+                self.__vim.command("echom '%s'" % hlgroup)
+
                 prefix = self._exists(key, '.prefix', self.__prefix)
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
@@ -256,25 +262,26 @@ class Neotags(object):
 
     def _ctags_to_vim(self, lang):
         if lang is None:
-            lang = 'unknown'
+            return 'unknown'
 
         if lang == 'C++':
-            lang = 'cpp'
+            return 'cpp'
         elif lang == 'C#':
-            lang = 'cs'
+            return 'cs'
 
         return lang.lower()
 
     def _vim_to_ctags(self, languages):
+        for i,l in enumerate(languages):
+            if languages[i] == 'cpp':
+                languages[i] = 'C++'
+            elif languages[i] == 'cs':
+                languages[i] = 'C#'
+
+            languages[i] = re.escape(languages[i])
+
+
         for lang in languages:
-            if lang is None:
-                lang = 'unknown'
-
-            if lang == 'cpp':
-                lang = 'C++'
-            elif lang == 'cs':
-                lang = 'C#'
-
-            lang = re.escape(lang)
+            self.__vim.command("echom '%s'" % lang)
 
         return languages
