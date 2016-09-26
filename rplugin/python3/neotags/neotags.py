@@ -92,6 +92,8 @@ class Neotags(object):
         if not order:
             order = kinds
 
+        self.__vim.command("echom '%s'" % ','.join(order))
+
         prevgroups = []
 
         for key in order:
@@ -123,15 +125,16 @@ class Neotags(object):
         self.__is_running = False
 
     def _tags_order(self):
-        filetype = self.__vim.eval('&ft').lower()
+        orderlist = []
+        filetypes = self.__vim.eval('&ft').lower().split('.')
 
-        if(len(filetype) > 0):
+        for filetype in filetypes:
             order = self._exists(filetype, '#order', None)
 
             if order:
-                return [(filetype + '#') + s for s in list(order)]
+                orderlist += [(filetype + '#') + s for s in list(order)]
 
-        return []
+        return orderlist
 
     def _run_ctags(self):
         ctags_args = self.__vim.vars['neotags_ctags_args']
@@ -179,7 +182,7 @@ class Neotags(object):
                 ','.join(self.__ignore + notin)
             ), async=True)
 
-    def _parseLine(self, line, lang, groups, kinds, to_escape, pattern):
+    def _parseLine(self, line, groups, kinds, to_escape, pattern):
         match = pattern.match(line)
 
         if(match):
@@ -187,10 +190,11 @@ class Neotags(object):
                 'name': match.group(1),
                 'file': match.group(2),
                 'cmd': match.group(3),
-                'kind':  match.group(4)
+                'kind': match.group(4),
+                'lang': self._ctags_to_vim(match.group(5))
             }
 
-            kind = lang + "#" + entry['kind']
+            kind = entry['lang'] + "#" + entry['kind']
 
             if kind not in kinds:
                 kinds.append(kind)
@@ -224,15 +228,18 @@ class Neotags(object):
                     groups[hlgroup].append(name)
 
     def _getTags(self, files):
-        filetype = self.__vim.eval('&ft').lower()
+        filetypes = self.__vim.eval('&ft').lower().split('.')
         groups = {}
         kinds = []
 
+        if filetypes is None:
+            return groups, kinds
+
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
-        lang = re.escape(self._vim_to_ctags(filetype))
+        lang = '|'.join(self._vim_to_ctags(filetypes))
         pattern = re.compile(
-            '^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\tlanguage:%s' % lang,
+            '^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\tlanguage:(%s)' % lang,
             re.IGNORECASE
         )
 
@@ -241,7 +248,6 @@ class Neotags(object):
                 for line in f:
                     self._parseLine(
                         line,
-                        filetype,
                         groups,
                         kinds,
                         to_escape,
@@ -250,13 +256,27 @@ class Neotags(object):
 
         return groups, kinds
 
-    def _vim_to_ctags(self, lang):
+    def _ctags_to_vim(self, lang):
         if lang is None:
-            return 'unknown'
+            lang = 'unknown'
 
-        if lang == 'cpp':
-            return 'C++'
-        elif lang == 'cs':
-            return 'C#'
-        else:
-            return lang
+        if lang == 'C++':
+            lang = 'cpp'
+        elif lang == 'C#':
+            lang = 'cs'
+
+        return lang.lower()
+
+    def _vim_to_ctags(self, languages):
+        for lang in languages:
+            if lang is None:
+                lang = 'unknown'
+
+            if lang == 'cpp':
+                lang = 'C++'
+            elif lang == 'cs':
+                lang = 'C#'
+
+            lang = re.escape(lang)
+
+        return languages
