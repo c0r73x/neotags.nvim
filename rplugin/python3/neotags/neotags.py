@@ -92,19 +92,13 @@ class Neotags(object):
         if not order:
             order = kinds
 
-        self.__vim.command("echom '%s'" % ','.join(order))
-
         prevgroups = []
 
         for key in order:
-            self.__vim.command("echom '%s'" % key)
-
             hlgroup = self._exists(key, '.group', None)
             filter = self._exists(key, '.filter.group', None)
 
             if hlgroup is not None and hlgroup in groups:
-                self.__vim.command("echom '%s'" % hlgroup)
-
                 prefix = self._exists(key, '.prefix', self.__prefix)
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
@@ -279,9 +273,5 @@ class Neotags(object):
                 languages[i] = 'C#'
 
             languages[i] = re.escape(languages[i])
-
-
-        for lang in languages:
-            self.__vim.command("echom '%s'" % lang)
 
         return languages
