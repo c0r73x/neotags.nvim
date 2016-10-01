@@ -64,7 +64,7 @@ class Neotags(object):
         neotags_file = self.__vim.vars['neotags_file']
         tagfiles = self.__vim.eval('&tags').split(",")
         if neotags_file not in tagfiles:
-            self.__vim.command('set tags+=%s' % neotags_file)
+            self.__vim.command('set tags+="%s"' % neotags_file)
             tagfiles.append(neotags_file)
 
         self.__is_running = True
