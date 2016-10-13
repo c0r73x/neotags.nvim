@@ -37,6 +37,10 @@ if !exists('g:neotags_recursive')
     let g:neotags_recursive = 1
 endif
 
+if !exists('g:neotags_appendpath')
+    let g:neotags_appendpath = 1
+endif
+
 if !exists('g:neotags_ctags_bin')
     let g:neotags_ctags_bin = 'ctags'
 endif

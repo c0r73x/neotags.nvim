@@ -64,7 +64,7 @@ class Neotags(object):
         neotags_file = self.__vim.vars['neotags_file']
         tagfiles = self.__vim.eval('&tags').split(",")
         if neotags_file not in tagfiles:
-            self.__vim.command('set tags+="%s"' % neotags_file)
+            self.__vim.command('set tags+=%s' % neotags_file)
             tagfiles.append(neotags_file)
 
         self.__is_running = True
@@ -141,7 +141,9 @@ class Neotags(object):
             ctags_args.append('-R')
 
         ctags_args.append('-f-')
-        ctags_args.append('"%s"' % self.__vim.funcs.getcwd())
+
+        if(self.__vim.vars['neotags_appendpath']):
+            ctags_args.append('"%s"' % self.__vim.funcs.getcwd())
 
         os.system('%s %s > "%s"' % (
             self.__vim.vars['neotags_ctags_bin'],
