@@ -9,7 +9,7 @@ projects.
 
 | Option | Description | Default |
 | ------ | ----------- | ------- |
-| g:neotags_enabled | Option to enable/disable neotags | 1 |
+| g:neotags_enabled | Option to enable/disable neotags | 0 |
 | g:neotags_file | Path to where to store the ctags file | ./tags |
 | g:neotags_events_update | List of vim events when to run tag generation and update highlight | BufWritePost |
 | g:neotags_events_highlight | List of vim events when to update highlight | BufReadPost |
