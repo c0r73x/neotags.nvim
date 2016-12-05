@@ -42,6 +42,9 @@ class Neotags(object):
             self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
             self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
 
+            if(self.__vim.vars['loaded_neotags']):
+                self.highlight()
+
         self.__initialized = True
 
     def update(self):
