@@ -16,6 +16,10 @@ class NeotagsHandlers(object):
         self.__vim = vim
         self.__neotags = Neotags(self.__vim)
 
+    @neovim.function('NeotagsInit')
+    def init(self, args):
+        self.__vim.async_call(self.__neotags.init)
+
     @neovim.function('NeotagsHighlight')
     def highlight(self, args):
         self.__vim.async_call(self.__neotags.highlight)

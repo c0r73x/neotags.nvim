@@ -240,3 +240,5 @@ highlight def link javascriptFunctionTag Identifier
 highlight def link vimAutoGroup vimAutoEvent
 
 let g:loaded_neotags = 1
+
+autocmd VimEnter * call NeotagsInit()

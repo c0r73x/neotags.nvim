@@ -15,6 +15,7 @@ class Neotags(object):
         self.__prefix = '\C\<'
         self.__suffix = '\>'
         self.__is_running = False
+        self.__initialized = False
 
         self.__ignore = [
             '.*String.*',
@@ -27,9 +28,10 @@ class Neotags(object):
             'pythonDocTest2'
         ]
 
-        self.init()
-
     def init(self):
+        if(self.__initialized):
+            return
+
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__exists_buffer = {}
 
@@ -40,8 +42,7 @@ class Neotags(object):
             self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
             self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
 
-            # if(self.__vim.funcs.exists('loaded_neotags')):
-            #     self.highlight()
+        self.__initialized = True
 
     def update(self):
         if(not self.__vim.vars['neotags_enabled']):
@@ -58,7 +59,7 @@ class Neotags(object):
         if(not self.__vim.vars['neotags_enabled']):
             return
 
-        if(self.__is_running or not self.__vim.vars['neotags_highlight']):
+        if(not self.__vim.vars['neotags_highlight']):
             return
 
         neotags_file = self.__vim.vars['neotags_file']
@@ -66,8 +67,6 @@ class Neotags(object):
         if neotags_file not in tagfiles:
             self.__vim.command('set tags+=%s' % neotags_file)
             tagfiles.append(neotags_file)
-
-        self.__is_running = True
 
         files = []
 
@@ -120,8 +119,6 @@ class Neotags(object):
                 if(filter not in prevgroups):
                     prevgroups.append(filter)
 
-        self.__is_running = False
-
     def _tags_order(self):
         orderlist = []
         filetypes = self.__vim.eval('&ft').lower().split('.')
@@ -135,6 +132,11 @@ class Neotags(object):
         return orderlist
 
     def _run_ctags(self):
+        if(self.__is_running):
+            return
+
+        self.__is_running = True
+
         ctags_args = self.__vim.vars['neotags_ctags_args']
 
         if(self.__vim.vars['neotags_recursive']):
@@ -150,6 +152,8 @@ class Neotags(object):
             ' '.join(ctags_args),
             self.__vim.vars['neotags_file']
         ))
+
+        self.__is_running = False
 
     def _exists(self, kind, var, default):
         buffer = kind + var
