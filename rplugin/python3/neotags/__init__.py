@@ -8,16 +8,13 @@ import neovim
 
 from neotags.neotags import Neotags
 
+
 @neovim.plugin
 class NeotagsHandlers(object):
 
     def __init__(self, vim):
         self.__vim = vim
         self.__neotags = Neotags(self.__vim)
-
-    @neovim.autocmd('VimEnter', eval='expand("<afile>")', pattern='*', sync=True)
-    def init(self, filename):
-        self.__vim.async_call(self.__neotags.init)
 
     @neovim.function('NeotagsHighlight')
     def highlight(self, args):

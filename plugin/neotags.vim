@@ -1,5 +1,5 @@
 " ============================================================================
-" File:        neotags.py
+" File:        neotags.vim
 " Author:      Christian Persson <c0r73x@gmail.com>
 " Repository:  https://github.com/c0r73x/neotags.nvim
 "              Released under the MIT license

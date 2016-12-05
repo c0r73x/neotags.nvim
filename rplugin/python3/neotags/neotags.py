@@ -27,21 +27,21 @@ class Neotags(object):
             'pythonDocTest2'
         ]
 
-    def init(self):
-        if(not self.__vim.funcs.exists('loaded_neotags')):
-            return
+        self.init()
 
+    def init(self):
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__exists_buffer = {}
 
         if(self.__vim.vars['neotags_enabled']):
-            self.highlight()
-
             evupd = ','.join(self.__vim.vars['neotags_events_update'])
             evhl = ','.join(self.__vim.vars['neotags_events_highlight'])
 
             self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
             self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
+
+            if(self.__vim.funcs.exists('loaded_neotags')):
+                self.highlight()
 
     def update(self):
         if(not self.__vim.vars['neotags_enabled']):
