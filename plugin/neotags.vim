@@ -49,6 +49,14 @@ if !exists('g:neotags_ctags_bin')
     let g:neotags_ctags_bin = 'ctags'
 endif
 
+if !exists('g:neotags_ctags_timeout')
+    let g:neotags_ctags_timeout = 3
+endif
+
+if !exists('g:neotags_silent_timeout')
+    let g:neotags_silent_timeout = 0
+endif
+
 if !exists('g:neotags_ctags_args')
     let g:neotags_ctags_args = [
                 \ '--fields=+l',
@@ -241,4 +249,6 @@ highlight def link vimAutoGroup vimAutoEvent
 
 let g:loaded_neotags = 1
 
-autocmd VimEnter * call NeotagsInit()
+augroup NeoTags
+    autocmd VimEnter * call NeotagsInit()
+augroup END

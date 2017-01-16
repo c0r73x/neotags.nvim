@@ -19,6 +19,8 @@ projects.
 | g:neotags_appendpath | Option to append current path to ctags arguments | 1 |
 | g:neotags_ctags_bin | Location of ctags | ctags |
 | g:neotags_ctags_args | ctags arguments | --fields=+l --c-kinds=+p --c++-kinds+p --sort=no --extra=+q |
+| g:neotags_ctags_timeout | ctags timeout in seconds | 3 |
+| g:neotags_silent_timeout | Hide message when ctags timeouts | 0 |
 
 ## Tips
 
@@ -26,6 +28,7 @@ To use the_silver_searcher or similar applications when generating tags you can 
 
 ```
 let g:neotags_appendpath = 0
+let g:neotags_recursive = 0
 
 let g:neotags_ctags_bin = 'ag -g "" '. getcwd() .' | ctags'
 let g:neotags_ctags_args = [

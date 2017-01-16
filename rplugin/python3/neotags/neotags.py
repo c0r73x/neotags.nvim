@@ -6,6 +6,9 @@
 # ============================================================================
 import os
 import re
+import subprocess
+
+import psutil
 
 
 class Neotags(object):
@@ -134,6 +137,13 @@ class Neotags(object):
 
         return orderlist
 
+    def _kill(self, proc_pid):
+        process = psutil.Process(proc_pid)
+        for proc in process.children():
+            proc.kill()
+        process.kill()
+
+
     def _run_ctags(self):
         if(self.__is_running):
             return
@@ -150,11 +160,25 @@ class Neotags(object):
         if(self.__vim.vars['neotags_appendpath']):
             ctags_args.append('"%s"' % self.__vim.funcs.getcwd())
 
-        os.system('%s %s > "%s"' % (
-            self.__vim.vars['neotags_ctags_bin'],
-            ' '.join(ctags_args),
-            self.__vim.vars['neotags_file']
-        ))
+        file = open(self.__vim.vars['neotags_file'], 'wb')
+
+        try:
+            proc = subprocess.Popen('%s %s' %
+                (self.__vim.vars['neotags_ctags_bin'], ' '.join(ctags_args)),
+                shell=True,
+                stdout=file,
+            )
+
+            proc.wait(self.__vim.vars['neotags_ctags_timeout'])
+        except subprocess.TimeoutExpired:
+            self._kill(proc.pid)
+
+            if self.__vim.vars['neotags_silent_timeout'] == 0:
+                self.__vim.command(
+                    'echom "Error: Ctags process timed out!"'
+                )
+
+        file.close()
 
         self.__is_running = False
 
