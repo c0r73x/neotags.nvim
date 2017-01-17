@@ -5,6 +5,19 @@ A neovim plugin that generates and highlight ctags similar to easytags.
 I wrote this because I didn't like that my vim froze when opening large
 projects.
 
+## Requirements
+
+neotags requires Neovim with if\_python3.
+If `:echo has("python3")` returns `1`, then you're done; otherwise, see below.
+
+You can enable Python3 interface with pip:
+
+    pip3 install neovim
+
+You also need psutil for Python3:
+
+    pip3 install psutil
+
 ## Options
 
 | Option | Description | Default |
