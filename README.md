@@ -35,7 +35,7 @@ You can enable Python3 interface and psutil with pip:
 
 To use the_silver_searcher or similar applications when generating tags you can do something like this.
 
-```
+```viml
 let g:neotags_appendpath = 0
 let g:neotags_recursive = 0
 
