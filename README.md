@@ -7,16 +7,12 @@ projects.
 
 ## Requirements
 
-neotags requires Neovim with if\_python3.
-If `:echo has("python3")` returns `1`, then you're done; otherwise, see below.
+neotags requires Neovim with if\_python3, and psutil for Python3.
+If `:echo has("python3")` returns `1` and `pip3 list | grep psutil` shows the psutil package, then you're done; otherwise, see below.
 
-You can enable Python3 interface with pip:
+You can enable Python3 interface and psutil with pip:
 
-    pip3 install neovim
-
-You also need psutil for Python3:
-
-    pip3 install psutil
+    pip3 install neovim psutil
 
 ## Options
 
