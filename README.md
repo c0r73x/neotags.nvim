@@ -14,6 +14,12 @@ You can enable Python3 interface and psutil with pip:
 
     pip3 install neovim psutil
 
+## Commands
+
+| Command | Description |
+| ------ | ----------- |
+| NeotagsToggle | Toggle neotags on the fly |
+
 ## Options
 
 | Option | Description | Default |
