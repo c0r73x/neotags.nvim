@@ -19,6 +19,7 @@ class Neotags(object):
         self.__suffix = '\>'
         self.__is_running = False
         self.__initialized = False
+        self.__highlights = {}
 
         self.__ignore = [
             '.*String.*',
@@ -50,8 +51,17 @@ class Neotags(object):
 
         self.__initialized = True
 
+    def toggle(self):
+        if(not self.__vim.vars['neotags_enabled']):
+            self.__vim.vars['neotags_enabled'] = 1
+        else:
+            self.__vim.vars['neotags_enabled'] = 0
+
+        self.update()
+
     def update(self):
         if(not self.__vim.vars['neotags_enabled']):
+            self._clear()
             return
 
         if(self.__vim.vars['neotags_run_ctags']):
@@ -63,9 +73,11 @@ class Neotags(object):
         self.__exists_buffer = {}
 
         if(not self.__vim.vars['neotags_enabled']):
+            self._clear()
             return
 
         if(not self.__vim.vars['neotags_highlight']):
+            self._clear()
             return
 
         neotags_file = self.__vim.vars['neotags_file']
@@ -197,6 +209,15 @@ class Neotags(object):
 
         return self.__exists_buffer[buffer]
 
+    def _clear(self):
+        for key in self.__highlights.keys():
+            self.__vim.command(
+                'silent! syntax clear %s' % key,
+                async=True
+            )
+
+        self.__highlights = {}
+
     def _highlight(self, key, group, prefix, suffix, notin):
         current = []
 
@@ -212,6 +233,8 @@ class Neotags(object):
                 suffix,
                 ','.join(self.__ignore + notin)
             ), async=True)
+
+        self.__highlights[key] = 1
 
     def _parseLine(self, line, groups, kinds, to_escape, pattern):
         match = pattern.match(line)

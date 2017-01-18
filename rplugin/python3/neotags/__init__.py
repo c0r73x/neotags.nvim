@@ -27,3 +27,7 @@ class NeotagsHandlers(object):
     @neovim.function('NeotagsUpdate')
     def update(self, args):
         self.__vim.async_call(self.__neotags.update)
+
+    @neovim.function('NeotagsToggle')
+    def toggle(self, args):
+        self.__vim.async_call(self.__neotags.toggle)

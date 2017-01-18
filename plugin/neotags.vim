@@ -252,3 +252,5 @@ let g:loaded_neotags = 1
 augroup NeoTags
     autocmd VimEnter * call NeotagsInit()
 augroup END
+
+command! NeotagsToggle call NeotagsToggle()
