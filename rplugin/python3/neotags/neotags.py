@@ -6,7 +6,10 @@
 # ============================================================================
 import os
 import re
+import time
 import subprocess
+
+from itertools import islice
 
 import psutil
 
@@ -19,6 +22,7 @@ class Neotags(object):
         self.__suffix = '\>'
         self.__is_running = False
         self.__initialized = False
+        self.__debug = False
         self.__highlights = {}
 
         self.__ignore = [
@@ -297,16 +301,28 @@ class Neotags(object):
             re.IGNORECASE
         )
 
+        if self.__debug:
+            start = time.clock()
+
         for file in files:
-            with open(file, 'r+', encoding='utf-8', errors='replace') as f:
-                for line in f:
-                    self._parseLine(
-                        line,
-                        groups,
-                        kinds,
-                        to_escape,
-                        pattern
-                    )
+            with open(file, 'r+', encoding='utf-8', errors='ignore') as f:
+                while True:
+                    lines = list(islice(f, 65536))
+                    if not lines:
+                        break
+                    for line in lines:
+                        self._parseLine(
+                            line,
+                            groups,
+                            kinds,
+                            to_escape,
+                            pattern
+                        )
+
+        if self.__debug:
+            elapsed = time.clock()
+            elapsed = elapsed - start
+            self.__vim.command('echo "done reading %s"' % elapsed)
 
         return groups, kinds
 
