@@ -106,6 +106,8 @@ class Neotags(object):
         groups, kinds = self._getTags(files)
         order = self._tags_order()
 
+        self.__vim.command('echo "done"')
+
         if not order:
             order = kinds
 
@@ -293,7 +295,7 @@ class Neotags(object):
 
         lang = '|'.join(self._vim_to_ctags(filetypes))
         pattern = re.compile(
-            '^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\tlanguage:(%s)' % lang,
+            '^([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(%s)' % lang,
             re.IGNORECASE
         )
 
