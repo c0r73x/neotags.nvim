@@ -106,8 +106,6 @@ class Neotags(object):
         groups, kinds = self._getTags(files)
         order = self._tags_order()
 
-        self.__vim.command('echo "done"')
-
         if not order:
             order = kinds
 
