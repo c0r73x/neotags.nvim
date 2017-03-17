@@ -29,6 +29,10 @@ if !exists('g:neotags_enabled')
     let g:neotags_enabled = 0
 endif
 
+if !exists('g:neotags_verbose')
+    let g:neotags_verbose = 0
+endif
+
 if !exists('g:neotags_run_ctags')
     let g:neotags_run_ctags = 1
 endif

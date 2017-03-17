@@ -6,6 +6,7 @@
 # ============================================================================
 import os
 import re
+import mmap
 import time
 import subprocess
 
@@ -22,7 +23,6 @@ class Neotags(object):
         self.__suffix = '\>'
         self.__is_running = False
         self.__initialized = False
-        self.__debug = False
         self.__highlights = {}
 
         self.__ignore = [
@@ -116,6 +116,8 @@ class Neotags(object):
         prevgroups = []
 
         for key in order:
+            self._debug_start()
+
             hlgroup = self._exists(key, '.group', None)
             filter = self._exists(key, '.filter.group', None)
 
@@ -141,6 +143,8 @@ class Neotags(object):
                 if(filter not in prevgroups):
                     prevgroups.append(filter)
 
+            self._debug_end('applied syntax for %s' % key)
+
     def _tags_order(self):
         orderlist = []
         filetypes = self.__vim.eval('&ft').lower().split('.')
@@ -158,7 +162,6 @@ class Neotags(object):
         for proc in process.children():
             proc.kill()
         process.kill()
-
 
     def _run_ctags(self):
         if(self.__is_running):
@@ -178,6 +181,8 @@ class Neotags(object):
 
         file = open(self.__vim.vars['neotags_file'], 'wb')
 
+        self._debug_start()
+
         try:
             proc = subprocess.Popen('%s %s' %
                 (self.__vim.vars['neotags_ctags_bin'], ' '.join(ctags_args)),
@@ -186,13 +191,18 @@ class Neotags(object):
             )
 
             proc.wait(self.__vim.vars['neotags_ctags_timeout'])
-        except subprocess.TimeoutExpired:
-            self._kill(proc.pid)
 
-            if self.__vim.vars['neotags_silent_timeout'] == 0:
-                self.__vim.command(
-                    'echom "Error: Ctags process timed out!"'
-                )
+            self._debug_end('ctags completed successfully')
+        except subprocess.CalledProcessError as error:
+            self._debug_end('ctags completed with errors')
+
+            for err in proc.stderr.readline():
+                self.__vim.command('echom "%s"' % str(error.output))
+        except subprocess.FileNotFoundErroras as error:
+            self._debug_end('unable to find ctags')
+        except subprocess.TimeoutExpired:
+            self._debug_end('ctags process timed out!')
+            self._kill(proc.pid)
 
         file.close()
 
@@ -240,50 +250,46 @@ class Neotags(object):
 
         self.__highlights[key] = 1
 
-    def _parseLine(self, line, groups, kinds, to_escape, pattern):
-        match = pattern.match(line)
+    def _parseLine(self, match, groups, kinds, to_escape):
+        entry = {
+            'name': str(match[0], 'utf8'),
+            'file': str(match[1], 'utf8'),
+            'cmd': str(match[2], 'utf8', errors='ignore'),
+            'kind': str(match[3], 'utf8'),
+            'lang': self._ctags_to_vim(str(match[4], 'utf8'))
+        }
 
-        if(match):
-            entry = {
-                'name': match.group(1),
-                'file': match.group(2),
-                'cmd': match.group(3),
-                'kind': match.group(4),
-                'lang': self._ctags_to_vim(match.group(5))
-            }
+        kind = entry['lang'] + '#' + entry['kind']
 
-            kind = entry['lang'] + "#" + entry['kind']
+        if kind not in kinds:
+            kinds.append(kind)
 
-            if kind not in kinds:
-                kinds.append(kind)
+        hlgroup = self._exists(kind, '.group', None)
+        fstr = self._exists(kind, '.filter.pattern', None)
+        filter = None
 
-            hlgroup = self._exists(kind, '.group', None)
-            fstr = self._exists(kind, '.filter.pattern', None)
-            filter = None
+        if fstr is not None:
+            filter = re.compile(r"%s" % fstr)
 
-            if fstr is not None:
-                filter = re.compile(r"%s" % fstr)
+        if hlgroup is not None:
+            cmd = entry['cmd']
 
-            if hlgroup is not None:
+            name = to_escape.sub(
+                r'\\\g<0>',
+                entry['name']
+            )
 
-                cmd = entry['cmd']
+            if filter is not None and filter.search(cmd):
+                fgrp = self._exists(kind, '.filter.group', None)
 
-                name = to_escape.sub(
-                    r'\\\g<0>',
-                    entry['name']
-                )
+                if fgrp is not None:
+                    hlgroup = fgrp
 
-                if filter is not None and filter.search(cmd):
-                    fgrp = self._exists(kind, '.filter.group', None)
+            if hlgroup not in groups:
+                groups[hlgroup] = []
 
-                    if fgrp is not None:
-                        hlgroup = fgrp
-
-                if hlgroup not in groups:
-                    groups[hlgroup] = []
-
-                if name not in groups[hlgroup]:
-                    groups[hlgroup].append(name)
+            if name not in groups[hlgroup]:
+                groups[hlgroup].append(name)
 
     def _getTags(self, files):
         filetypes = self.__vim.eval('&ft').lower().split('.')
@@ -297,34 +303,39 @@ class Neotags(object):
 
         lang = '|'.join(self._vim_to_ctags(filetypes))
         pattern = re.compile(
-            '^([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(%s)' % lang,
+            b'\n([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')',
             re.IGNORECASE
         )
 
-        if self.__debug:
-            start = time.clock()
-
         for file in files:
-            with open(file, 'r+', encoding='utf-8', errors='ignore') as f:
-                while True:
-                    lines = list(islice(f, 65536))
-                    if not lines:
-                        break
-                    for line in lines:
-                        self._parseLine(
-                            line,
-                            groups,
-                            kinds,
-                            to_escape,
-                            pattern
-                        )
+            self._debug_start()
 
-        if self.__debug:
-            elapsed = time.clock()
-            elapsed = elapsed - start
-            self.__vim.command('echo "done reading %s"' % elapsed)
+            with open(file, 'r+b') as f:
+                mf = mmap.mmap(f.fileno(), 0)
+                for match in pattern.findall(mf):
+                    self._parseLine(
+                        match,
+                        groups,
+                        kinds,
+                        to_escape
+                    )
+
+                mf.close()
+
+            self._debug_end('done reading %s' % file)
 
         return groups, kinds
+
+    def _debug_start(self):
+        if(self.__vim.vars['neotags_verbose']):
+            self.__start_time = time.clock()
+
+    def _debug_end(self, message):
+        if(self.__vim.vars['neotags_verbose']):
+            elapsed = time.clock() - self.__start_time
+            self.__vim.command(
+                'echom "%s (%.2fs)"' % (message, elapsed)
+            )
 
     def _ctags_to_vim(self, lang):
         if lang is None:
