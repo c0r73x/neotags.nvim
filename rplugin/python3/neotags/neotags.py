@@ -311,16 +311,19 @@ class Neotags(object):
             self._debug_start()
 
             with open(file, 'r+b') as f:
-                mf = mmap.mmap(f.fileno(), 0)
-                for match in pattern.findall(mf):
-                    self._parseLine(
-                        match,
-                        groups,
-                        kinds,
-                        to_escape
-                    )
+                try:
+                    mf = mmap.mmap(f.fileno(), 0)
+                    for match in pattern.findall(mf):
+                        self._parseLine(
+                            match,
+                            groups,
+                            kinds,
+                            to_escape
+                        )
 
-                mf.close()
+                    mf.close()
+                except:
+                    continue
 
             self._debug_end('done reading %s' % file)
 
