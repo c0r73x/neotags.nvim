@@ -110,6 +110,7 @@ class Neotags(object):
             order = kinds
 
         prevgroups = []
+        cmds = []
 
         for key in order:
             self._debug_start()
@@ -123,7 +124,7 @@ class Neotags(object):
                 notin = self._exists(key, '.notin', [])
 
                 nohl = [n for n in prevgroups if not n == hlgroup] + notin
-                self._highlight(hlgroup, groups[hlgroup], prefix, suffix, nohl)
+                cmds += self._highlight(hlgroup, groups[hlgroup], prefix, suffix, nohl)
 
                 if(hlgroup not in prevgroups):
                     prevgroups.append(hlgroup)
@@ -134,12 +135,15 @@ class Neotags(object):
                 notin = self._exists(key, '.filter.notin', [])
 
                 nohl = [n for n in prevgroups if not n == filter] + notin
-                self._highlight(filter, groups[filter], prefix, suffix, nohl)
+                cmds += self._highlight(filter, groups[filter], prefix, suffix, nohl)
 
                 if(filter not in prevgroups):
                     prevgroups.append(filter)
 
             self._debug_end('applied syntax for %s' % key)
+
+        for cmd in cmds:
+            self.__vim.command(cmd, async=True)
 
     def _tags_order(self):
         orderlist = []
@@ -233,21 +237,24 @@ class Neotags(object):
 
     def _highlight(self, key, group, prefix, suffix, notin):
         current = []
+        cmd = []
 
         self.__vim.command('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), 2048):
             current = group[i:i + 2048]
 
-            self.__vim.command(self.__pattern % (
+            cmd.append(self.__pattern % (
                 key,
                 prefix,
                 '\|'.join(current),
                 suffix,
                 ','.join(self.__ignore + notin)
-            ), async=True)
+            ))
 
         self.__highlights[key] = 1
+
+        return cmd
 
     def _parseLine(self, match, groups, kinds, to_escape):
         entry = {
