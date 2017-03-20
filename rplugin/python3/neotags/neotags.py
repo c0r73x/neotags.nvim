@@ -142,8 +142,7 @@ class Neotags(object):
 
             self._debug_end('applied syntax for %s' % key)
 
-        for cmd in cmds:
-            self.__vim.command(cmd, async=True)
+        [ self.__vim.command(cmd) for cmd in cmds ]
 
     def _tags_order(self):
         orderlist = []
