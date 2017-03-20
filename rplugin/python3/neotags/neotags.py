@@ -239,7 +239,7 @@ class Neotags(object):
         current = []
         cmd = []
 
-        self.__vim.command('silent! syntax clear %s' % key)
+        cmd.append('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), 2048):
             current = group[i:i + 2048]
