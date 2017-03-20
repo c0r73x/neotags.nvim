@@ -10,8 +10,6 @@ import mmap
 import time
 import subprocess
 
-from itertools import islice
-
 import psutil
 
 
