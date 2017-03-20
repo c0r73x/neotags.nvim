@@ -99,9 +99,7 @@ class Neotags(object):
                 try:
                     files.append(f)
                 except:
-                    self.__vim.command(
-                        'echom "Error: unable to open %s"' % f.decode('utf-8')
-                    )
+                    self._error('unable to open %s' % f.decode('utf-8'))
 
         if files is None:
             self.__vim.command("echom 'No tag files found!'")
@@ -192,17 +190,20 @@ class Neotags(object):
 
             proc.wait(self.__vim.vars['neotags_ctags_timeout'])
 
-            self._debug_end('ctags completed successfully')
-        except subprocess.CalledProcessError as error:
-            self._debug_end('ctags completed with errors')
+            self._debug_end('Ctags completed successfully')
+        except FileNotFoundError as error:
+            self._error('failed to run Ctags %s' % error)
+        except (OSError, subprocess.CalledProcessError) as error:
+            self._error('Ctags completed with errors')
 
             for err in proc.stderr.readline():
-                self.__vim.command('echom "%s"' % str(error.output))
-        except subprocess.FileNotFoundErroras as error:
-            self._debug_end('unable to find ctags')
+                self._error(str(error.output))
         except subprocess.TimeoutExpired:
-            self._debug_end('ctags process timed out!')
+            self._debug_end('Ctags process timed out!')
             self._kill(proc.pid)
+
+            if self.__vim.vars['neotags_silent_timeout'] == 0:
+                self._error("Ctags process timed out!")
 
         file.close()
 
@@ -273,11 +274,7 @@ class Neotags(object):
 
         if hlgroup is not None:
             cmd = entry['cmd']
-
-            name = to_escape.sub(
-                r'\\\g<0>',
-                entry['name']
-            )
+            name = to_escape.sub(r'\\\g<0>', entry['name'])
 
             if filter is not None and filter.search(cmd):
                 fgrp = self._exists(kind, '.filter.group', None)
@@ -285,11 +282,10 @@ class Neotags(object):
                 if fgrp is not None:
                     hlgroup = fgrp
 
-            if hlgroup not in groups:
-                groups[hlgroup] = []
-
-            if name not in groups[hlgroup]:
+            try:
                 groups[hlgroup].append(name)
+            except KeyError:
+                groups[hlgroup] = [name]
 
     def _getTags(self, files):
         filetypes = self.__vim.eval('&ft').lower().split('.')
@@ -312,7 +308,7 @@ class Neotags(object):
 
             with open(file, 'r+b') as f:
                 try:
-                    mf = mmap.mmap(f.fileno(), 0)
+                    mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
                     for match in pattern.findall(mf):
                         self._parseLine(
                             match,
@@ -339,6 +335,9 @@ class Neotags(object):
             self.__vim.command(
                 'echom "%s (%.2fs)"' % (message, elapsed)
             )
+
+    def _error(self, message):
+        self.__vim.command('echoerr "%s"' % message)
 
     def _ctags_to_vim(self, lang):
         if lang is None:
