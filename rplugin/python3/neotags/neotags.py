@@ -257,11 +257,11 @@ class Neotags(object):
 
     def _parseLine(self, match, groups, kinds, to_escape):
         entry = {
-            'name': str(match[0], 'utf8'),
-            'file': str(match[1], 'utf8'),
-            'cmd': str(match[2], 'utf8', errors='ignore'),
-            'kind': str(match[3], 'utf8'),
-            'lang': self._ctags_to_vim(str(match[4], 'utf8'))
+            'name': str(match[1], 'utf8'),
+            'file': str(match[2], 'utf8'),
+            'cmd': str(match[3], 'utf8', errors='ignore'),
+            'kind': str(match[4], 'utf8'),
+            'lang': self._ctags_to_vim(str(match[5], 'utf8'))
         }
 
         kind = entry['lang'] + '#' + entry['kind']
@@ -303,7 +303,7 @@ class Neotags(object):
 
         lang = '|'.join(self._vim_to_ctags(filetypes))
         pattern = re.compile(
-            b'\n([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')',
+            b'(^|\n)([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')',
             re.IGNORECASE
         )
 
