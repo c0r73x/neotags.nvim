@@ -200,11 +200,10 @@ class Neotags(object):
             for err in proc.stderr.readline():
                 self._error(str(error.output))
         except subprocess.TimeoutExpired:
-            self._debug_end('Ctags process timed out!')
             self._kill(proc.pid)
 
             if self.__vim.vars['neotags_silent_timeout'] == 0:
-                self._error("Ctags process timed out!")
+                self.__vim.command("echom 'Ctags process timed out!'")
 
         file.close()
 
