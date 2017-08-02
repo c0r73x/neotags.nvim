@@ -68,7 +68,7 @@ if !exists('g:neotags_ctags_args')
                 \ '--c-kinds=+p',
                 \ '--c++-kinds=+p',
                 \ '--sort=no',
-                \ '--extra=+q'
+                \ '--extras=+q'
                 \ ]
 endif
 

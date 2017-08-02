@@ -96,7 +96,7 @@ class Neotags(object):
             if(os.path.isfile(f)):
                 try:
                     files.append(f)
-                except:
+                except IOError as e:
                     self._error('unable to open %s' % f.decode('utf-8'))
 
         if files is None:
@@ -124,7 +124,13 @@ class Neotags(object):
                 notin = self._exists(key, '.notin', [])
 
                 nohl = [n for n in prevgroups if not n == hlgroup] + notin
-                cmds += self._highlight(hlgroup, groups[hlgroup], prefix, suffix, nohl)
+                cmds += self._highlight(
+                    hlgroup,
+                    groups[hlgroup],
+                    prefix,
+                    suffix,
+                    nohl
+                )
 
                 if(hlgroup not in prevgroups):
                     prevgroups.append(hlgroup)
@@ -135,14 +141,20 @@ class Neotags(object):
                 notin = self._exists(key, '.filter.notin', [])
 
                 nohl = [n for n in prevgroups if not n == filter] + notin
-                cmds += self._highlight(filter, groups[filter], prefix, suffix, nohl)
+                cmds += self._highlight(
+                    filter,
+                    groups[filter],
+                    prefix,
+                    suffix,
+                    nohl
+                )
 
                 if(filter not in prevgroups):
                     prevgroups.append(filter)
 
             self._debug_end('applied syntax for %s' % key)
 
-        [ self.__vim.command(cmd) for cmd in cmds ]
+        [self.__vim.command(cmd) for cmd in cmds]
 
     def _tags_order(self):
         orderlist = []
@@ -183,22 +195,25 @@ class Neotags(object):
         self._debug_start()
 
         try:
-            proc = subprocess.Popen('%s %s' %
-                (self.__vim.vars['neotags_ctags_bin'], ' '.join(ctags_args)),
+            proc = subprocess.Popen('%s %s' % (
+                self.__vim.vars['neotags_ctags_bin'], ' '.join(ctags_args)
+                ),
                 shell=True,
                 stdout=file,
+                stderr=subprocess.PIPE
             )
 
             proc.wait(self.__vim.vars['neotags_ctags_timeout'])
+            err = proc.communicate()[1]
+            if err:
+                self._error('Ctags completed with errors')
+
+                for e in err.decode('ascii').split('\n'):
+                    self._error(e)
 
             self._debug_end('Ctags completed successfully')
         except FileNotFoundError as error:
             self._error('failed to run Ctags %s' % error)
-        except (OSError, subprocess.CalledProcessError) as error:
-            self._error('Ctags completed with errors')
-
-            for err in proc.stderr.readline():
-                self._error(str(error.output))
         except subprocess.TimeoutExpired:
             self._kill(proc.pid)
 
@@ -321,7 +336,7 @@ class Neotags(object):
                         )
 
                     mf.close()
-                except:
+                except IOError as e:
                     continue
 
             self._debug_end('done reading %s' % file)
@@ -340,7 +355,10 @@ class Neotags(object):
             )
 
     def _error(self, message):
-        self.__vim.command('echoerr "%s"' % message)
+        if message:
+            self.__vim.command(
+                'echohl ErrorMsg | echom "%s" | echohl None' % message
+            )
 
     def _ctags_to_vim(self, lang):
         if lang is None:
@@ -354,7 +372,7 @@ class Neotags(object):
         return lang.lower()
 
     def _vim_to_ctags(self, languages):
-        for i,l in enumerate(languages):
+        for i, l in enumerate(languages):
             if languages[i] == 'cpp':
                 languages[i] = 'C++'
             elif languages[i] == 'cs':
