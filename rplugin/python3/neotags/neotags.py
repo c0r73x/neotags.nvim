@@ -95,7 +95,8 @@ class Neotags(object):
 
             if(os.path.isfile(f)):
                 try:
-                    files.append(f)
+                    if(os.stat(f).st_size > 0):
+                        files.append(f)
                 except IOError as e:
                     self._error('unable to open %s' % f.decode('utf-8'))
 
