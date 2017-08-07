@@ -357,7 +357,7 @@ class Neotags(object):
 
     def _error(self, message):
         if message:
-            message = message.replace('"', '\\"')
+            message = message.replace('\\', '\\\\').replace('"', '\\"')
             self.__vim.command(
                 'echohl ErrorMsg | echom "%s" | echohl None' % message
             )
