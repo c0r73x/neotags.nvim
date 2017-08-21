@@ -211,8 +211,8 @@ class Neotags(object):
 
                 for e in err.decode('ascii').split('\n'):
                     self._error(e)
-
-            self._debug_end('Ctags completed successfully')
+            else:
+                self._debug_end('Ctags completed successfully')
         except FileNotFoundError as error:
             self._error('failed to run Ctags %s' % error)
         except subprocess.TimeoutExpired:
@@ -325,8 +325,8 @@ class Neotags(object):
         for file in files:
             self._debug_start()
 
-            with open(file, 'r+b') as f:
-                try:
+            try:
+                with open(file, 'rb') as f:
                     mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
                     for match in pattern.findall(mf):
                         self._parseLine(
@@ -337,8 +337,9 @@ class Neotags(object):
                         )
 
                     mf.close()
-                except IOError as e:
-                    continue
+            except IOError as e:
+                self._error("could not read %s: %s" % (file, e))
+                continue
 
             self._debug_end('done reading %s' % file)
 
