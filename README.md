@@ -162,10 +162,6 @@ To use `the_silver_searcher` or similar applications when generating tags you ca
 let g:neotags_appendpath = 0
 let g:neotags_recursive = 0
 
-" Use this option for the_silver_searcher
-let g:neotags_ctags_bin = 'ag -g "" '. getcwd() .' | ctags'
-" Or this one for ripgrep. Not both.
-let g:neotags_ctags_bin = 'rg --files '. getcwd() .' | ctags'
 let g:neotags_ctags_args = [
             \ '-L -',
             \ '--fields=+l',
@@ -174,6 +170,11 @@ let g:neotags_ctags_args = [
             \ '--sort=no',
             \ '--extras=+q'
             \ ]
+
+" Use this option for the_silver_searcher
+let g:neotags_ctags_bin = 'ag -g "" '. getcwd() .' | ctags'
+" Or this one for ripgrep. Not both.
+let g:neotags_ctags_bin = 'rg --files '. getcwd() .' | ctags'
 ``` 
 ### Speed Improvements
 Also on big projects syntax highlighting may become slow. To address this you can try:
