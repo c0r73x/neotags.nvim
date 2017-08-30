@@ -325,6 +325,9 @@ class Neotags(object):
         for file in files:
             self._debug_start()
 
+            if(os.stat(file).st_size == 0):
+                continue
+
             try:
                 with open(file, 'rb') as f:
                     mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
