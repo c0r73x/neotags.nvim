@@ -45,6 +45,8 @@ class Neotags(object):
             evupd = ','.join(self.__vim.vars['neotags_events_update'])
             evhl = ','.join(self.__vim.vars['neotags_events_highlight'])
 
+            self.__patternlength = self.__vim.vars['neotags_patternlength']
+
             self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
             self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
 
@@ -255,8 +257,8 @@ class Neotags(object):
 
         cmd.append('silent! syntax clear %s' % key)
 
-        for i in range(0, len(group), 2048):
-            current = group[i:i + 2048]
+        for i in range(0, len(group), self.__patternlength):
+            current = group[i:i + self.__patternlength]
 
             cmd.append(self.__pattern % (
                 key,

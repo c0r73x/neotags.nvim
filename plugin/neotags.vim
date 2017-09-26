@@ -62,6 +62,10 @@ if !exists('g:neotags_silent_timeout')
     let g:neotags_silent_timeout = 0
 endif
 
+if !exists('g:neotags_patternlength')
+    let g:neotags_patternlength = 1024
+endif
+
 if !exists('g:neotags_ctags_args')
     let g:neotags_ctags_args = [
                 \ '--fields=+l',
