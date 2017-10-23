@@ -132,11 +132,16 @@ let g:neotags#java#order = 'cim'
 
 ### Javascript
 ```vim
-let g:neotags#javascript#order = 'f'
+let g:neotags#javascript#order = 'cCfmpo'
 ```
 | Option | Group Name            |
 |--------|-----------------------|
+| c      | javascriptClassTag    |
+| C      | javascriptConstantTag |
 | f      | javascriptFunctionTag |
+| m      | javascriptMethodTag   |
+| p      | javascriptPropsTag    |
+| o      | javascriptObjectTag   |
 
 ### Perl
 ```vim

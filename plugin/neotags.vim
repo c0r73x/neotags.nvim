@@ -205,13 +205,63 @@ let g:neotags#java#m = {
             \   'group': 'javaMethodTag'
             \ }
 " 1}}}
-" JavaScript {{{1
-if !exists('g:neotags#javascript#order')
-	let g:neotags#javascript#order = 'f'
-endif
+" javascript {{{1
+let g:neotags#javascript#order = 'cCfmpo'
+
+let g:neotags#javascript#c = {
+            \   'group': 'javascriptClassTag',
+            \   'notin': [
+            \       'jsx.*',
+            \       'javascriptTemplate'
+            \   ]
+            \ }
+
+let g:neotags#javascript#C = {
+            \   'group': 'javascriptConstantTag',
+            \   'notin': [
+            \       'jsx.*',
+            \       'javascriptTemplate'
+            \   ]
+            \ }
 
 let g:neotags#javascript#f = {
-            \   'group': 'javascriptFunctionTag'
+            \   'group': 'javascriptFunctionTag',
+            \   'notin': [
+            \       'jsx.*',
+            \       'javascriptTemplate',
+            \       'javascriptConditional',
+            \       'javascriptRepeat'
+            \   ]
+            \ }
+
+let g:neotags#javascript#m = {
+            \   'group': 'javascriptMethodTag',
+            \   'notin': [
+            \       'jsx.*',
+            \       'javascriptTemplate',
+            \       'javascriptConditional',
+            \       'javascriptRepeat'
+            \   ]
+            \ }
+
+let g:neotags#javascript#o = {
+            \   'group': 'javascriptObjectTag',
+            \   'notin': [
+            \       'jsx.*',
+            \       'javascriptTemplate',
+            \       'javascriptConditional',
+            \       'javascriptRepeat'
+            \   ]
+            \ }
+
+let g:neotags#javascript#p = {
+            \   'group': 'javascriptPropTag',
+            \   'notin': [
+            \       'jsx.*',
+            \       'javascriptTemplate',
+            \       'javascriptConditional',
+            \       'javascriptRepeat'
+            \   ]
             \ }
 " 1}}}
 " vim {{{1
@@ -265,31 +315,31 @@ let g:neotags#php#c = {
             \ }
 " 1}}}
 
-highlight def link rubyModuleName Type
-highlight def link rubyClassName Type
-highlight def link rubyMethodName Function
+highlight def link rubyModuleNameTag Type
+highlight def link rubyClassNameTag Type
+highlight def link rubyMethodNameTag Function
 
 highlight def link PythonMethodTag pythonFunction
 highlight def link PythonClassTag pythonFunction
 
-highlight def link cEnum Identifier
-highlight def link cFunction Function
-highlight def link cMember Identifier
+highlight def link cEnumTag Identifier
+highlight def link cFunctionTag Function
+highlight def link cMemberTag Identifier
 
-highlight def link cppEnum Identifier
-highlight def link cppFunction Function
-highlight def link cppMember Identifier
+highlight def link cppEnumTag Identifier
+highlight def link cppFunctionTag Function
+highlight def link cppMemberTag Identifier
 
 highlight def link shFunctionTag Operator
 highlight def link perlFunctionTag Operator
 
-highlight def link javaClass Identifier
-highlight def link javaMethod Function
-highlight def link javaInterface Identifier
+highlight def link javaClassTag Identifier
+highlight def link javaMethodTag Function
+highlight def link javaInterfaceTag Identifier
 
 highlight def link javascriptFunctionTag Identifier
 
-highlight def link vimAutoGroup vimAutoEvent
+highlight def link vimAutoGroupTag vimAutoEvent
 
 let g:loaded_neotags = 1
 
