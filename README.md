@@ -192,3 +192,54 @@ highlight everything but maybe only the tags your interested in the most. Exampl
 let g:neotags#cpp#order = 'ced'
 ```
 The above will only highlight `cppTypeTag, cppPreProcTag, cppEnumTag`.
+
+### Custom Rules
+
+You can create custom rules for existing languages or new languages.
+
+```
+let g:neotags#[ctags language]#order = 'list of ctags kinds'
+let g:neotags#[ctags language]#[ctags kind] = { 'group': 'highlight' }
+```
+You can get the list of kinds by running ctags --list-kinds=[language] (for more advanced rules, check neotags.vim/plugin/neotags.vim)
+
+For example, this is what I use in typescript/tsx
+
+In ~/.ctags
+```
+--langdef=typescript
+--langmap=typescript:.ts
+--langmap=typescript:+.tsx
+--regex-typescript=/^[ \t]*(export([ \t]+abstract)?([ \t]+default)?)?[ \t]*class[ \t]+([a-zA-Z0-9_]+)/\4/c,classes/
+--regex-typescript=/^[ \t]*(declare)?[ \t]*namespace[ \t]+([a-zA-Z0-9_]+)/\2/n,modules/
+--regex-typescript=/^[ \t]*(export)?[ \t]*module[ \t]+([a-zA-Z0-9_]+)/\2/M,modules/
+--regex-typescript=/^[ \t]*(export)?[ \t]*function[ \t]+([a-zA-Z0-9_]+)/\2/f,functions/
+--regex-typescript=/^[ \t]*export[ \t]+(var|let|const)[ \t]+([a-zA-Z0-9_]+)/\2/v,variables/
+--regex-typescript=/^[ \t]*(var|let|const)[ \t]+([a-zA-Z0-9_]+)[ \t]*=[ \t]*function[ \t]*\(\)/\2/V,varlambdas/
+--regex-typescript=/^[ \t]*(export)?[ \t]*(public|protected|private)[ \t]+(static)?[ \t]*([a-zA-Z0-9_]+)/\4/m,members/
+--regex-typescript=/^[ \t]*(export)?[ \t]*interface[ \t]+([a-zA-Z0-9_]+)/\2/i,interfaces/
+--regex-typescript=/^[ \t]*(export)?[ \t]*type[ \t]+([a-zA-Z0-9_]+)/\2/t,types/
+--regex-typescript=/^[ \t]*(export)?[ \t]*enum[ \t]+([a-zA-Z0-9_]+)/\2/e,enums/
+--regex-typescript=/^[ \t]*import[ \t]+([a-zA-Z0-9_]+)/\1/I,imports/
+--regex-typescript=/^[ \t]*@([A-Za-z0-9._$]+)[ \t]*/\1/d,decorator/
+```
+
+In vimrc
+```vim
+let g:neotags#typescript#order = 'cnfmoited'
+
+let g:neotags#typescript#c = { 'group': 'javascriptClassTag' }
+let g:neotags#typescript#C = { 'group': 'javascriptConstantTag' }
+let g:neotags#typescript#f = { 'group': 'javascriptFunctionTag' }
+let g:neotags#typescript#o = { 'group': 'javascriptObjectTag' }
+
+let g:neotags#typescript#n = g:neotags#typescript#C
+let g:neotags#typescript#f = g:neotags#typescript#f
+let g:neotags#typescript#m = g:neotags#typescript#f
+let g:neotags#typescript#o = g:neotags#typescript#o
+let g:neotags#typescript#i = g:neotags#typescript#C
+let g:neotags#typescript#t = g:neotags#typescript#C
+let g:neotags#typescript#e = g:neotags#typescript#C
+
+let g:neotags#typescript#d = g:neotags#typescript#c
+```
