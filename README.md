@@ -198,10 +198,11 @@ The above will only highlight `cppTypeTag, cppPreProcTag, cppEnumTag`.
 You can create custom rules for existing languages or new languages.
 
 ```
-let g:neotags#[ctags language]#order = 'list of ctags kinds'
+let g:neotags#[ctags language]#order = 'string with ctags kinds'
 let g:neotags#[ctags language]#[ctags kind] = { 'group': 'highlight' }
 ```
-You can get the list of kinds by running ctags --list-kinds=[language] (for more advanced rules, check neotags.vim/plugin/neotags.vim)
+You can get the list of kinds by running `ctags --list-kinds=[language]` (for more advanced rules, check neotags.vim/plugin/neotags.vim).
+order determents priority of the highlight by first to last (tags with the same name will use the one with higher priority). Note that only kinds in the order string will be loaded.
 
 For example, this is what I use in typescript/tsx
 
