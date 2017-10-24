@@ -37,8 +37,8 @@ You can enable Python3 interface and psutil with pip:
 | g:neotags_ctags_timeout    | ctags timeout in seconds                                           | 3                                                            |
 | g:neotags_silent_timeout   | Hide message when ctags timeouts                                   | 0                                                            |
 | g:neotags_verbose          | Verbose output when reading and generating tags (for debug)        | 0                                                            |
-| g:neotags#c#order          | Group Name creation for the C language                             | cedfm                                                        |
-| g:neotags#cpp#order        | Group Name creation for the Cpp language                           | cedfm                                                        |
+| g:neotags#c#order          | Group Name creation for the C language                             | cgstuedfpm                                                   |
+| g:neotags#cpp#order        | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
 | g:neotags#python#order     | Group Name creation for the Python language                        | mfc                                                          |
 | g:neotags#ruby#order       | Group Name creation for the Ruby language                          | mfc                                                          |
 | g:neotags#sh#order         | Group Name creation for the Shell language                         | f                                                            |
@@ -67,16 +67,21 @@ highlight link cppPreProcTag PreProc
 ### C/Cpp
 Default Highlight all groups:
 ```vim
-let g:neotags#cpp#order = 'cedfm'
-let g:neotags#c#order = 'cedfm'
+let g:neotags#cpp#order = 'cgstuedfpm'
+let g:neotags#c#order = 'cgstuedfpm'
 ```
 | Option | Group Name     |
 |--------|----------------|
 | c      | cppTypeTag     |
-| m      | cppMemberTag   |
+| g      | cppTypeTag     |
+| s      | cppTypeTag     |
+| t      | cppTypeTag     |
+| u      | cppTypeTag     |
 | e      | cppEnumTag     |
 | d      | cppPreProcTag  |
 | f      | cppFunctionTag |
+| p      | cppFunctionTag |
+| m      | cppMemberTag   |
 
 C highlighting is identical to Cpp just remove `pp` from the group name. Example, `cTypeTag`.
 With the `g:neotags#cpp#order` function you can restrict the highlighting to selected groups. See `Speed Improvements`
