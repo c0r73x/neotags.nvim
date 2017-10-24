@@ -133,7 +133,7 @@ let g:neotags#java#order = 'cim'
 |--------|------------------|
 | c      | javaClassTag     |
 | i      | javaInterfaceTag |
-| m      | JavaMethodTag    |
+| m      | javaMethodTag    |
 
 ### Javascript
 ```vim
