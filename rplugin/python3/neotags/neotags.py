@@ -8,6 +8,7 @@ import os
 import re
 import mmap
 import time
+import hashlib
 import subprocess
 
 import psutil
@@ -245,7 +246,7 @@ class Neotags(object):
     def _clear(self):
         for key in self.__highlights.keys():
             self.__vim.command(
-                'silent! syntax clear %s' % key,
+                'silent! syntax clear @%s' % key,
                 async=True
             )
 
@@ -255,7 +256,14 @@ class Neotags(object):
         current = []
         cmd = []
 
-        cmd.append('silent! syntax clear %s' % key)
+        self._debug_start()
+
+        hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
+        if key in self.__highlights and hash == self.__highlights[key]:
+            self._debug_end('No need to update %s' % key)
+            return []
+
+        cmd.append('silent! syntax clear @{%s}' % key)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
@@ -268,11 +276,14 @@ class Neotags(object):
                 ','.join(self.__ignore + notin)
             ))
 
-        self.__highlights[key] = 1
+        self._debug_end('Updated highlight for %s' % key)
+        self.__highlights[key] = hash
 
         return cmd
 
     def _parseLine(self, match, groups, kinds, to_escape):
+        self._debug_start()
+
         entry = {
             'name': str(match[1], 'utf8'),
             'file': str(match[2], 'utf8'),
@@ -304,7 +315,8 @@ class Neotags(object):
                     hlgroup = fgrp
 
             try:
-                groups[hlgroup].append(name)
+                if name not in groups[hlgroup]:
+                    groups[hlgroup].append(name)
             except KeyError:
                 groups[hlgroup] = [name]
 
