@@ -309,15 +309,9 @@ class Neotags(object):
         }
 
         kind = entry['lang'] + '#' + entry['kind']
-        ignore = self._exists(kind, '.ignore', '')
+        ignore = self._exists(kind, '.ignore', None)
 
-        if [g for g in groups if entry['name'] in groups[g]]:
-            self._debug_echo(
-                "Ignoring %s in exists in a previous group" % entry['name']
-            )
-            return
-
-        if ignore != '' and re.search(ignore, entry['name']):
+        if ignore and re.search(ignore, entry['name']):
             self._debug_echo(
                 "Ignoring %s based on pattern %s" % (entry['name'], ignore)
             )
@@ -387,6 +381,27 @@ class Neotags(object):
                 continue
 
             self._debug_end('done reading %s' % file)
+
+        order = self._tags_order()
+
+        if not order:
+            order = kinds
+
+        check = [self._exists(a, '.group', None) for a in order]
+        order.reverse()
+        clean = [self._exists(a, '.group', None) for a in order]
+
+        self._debug_start()
+        for a in clean:
+            self._debug_echo('checking %s for cleaning' % a)
+
+            for b in check:
+                if a != b:
+                    groups[a] = [
+                        x for x in groups[a] if x not in groups[b]
+                    ]
+
+        self._debug_end('done cleaning groups')
 
         return groups, kinds
 
