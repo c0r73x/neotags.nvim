@@ -63,7 +63,7 @@ if !exists('g:neotags_silent_timeout')
 endif
 
 if !exists('g:neotags_patternlength')
-    let g:neotags_patternlength = 1024
+    let g:neotags_patternlength = 2048
 endif
 
 if !exists('g:neotags_ctags_args')
