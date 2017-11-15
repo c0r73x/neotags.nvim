@@ -311,6 +311,12 @@ class Neotags(object):
         kind = entry['lang'] + '#' + entry['kind']
         ignore = self._exists(kind, '.ignore', '')
 
+        if [g for g in groups if entry['name'] in groups[g]]:
+            self._debug_echo(
+                "Ignoring %s in exists in a previous group" % entry['name']
+            )
+            return
+
         if ignore != '' and re.search(ignore, entry['name']):
             self._debug_echo(
                 "Ignoring %s based on pattern %s" % (entry['name'], ignore)
@@ -330,9 +336,6 @@ class Neotags(object):
         if hlgroup is not None:
             cmd = entry['cmd']
             name = to_escape.sub(r'\\\g<0>', entry['name'])
-
-            if hlgroup in groups and name in groups[hlgroup]:
-                return
 
             if filter is not None and filter.search(cmd):
                 fgrp = self._exists(kind, '.filter.group', None)
@@ -391,9 +394,13 @@ class Neotags(object):
         self.__start_time.append(time.time())
 
     def _debug_echo(self, message):
+        to_escape = re.compile(r'[.*^$/\\~\[\]]')
         elapsed = time.time() - self.__start_time[-1]
         self.__vim.command(
-            'echom "%s (%.2fs)"' % (message, elapsed)
+            'echom "%s (%.2fs)"' % (
+                to_escape.sub(r'\\\g<0>', message),
+                elapsed
+            )
         )
 
     def _debug_end(self, message):
