@@ -249,4 +249,3 @@ let g:neotags#typescript#e = g:neotags#typescript#C
 
 let g:neotags#typescript#d = g:neotags#typescript#c
 ```
->>>>>>> master
