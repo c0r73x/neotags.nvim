@@ -84,7 +84,7 @@ endif
 
 let g:neotags#cpp#c = {
             \   'group': 'cppTypeTag',
-            \   'ignore': '__anon[0-9a-f]+'
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
             \ }
 
 let g:neotags#cpp#g = g:neotags#cpp#c
@@ -119,7 +119,7 @@ endif
 
 let g:neotags#c#c = {
             \   'group': 'cTypeTag',
-            \   'ignore': '__anon[0-9a-f]+'
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
             \ }
 
 let g:neotags#c#m = {

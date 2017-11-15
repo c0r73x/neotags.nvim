@@ -111,7 +111,7 @@ class Neotags(object):
                 try:
                     if(os.stat(f).st_size > 0):
                         files.append(f)
-                except IOError as e:
+                except IOError:
                     self._error('unable to open %s' % f.decode('utf-8'))
 
         if files is None:
@@ -124,7 +124,6 @@ class Neotags(object):
         if not order:
             order = kinds
 
-        prevgroups = []
         cmds = []
 
         file = self.__vim.eval("expand('%:p:p')")
@@ -140,36 +139,28 @@ class Neotags(object):
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
 
-                nohl = [n for n in prevgroups if not n == hlgroup] + notin
                 cmds += self._highlight(
                     file,
                     hlgroup,
                     groups[hlgroup],
                     prefix,
                     suffix,
-                    nohl
+                    notin
                 )
-
-                if(hlgroup not in prevgroups):
-                    prevgroups.append(hlgroup)
 
             if filter is not None and filter in groups:
                 prefix = self._exists(key, '.filter.prefix', self.__prefix)
                 suffix = self._exists(key, '.filter.suffix', self.__suffix)
                 notin = self._exists(key, '.filter.notin', [])
 
-                nohl = [n for n in prevgroups if not n == filter] + notin
                 cmds += self._highlight(
                     file,
                     filter,
                     groups[filter],
                     prefix,
                     suffix,
-                    nohl
+                    notin
                 )
-
-                if(filter not in prevgroups):
-                    prevgroups.append(filter)
 
             self._debug_end('applied syntax for %s' % key)
 
@@ -232,7 +223,7 @@ class Neotags(object):
                     self._error(e)
             else:
                 self._debug_end('Ctags completed successfully')
-        except FileNotFoundError as error:
+        except subprocess.FileNotFoundError as error:
             self._error('failed to run Ctags %s' % error)
         except subprocess.TimeoutExpired:
             self._kill(proc.pid)
@@ -354,7 +345,7 @@ class Neotags(object):
 
         lang = '|'.join(self._vim_to_ctags(filetypes))
         pattern = re.compile(
-            b'(^|\n)([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')[\t$]',
+            b'(^|\n)([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')[\t\n]',
             re.IGNORECASE
         )
 
@@ -387,19 +378,19 @@ class Neotags(object):
         if not order:
             order = kinds
 
-        check = [self._exists(a, '.group', None) for a in order]
-        order.reverse()
-        clean = [self._exists(a, '.group', None) for a in order]
+        clean = [self._exists(a, '.group', None) for a in reversed(order)]
 
         self._debug_start()
-        for a in clean:
-            self._debug_echo('checking %s for cleaning' % a)
 
-            for b in check:
-                if a != b:
-                    groups[a] = [
-                        x for x in groups[a] if x not in groups[b]
-                    ]
+        for a in clean:
+            if a not in groups:
+                continue
+
+            for b in clean:
+                if b not in groups or a == b:
+                    continue
+
+                groups[a] = [x for x in groups[a] if x not in groups[b]]
 
         self._debug_end('done cleaning groups')
 
