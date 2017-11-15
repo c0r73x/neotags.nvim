@@ -247,7 +247,7 @@ class Neotags(object):
     def _clear(self):
         for key in self.__highlights.keys():
             self.__vim.command(
-                'silent! syntax clear @%s' % key,
+                'silent! syntax clear %s' % key,
                 async=True
             )
 
