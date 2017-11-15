@@ -104,7 +104,8 @@ let g:neotags#cpp#d = {
             \ }
 
 let g:neotags#cpp#f = {
-            \   'group': 'cppFunctionTag'
+            \   'group': 'cppFunctionTag',
+            \   'ignore': '\w+::\w+'
             \ }
 
 let g:neotags#cpp#p = g:neotags#cpp#f
@@ -136,10 +137,11 @@ let g:neotags#c#d = {
             \ }
 
 let g:neotags#c#f = {
-            \   'group': 'cFunctionTag'
+            \   'group': 'cFunctionTag',
+            \   'ignore': '\w+::\w+'
             \ }
 
-let g:neotags#c#p = g:neotags#cpp#f
+let g:neotags#c#p = g:neotags#c#f
 " 1}}}
 " Python {{{1
 if !exists('g:neotags#python#order')
@@ -282,7 +284,7 @@ let g:neotags#vim#c = {
 let g:neotags#vim#f = {
             \   'group': 'vimFuncNameTag',
             \   'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
-            \   'filter': { 
+            \   'filter': {
             \       'pattern': '(?i)(<sid>\w|\bs:\w)',
             \       'group': 'vimScriptFuncNameTag',
             \       'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)',

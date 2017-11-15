@@ -301,6 +301,13 @@ class Neotags(object):
         }
 
         kind = entry['lang'] + '#' + entry['kind']
+        ignore = self._exists(kind, '.ignore', '')
+
+        if ignore != '' and re.search(ignore, entry['name']):
+            self._debug_echo(
+                "Ignoring %s based on pattern %s" % (entry['name'], ignore)
+            )
+            return
 
         if kind not in kinds:
             kinds.append(kind)
@@ -376,13 +383,17 @@ class Neotags(object):
         if(self.__vim.vars['neotags_verbose']):
             self.__start_time.append(time.clock())
 
-    def _debug_end(self, message):
+    def _debug_echo(self, message):
         if(self.__vim.vars['neotags_verbose']):
             elapsed = time.clock() - self.__start_time[-1]
-            self.__start_time.pop()
             self.__vim.command(
                 'echom "%s (%.2fs)"' % (message, elapsed)
             )
+
+    def _debug_end(self, message):
+        if(self.__vim.vars['neotags_verbose']):
+            self._debug_echo(message)
+            self.__start_time.pop()
 
     def _error(self, message):
         if message:
