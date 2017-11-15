@@ -36,7 +36,7 @@ You can enable Python3 interface and psutil with pip:
 | g:neotags_ctags_args       | ctags arguments                                                    | --fields=+l --c-kinds=+p --c++-kinds+p --sort=no --extras=+q |
 | g:neotags_ctags_timeout    | ctags timeout in seconds                                           | 3                                                            |
 | g:neotags_silent_timeout   | Hide message when ctags timeouts                                   | 0                                                            |
-| g:neotags_verbose          | Verbose output when reading and generating tags (for debug)        | 0                                                            |
+| g:neotags_verbose          | Verbose output (for debug, must be set before neotags is starated) | 0                                                            |
 | g:neotags#c#order          | Group Name creation for the C language                             | cgstuedfpm                                                   |
 | g:neotags#cpp#order        | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
 | g:neotags#python#order     | Group Name creation for the Python language                        | mfc                                                          |

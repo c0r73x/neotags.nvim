@@ -37,9 +37,17 @@ class Neotags(object):
             'pythonDocTest2'
         ]
 
+    def __void(self, *args):
+        return
+
     def init(self):
         if(self.__initialized):
             return
+
+        if(not self.__vim.vars['neotags_verbose']):
+            self._debug_start = self.__void
+            self._debug_echo = self.__void
+            self._debug_end = self.__void
 
         self.__current_file = self.__vim.eval("expand('%:p:p')")
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
@@ -380,20 +388,17 @@ class Neotags(object):
         return groups, kinds
 
     def _debug_start(self):
-        if(self.__vim.vars['neotags_verbose']):
-            self.__start_time.append(time.clock())
+        self.__start_time.append(time.time())
 
     def _debug_echo(self, message):
-        if(self.__vim.vars['neotags_verbose']):
-            elapsed = time.clock() - self.__start_time[-1]
-            self.__vim.command(
-                'echom "%s (%.2fs)"' % (message, elapsed)
-            )
+        elapsed = time.time() - self.__start_time[-1]
+        self.__vim.command(
+            'echom "%s (%.2fs)"' % (message, elapsed)
+        )
 
     def _debug_end(self, message):
-        if(self.__vim.vars['neotags_verbose']):
-            self._debug_echo(message)
-            self.__start_time.pop()
+        self._debug_echo(message)
+        self.__start_time.pop()
 
     def _error(self, message):
         if message:
