@@ -93,7 +93,8 @@ let g:neotags#cpp#t = g:neotags#cpp#c
 let g:neotags#cpp#u = g:neotags#cpp#c
 
 let g:neotags#cpp#m = {
-            \   'group': 'cppMemberTag'
+            \   'group': 'cppMemberTag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
             \ }
 
 let g:neotags#cpp#e = {
@@ -123,7 +124,8 @@ let g:neotags#c#c = {
             \ }
 
 let g:neotags#c#m = {
-            \   'group': 'cMemberTag'
+            \   'group': 'cMemberTag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
             \ }
 
 let g:neotags#c#g = g:neotags#cpp#c
