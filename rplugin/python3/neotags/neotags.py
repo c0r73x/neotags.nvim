@@ -24,6 +24,7 @@ class Neotags(object):
         self.__initialized = False
         self.__highlights = {}
         self.__start_time = []
+        self.__current_file = ''
 
         self.__ignore = [
             '.*String.*',
@@ -40,6 +41,7 @@ class Neotags(object):
         if(self.__initialized):
             return
 
+        self.__current_file = self.__vim.eval("expand('%:p:p')")
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__exists_buffer = {}
 
@@ -117,6 +119,8 @@ class Neotags(object):
         prevgroups = []
         cmds = []
 
+        file = self.__vim.eval("expand('%:p:p')")
+
         for key in order:
             self._debug_start()
 
@@ -130,6 +134,7 @@ class Neotags(object):
 
                 nohl = [n for n in prevgroups if not n == hlgroup] + notin
                 cmds += self._highlight(
+                    file,
                     hlgroup,
                     groups[hlgroup],
                     prefix,
@@ -147,6 +152,7 @@ class Neotags(object):
 
                 nohl = [n for n in prevgroups if not n == filter] + notin
                 cmds += self._highlight(
+                    file,
                     filter,
                     groups[filter],
                     prefix,
@@ -159,6 +165,7 @@ class Neotags(object):
 
             self._debug_end('applied syntax for %s' % key)
 
+        self.__current_file = file
         [self.__vim.command(cmd) for cmd in cmds]
 
     def _tags_order(self):
@@ -253,16 +260,18 @@ class Neotags(object):
 
         self.__highlights = {}
 
-    def _highlight(self, key, group, prefix, suffix, notin):
+    def _highlight(self, file, key, group, prefix, suffix, notin):
         current = []
         cmd = []
 
         self._debug_start()
 
         hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
-        if key in self.__highlights and hash == self.__highlights[key]:
-            self._debug_end('No need to update %s' % key)
-            return []
+
+        if self.__current_file == file:
+            if key in self.__highlights and hash == self.__highlights[key]:
+                self._debug_end('No need to update %s for %s' % (key, file))
+                return []
 
         cmd.append('silent! syntax clear %s' % key)
 
