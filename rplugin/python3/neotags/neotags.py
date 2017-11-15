@@ -264,7 +264,7 @@ class Neotags(object):
             self._debug_end('No need to update %s' % key)
             return []
 
-        cmd.append('silent! syntax clear @{%s}' % key)
+        cmd.append('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
