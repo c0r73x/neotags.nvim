@@ -84,6 +84,7 @@ endif
 
 let g:neotags#cpp#c = {
             \   'group': 'cppTypeTag',
+            \   'ignore': '__anon[0-9a-f]+'
             \ }
 
 let g:neotags#cpp#g = g:neotags#cpp#c
@@ -96,7 +97,8 @@ let g:neotags#cpp#m = {
             \ }
 
 let g:neotags#cpp#e = {
-            \   'group': 'cppEnumTag'
+            \   'group': 'cppEnumTag',
+            \   'ignore': '^[_\w]+::'
             \ }
 
 let g:neotags#cpp#d = {
@@ -105,7 +107,7 @@ let g:neotags#cpp#d = {
 
 let g:neotags#cpp#f = {
             \   'group': 'cppFunctionTag',
-            \   'ignore': '^(~|\w+::)'
+            \   'ignore': '^(~|[_\w]+::)'
             \ }
 
 let g:neotags#cpp#p = g:neotags#cpp#f
@@ -117,6 +119,7 @@ endif
 
 let g:neotags#c#c = {
             \   'group': 'cTypeTag',
+            \   'ignore': '__anon[0-9a-f]+'
             \ }
 
 let g:neotags#c#m = {
@@ -129,7 +132,8 @@ let g:neotags#c#t = g:neotags#cpp#c
 let g:neotags#c#u = g:neotags#cpp#c
 
 let g:neotags#c#e = {
-            \   'group': 'cEnumTag'
+            \   'group': 'cEnumTag',
+            \   'ignore': '^[_\w]+::'
             \ }
 
 let g:neotags#c#d = {
@@ -138,7 +142,7 @@ let g:neotags#c#d = {
 
 let g:neotags#c#f = {
             \   'group': 'cFunctionTag',
-            \   'ignore': '^(~|\w+::)'
+            \   'ignore': '^(~|[_\w]+::)'
             \ }
 
 let g:neotags#c#p = g:neotags#c#f
