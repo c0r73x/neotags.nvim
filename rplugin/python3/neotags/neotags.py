@@ -223,7 +223,7 @@ class Neotags(object):
                     self._error(e)
             else:
                 self._debug_end('Ctags completed successfully')
-        except subprocess.FileNotFoundError as error:
+        except FileNotFoundError as error:
             self._error('failed to run Ctags %s' % error)
         except subprocess.TimeoutExpired:
             self._kill(proc.pid)
