@@ -290,14 +290,17 @@ class Neotags(object):
 
         return cmd
 
-    def _parseLine(self, match, groups, kinds, to_escape):
+    def _parseLine(self, match, groups, kinds, to_escape, languages):
         entry = {
-            'name': str(match[1], 'utf8'),
-            'file': str(match[2], 'utf8'),
-            'cmd': str(match[3], 'utf8', errors='ignore'),
-            'kind': str(match[4], 'utf8'),
-            'lang': self._ctags_to_vim(str(match[5], 'utf8'))
+            'name': str(match[0], 'utf8'),
+            'file': str(match[1], 'utf8'),
+            'cmd': str(match[2], 'utf8', errors='ignore'),
+            'kind': str(match[3], 'utf8'),
+            'lang': self._ctags_to_vim(str(match[4], 'utf8'))
         }
+
+        if entry['lang'] not in languages:  # need this for C
+            return
 
         kind = entry['lang'] + '#' + entry['kind']
         ignore = self._exists(kind, '.ignore', None)
@@ -335,6 +338,7 @@ class Neotags(object):
 
     def _getTags(self, files):
         filetypes = self.__vim.eval('&ft').lower().split('.')
+        languages = self.__vim.eval('&ft').lower().split('.')
         groups = {}
         kinds = []
 
@@ -345,7 +349,7 @@ class Neotags(object):
 
         lang = '|'.join(self._vim_to_ctags(filetypes))
         pattern = re.compile(
-            b'(^|\n)([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')[\t\n]',
+            b'(?:^|\n)([^\t]+)\t([^\t]+)\t\/(.+)\/;"\t(\w)\tlanguage:(' + bytes(lang, 'utf8') + b')\t?',
             re.IGNORECASE
         )
 
@@ -363,7 +367,8 @@ class Neotags(object):
                             match,
                             groups,
                             kinds,
-                            to_escape
+                            to_escape,
+                            languages
                         )
 
                     mf.close()
