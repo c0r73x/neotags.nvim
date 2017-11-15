@@ -23,6 +23,7 @@ class Neotags(object):
         self.__is_running = False
         self.__initialized = False
         self.__highlights = {}
+        self.__start_time = []
 
         self.__ignore = [
             '.*String.*',
@@ -282,8 +283,6 @@ class Neotags(object):
         return cmd
 
     def _parseLine(self, match, groups, kinds, to_escape):
-        self._debug_start()
-
         entry = {
             'name': str(match[1], 'utf8'),
             'file': str(match[2], 'utf8'),
@@ -308,6 +307,9 @@ class Neotags(object):
             cmd = entry['cmd']
             name = to_escape.sub(r'\\\g<0>', entry['name'])
 
+            if hlgroup in groups and name in groups[hlgroup]:
+                return
+
             if filter is not None and filter.search(cmd):
                 fgrp = self._exists(kind, '.filter.group', None)
 
@@ -315,8 +317,7 @@ class Neotags(object):
                     hlgroup = fgrp
 
             try:
-                if name not in groups[hlgroup]:
-                    groups[hlgroup].append(name)
+                groups[hlgroup].append(name)
             except KeyError:
                 groups[hlgroup] = [name]
 
@@ -364,11 +365,12 @@ class Neotags(object):
 
     def _debug_start(self):
         if(self.__vim.vars['neotags_verbose']):
-            self.__start_time = time.clock()
+            self.__start_time.append(time.clock())
 
     def _debug_end(self, message):
         if(self.__vim.vars['neotags_verbose']):
-            elapsed = time.clock() - self.__start_time
+            elapsed = time.clock() - self.__start_time[-1]
+            self.__start_time.pop()
             self.__vim.command(
                 'echom "%s (%.2fs)"' % (message, elapsed)
             )
