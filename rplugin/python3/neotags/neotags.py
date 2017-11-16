@@ -124,8 +124,6 @@ class Neotags(object):
         if not order:
             order = kinds
 
-        cmds = []
-
         file = self.__vim.eval("expand('%:p:p')")
 
         for key in order:
@@ -139,7 +137,7 @@ class Neotags(object):
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
 
-                cmds += self._highlight(
+                self._highlight(
                     file,
                     hlgroup,
                     groups[hlgroup],
@@ -153,7 +151,7 @@ class Neotags(object):
                 suffix = self._exists(key, '.filter.suffix', self.__suffix)
                 notin = self._exists(key, '.filter.notin', [])
 
-                cmds += self._highlight(
+                self._highlight(
                     file,
                     filter,
                     groups[filter],
@@ -165,7 +163,6 @@ class Neotags(object):
             self._debug_end('applied syntax for %s' % key)
 
         self.__current_file = file
-        [self.__vim.command(cmd) for cmd in cmds]
 
     def _tags_order(self):
         orderlist = []
@@ -261,7 +258,7 @@ class Neotags(object):
 
     def _highlight(self, file, key, group, prefix, suffix, notin):
         current = []
-        cmd = []
+        cmds = []
 
         self._debug_start()
 
@@ -270,14 +267,14 @@ class Neotags(object):
         if self.__current_file == file:
             if key in self.__highlights and hash == self.__highlights[key]:
                 self._debug_end('No need to update %s for %s' % (key, file))
-                return []
+                return
 
-        cmd.append('silent! syntax clear %s' % key)
+        cmds.append('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
 
-            cmd.append(self.__pattern % (
+            cmds.append(self.__pattern % (
                 key,
                 prefix,
                 '\|'.join(current),
@@ -288,7 +285,7 @@ class Neotags(object):
         self._debug_end('Updated highlight for %s' % key)
         self.__highlights[key] = hash
 
-        return cmd
+        [self.__vim.command(cmd) for cmd in cmds]
 
     def _parseLine(self, match, groups, kinds, to_escape, languages):
         entry = {
