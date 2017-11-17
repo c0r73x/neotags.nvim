@@ -25,6 +25,10 @@ class Neotags(object):
         self.__highlights = {}
         self.__start_time = []
         self.__current_file = ''
+        self.__current_type = None
+
+        self.kinds = []
+        self.groups = {}
 
         self.__ignore = [
             '.*String.*',
@@ -50,6 +54,7 @@ class Neotags(object):
             self._debug_end = self.__void
 
         self.__current_file = self.__vim.eval("expand('%:p:p')")
+
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__exists_buffer = {}
 
@@ -83,7 +88,37 @@ class Neotags(object):
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
+        self.__current_type = None
         self.highlight()
+
+    def parsetags(self):
+        ft = self.__vim.eval('&ft')
+
+        if self.__current_type != ft:
+            neotags_file = self.__vim.vars['neotags_file']
+            tagfiles = self.__vim.eval('&tags').split(",")
+            if neotags_file not in tagfiles:
+                self.__vim.command('set tags+=%s' % neotags_file)
+                tagfiles.append(neotags_file)
+
+            files = []
+
+            for f in tagfiles:
+                f = re.sub(r';', '', f).encode('utf-8')
+
+                if(os.path.isfile(f)):
+                    try:
+                        if(os.stat(f).st_size > 0):
+                            files.append(f)
+                    except IOError:
+                        self._error('unable to open %s' % f.decode('utf-8'))
+
+            if files is None:
+                self.__vim.command("echom 'No tag files found!'")
+                return
+
+            self.__current_type = ft
+            (self.__groups, self.__kinds) = self._getTags(files)
 
     def highlight(self):
         self.__exists_buffer = {}
@@ -96,30 +131,11 @@ class Neotags(object):
             self._clear()
             return
 
-        neotags_file = self.__vim.vars['neotags_file']
-        tagfiles = self.__vim.eval('&tags').split(",")
-        if neotags_file not in tagfiles:
-            self.__vim.command('set tags+=%s' % neotags_file)
-            tagfiles.append(neotags_file)
-
-        files = []
-
-        for f in tagfiles:
-            f = re.sub(r';', '', f).encode('utf-8')
-
-            if(os.path.isfile(f)):
-                try:
-                    if(os.stat(f).st_size > 0):
-                        files.append(f)
-                except IOError:
-                    self._error('unable to open %s' % f.decode('utf-8'))
-
-        if files is None:
-            self.__vim.command("echom 'No tag files found!'")
-            return
-
-        groups, kinds = self._getTags(files)
         order = self._tags_order()
+        self.parsetags()
+
+        kinds = self.__kinds
+        groups = self.__groups
 
         if not order:
             order = kinds
@@ -268,8 +284,8 @@ class Neotags(object):
             if key in self.__highlights and hash == self.__highlights[key]:
                 self._debug_end('No need to update %s for %s' % (key, file))
                 return
-
-        cmds.append('silent! syntax clear %s' % key)
+            else:
+                cmds.append('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
