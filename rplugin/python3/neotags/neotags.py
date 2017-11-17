@@ -88,6 +88,7 @@ class Neotags(object):
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
+        self.__current_type = None
         self.highlight()
 
     def parsetags(self):
