@@ -22,12 +22,10 @@ class Neotags(object):
         self.__suffix = '\>'
         self.__is_running = False
         self.__initialized = False
-        self.__highlights = {}
         self.__start_time = []
         self.__current_file = ''
         self.__current_type = None
-
-        self.groups = {}
+        self.__groups = {}
 
         self.__ignore = [
             '.*String.*',
@@ -87,37 +85,34 @@ class Neotags(object):
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
-        self.__current_type = None
+        ft = self.__vim.eval('&ft')
+        self.__groups[ft] = self.parsetags(ft)
         self.highlight()
 
-    def parsetags(self):
-        ft = self.__vim.eval('&ft')
+    def parsetags(self, ft):
+        neotags_file = self.__vim.vars['neotags_file']
+        tagfiles = self.__vim.eval('&tags').split(",")
+        if neotags_file not in tagfiles:
+            self.__vim.command('set tags+=%s' % neotags_file)
+            tagfiles.append(neotags_file)
 
-        if self.__current_type != ft:
-            neotags_file = self.__vim.vars['neotags_file']
-            tagfiles = self.__vim.eval('&tags').split(",")
-            if neotags_file not in tagfiles:
-                self.__vim.command('set tags+=%s' % neotags_file)
-                tagfiles.append(neotags_file)
+        files = []
 
-            files = []
+        for f in tagfiles:
+            f = re.sub(r';', '', f).encode('utf-8')
 
-            for f in tagfiles:
-                f = re.sub(r';', '', f).encode('utf-8')
+            if(os.path.isfile(f)):
+                try:
+                    if(os.stat(f).st_size > 0):
+                        files.append(f)
+                except IOError:
+                    self._error('unable to open %s' % f.decode('utf-8'))
 
-                if(os.path.isfile(f)):
-                    try:
-                        if(os.stat(f).st_size > 0):
-                            files.append(f)
-                    except IOError:
-                        self._error('unable to open %s' % f.decode('utf-8'))
+        if files is None:
+            self.__vim.command("echom 'No tag files found!'")
+            return
 
-            if files is None:
-                self.__vim.command("echom 'No tag files found!'")
-                return
-
-            self.__groups = self._getTags(files)
-            self.__current_type = ft
+        return self._getTags(files, ft)
 
     def highlight(self):
         if(self.__is_running):
@@ -135,10 +130,12 @@ class Neotags(object):
             self._clear()
             return
 
-        order = self._tags_order()
-        self.parsetags()
+        ft = self.__vim.eval('&ft')
+        if ft not in self.__groups:
+            self.__groups[ft] = self.parsetags(ft)
 
-        groups = self.__groups
+        order = self._tags_order()
+        groups = self.__groups[ft]
 
         if not order:
             order = groups.keys()
@@ -270,16 +267,26 @@ class Neotags(object):
 
         return self.__exists_buffer[buffer]
 
+    def getbufferhl(self):
+        if self.__vim.funcs.exists('b:_highlight'):
+            return self.__vim.vars['b:_highlight']
+
+        return {}
+
     def _clear(self):
-        for key in self.__highlights.keys():
+        highlights = self.getbufferhl()
+
+        for key in highlights.keys():
             self.__vim.command(
                 'silent! syntax clear %s' % key,
                 async=True
             )
 
-        self.__highlights = {}
+        highlights = {}
 
     def _highlight(self, key, file, hlgroup, group, prefix, suffix, notin):
+        highlights = self.getbufferhl()
+
         current = []
         cmds = []
         hlkey = '_Neotags_%s_%s' % (key.replace('#', '_'), hlgroup)
@@ -288,10 +295,10 @@ class Neotags(object):
 
         hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
 
-        if self.__current_file == file:
-            if hlkey in self.__highlights and hash == self.__highlights[hlkey]:
-                self._debug_end('No need to update %s for %s' % (hlkey, file))
-                return
+        # if self.__current_file == file:
+        if hlkey in highlights and hash == highlights[hlkey]:
+            self._debug_end('No need to update %s for %s' % (hlkey, file))
+            return
 
         cmds.append('silent! syntax clear %s' % hlkey)
 
@@ -307,7 +314,7 @@ class Neotags(object):
             ))
 
         self._debug_end('Updated highlight for %s' % hlkey)
-        self.__highlights[hlkey] = hash
+        highlights[hlkey] = hash
 
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
@@ -353,8 +360,8 @@ class Neotags(object):
         else:
             groups[kind] = [name]
 
-    def _getTags(self, files):
-        filetypes = self.__vim.eval('&ft').lower().split('.')
+    def _getTags(self, files, ft):
+        filetypes = ft.lower().split('.')
         languages = self.__vim.eval('&ft').lower().split('.')
         groups = {}
         # kinds = []
