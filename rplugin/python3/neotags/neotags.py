@@ -27,7 +27,6 @@ class Neotags(object):
         self.__current_file = ''
         self.__current_type = None
 
-        self.kinds = []
         self.groups = {}
 
         self.__ignore = [
@@ -117,10 +116,13 @@ class Neotags(object):
                 self.__vim.command("echom 'No tag files found!'")
                 return
 
-            (self.__groups, self.__kinds) = self._getTags(files)
+            self.__groups = self._getTags(files)
             self.__current_type = ft
 
     def highlight(self):
+        if(self.__is_running):
+            return
+
         self.__exists_buffer = {}
 
         if(not self.__vim.vars['neotags_enabled']):
@@ -134,11 +136,10 @@ class Neotags(object):
         order = self._tags_order()
         self.parsetags()
 
-        kinds = self.__kinds
         groups = self.__groups
 
         if not order:
-            order = kinds
+            order = groups.keys()
 
         file = self.__vim.eval("expand('%:p:p')")
 
@@ -148,29 +149,32 @@ class Neotags(object):
             hlgroup = self._exists(key, '.group', None)
             filter = self._exists(key, '.filter.group', None)
 
-            if hlgroup is not None and hlgroup in groups:
+            if hlgroup is not None and key in groups:
                 prefix = self._exists(key, '.prefix', self.__prefix)
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
 
                 self._highlight(
+                    key,
                     file,
                     hlgroup,
-                    groups[hlgroup],
+                    groups[key],
                     prefix,
                     suffix,
                     notin
                 )
 
-            if filter is not None and filter in groups:
+            fkey = key + '_filter',
+            if filter is not None and fkey in groups:
                 prefix = self._exists(key, '.filter.prefix', self.__prefix)
                 suffix = self._exists(key, '.filter.suffix', self.__suffix)
                 notin = self._exists(key, '.filter.notin', [])
 
                 self._highlight(
+                    fkey,
                     file,
                     filter,
-                    groups[filter],
+                    groups[fkey],
                     prefix,
                     suffix,
                     notin
@@ -179,6 +183,7 @@ class Neotags(object):
             self._debug_end('applied syntax for %s' % key)
 
         self.__current_file = file
+        self.__is_running = False
 
     def _tags_order(self):
         orderlist = []
@@ -272,9 +277,10 @@ class Neotags(object):
 
         self.__highlights = {}
 
-    def _highlight(self, file, key, group, prefix, suffix, notin):
+    def _highlight(self, key, file, hlgroup, group, prefix, suffix, notin):
         current = []
         cmds = []
+        hlkey = '_Neotags_%s_%s' % (key.replace('#', '_'), hlgroup)
 
         self._debug_start()
 
@@ -285,25 +291,27 @@ class Neotags(object):
                 self._debug_end('No need to update %s for %s' % (key, file))
                 return
 
-        cmds.append('silent! syntax clear %s' % key)
+        cmds.append('silent! syntax clear %s' % hlkey)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
 
             cmds.append(self.__pattern % (
-                key,
+                hlkey,
                 prefix,
                 '\|'.join(current),
                 suffix,
                 ','.join(self.__ignore + notin)
             ))
 
-        self._debug_end('Updated highlight for %s' % key)
+        self._debug_end('Updated highlight for %s' % hlkey)
         self.__highlights[key] = hash
+
+        cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
         [self.__vim.command(cmd) for cmd in cmds]
 
-    def _parseLine(self, match, groups, kinds, to_escape, languages):
+    def _parseLine(self, match, groups, to_escape, languages):
         entry = {
             'name': str(match[0], 'utf8'),
             'file': str(match[1], 'utf8'),
@@ -324,39 +332,33 @@ class Neotags(object):
             )
             return
 
-        if kind not in kinds:
-            kinds.append(kind)
-
-        hlgroup = self._exists(kind, '.group', None)
         fstr = self._exists(kind, '.filter.pattern', None)
         filter = None
 
         if fstr is not None:
             filter = re.compile(r"%s" % fstr)
 
-        if hlgroup is not None:
-            cmd = entry['cmd']
-            name = to_escape.sub(r'\\\g<0>', entry['name'])
+        # if hlgroup is not None:
+        cmd = entry['cmd']
+        name = to_escape.sub(r'\\\g<0>', entry['name'])
 
-            if filter is not None and filter.search(cmd):
-                fgrp = self._exists(kind, '.filter.group', None)
+        if filter is not None and filter.search(cmd):
+            kind = entry['lang'] + '#' + entry['kind'] + '_filter'
 
-                if fgrp is not None:
-                    hlgroup = fgrp
-
-            try:
-                groups[hlgroup].append(name)
-            except KeyError:
-                groups[hlgroup] = [name]
+        if kind in groups:
+            if name not in groups[kind]:
+                groups[kind].append(name)
+        else:
+            groups[kind] = [name]
 
     def _getTags(self, files):
         filetypes = self.__vim.eval('&ft').lower().split('.')
         languages = self.__vim.eval('&ft').lower().split('.')
         groups = {}
-        kinds = []
+        # kinds = []
 
         if filetypes is None:
-            return groups, kinds
+            return groups
 
         to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
@@ -379,7 +381,6 @@ class Neotags(object):
                         self._parseLine(
                             match,
                             groups,
-                            kinds,
                             to_escape,
                             languages
                         )
@@ -394,17 +395,17 @@ class Neotags(object):
         order = self._tags_order()
 
         if not order:
-            order = kinds
+            order = list(groups.keys())
 
-        clean = [self._exists(a, '.group', None) for a in reversed(order)]
+        clean = reversed(order)
 
         self._debug_start()
 
-        for a in clean:
+        for a in list(clean):
             if a not in groups:
                 continue
 
-            for b in clean:
+            for b in list(order):
                 if b not in groups or a == b:
                     continue
 
@@ -412,7 +413,7 @@ class Neotags(object):
 
         self._debug_end('done cleaning groups')
 
-        return groups, kinds
+        return groups
 
     def _debug_start(self):
         self.__start_time.append(time.time())
