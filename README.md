@@ -5,6 +5,8 @@ A neovim plugin that generates and highlight ctags similar to easytags.
 I wrote this because I didn't like that my vim froze when opening large
 projects.
 
+![ScreenShot](/screenshot.gif?raw=true)
+
 ## Requirements
 
 neotags requires Neovim with if\_python3, and psutil for Python3.
