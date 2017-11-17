@@ -289,8 +289,8 @@ class Neotags(object):
         hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
 
         if self.__current_file == file:
-            if key in self.__highlights and hash == self.__highlights[key]:
-                self._debug_end('No need to update %s for %s' % (key, file))
+            if hlkey in self.__highlights and hash == self.__highlights[hlkey]:
+                self._debug_end('No need to update %s for %s' % (hlkey, file))
                 return
 
         cmds.append('silent! syntax clear %s' % hlkey)
@@ -307,7 +307,7 @@ class Neotags(object):
             ))
 
         self._debug_end('Updated highlight for %s' % hlkey)
-        self.__highlights[key] = hash
+        self.__highlights[hlkey] = hash
 
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
