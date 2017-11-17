@@ -123,6 +123,8 @@ class Neotags(object):
         if(self.__is_running):
             return
 
+        self.__is_running = True
+
         self.__exists_buffer = {}
 
         if(not self.__vim.vars['neotags_enabled']):
