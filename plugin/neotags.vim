@@ -22,7 +22,7 @@ endif
 
 if !exists('g:neotags_events_highlight')
     let g:neotags_events_highlight = [
-                \   'BufEnter'
+                \   'BufReadPost',
                 \ ]
 endif
 
