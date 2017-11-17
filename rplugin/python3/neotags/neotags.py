@@ -142,6 +142,9 @@ class Neotags(object):
 
         file = self.__vim.eval("expand('%:p:p')")
 
+        if self.__current_file != file:
+            self._clear()
+
         for key in order:
             self._debug_start()
 
@@ -280,12 +283,11 @@ class Neotags(object):
 
         hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
 
-        if self.__current_file == file:
-            if key in self.__highlights and hash == self.__highlights[key]:
-                self._debug_end('No need to update %s for %s' % (key, file))
-                return
-            else:
-                cmds.append('silent! syntax clear %s' % key)
+        if key in self.__highlights and hash == self.__highlights[key]:
+            self._debug_end('No need to update %s for %s' % (key, file))
+            return
+        else:
+            cmds.append('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
