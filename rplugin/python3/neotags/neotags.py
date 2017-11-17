@@ -115,11 +115,6 @@ class Neotags(object):
         return self._getTags(files, ft)
 
     def highlight(self):
-        if(self.__is_running):
-            return
-
-        self.__is_running = True
-
         self.__exists_buffer = {}
 
         if(not self.__vim.vars['neotags_enabled']):
@@ -129,6 +124,11 @@ class Neotags(object):
         if(not self.__vim.vars['neotags_highlight']):
             self._clear()
             return
+
+        if(self.__is_running):
+            return
+
+        self.__is_running = True
 
         ft = self.__vim.eval('&ft')
         if ft not in self.__groups:
@@ -268,10 +268,10 @@ class Neotags(object):
         return self.__exists_buffer[buffer]
 
     def getbufferhl(self):
-        if self.__vim.funcs.exists('b:_highlight'):
-            return self.__vim.vars['b:_highlight']
+        if not self.__vim.funcs.exists('b:highlight'):
+            self.__vim.command('let b:highlight = {}')
 
-        return {}
+        return self.__vim.eval('b:highlight')
 
     def _clear(self):
         highlights = self.getbufferhl()
@@ -282,7 +282,7 @@ class Neotags(object):
                 async=True
             )
 
-        highlights = {}
+        self.__vim.command('let b:highlight = {}')
 
     def _highlight(self, key, file, hlgroup, group, prefix, suffix, notin):
         highlights = self.getbufferhl()
@@ -314,8 +314,10 @@ class Neotags(object):
             ))
 
         self._debug_end('Updated highlight for %s' % hlkey)
+
         highlights[hlkey] = hash
 
+        self.__vim.command('let b:highlight = %s' % highlights)
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
         [self.__vim.command(cmd) for cmd in cmds]
