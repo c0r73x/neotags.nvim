@@ -108,7 +108,7 @@ let g:neotags#cpp#d = {
 
 let g:neotags#cpp#f = {
             \   'group': 'cppFunctionTag',
-            \   'ignore': '^(~|[_\w]+::)'
+            \   'ignore': '^(~|[_\w]+::|operator)'
             \ }
 
 let g:neotags#cpp#p = g:neotags#cpp#f
