@@ -88,7 +88,6 @@ class Neotags(object):
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
-        self.__current_type = None
         self.highlight()
 
     def parsetags(self):
@@ -117,8 +116,8 @@ class Neotags(object):
                 self.__vim.command("echom 'No tag files found!'")
                 return
 
-            self.__current_type = ft
             (self.__groups, self.__kinds) = self._getTags(files)
+            self.__current_type = ft
 
     def highlight(self):
         self.__exists_buffer = {}
@@ -141,9 +140,6 @@ class Neotags(object):
             order = kinds
 
         file = self.__vim.eval("expand('%:p:p')")
-
-        if self.__current_file != file:
-            self._clear()
 
         for key in order:
             self._debug_start()
@@ -283,11 +279,12 @@ class Neotags(object):
 
         hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
 
-        if key in self.__highlights and hash == self.__highlights[key]:
-            self._debug_end('No need to update %s for %s' % (key, file))
-            return
-        else:
-            cmds.append('silent! syntax clear %s' % key)
+        if self.__current_file == file:
+            if key in self.__highlights and hash == self.__highlights[key]:
+                self._debug_end('No need to update %s for %s' % (key, file))
+                return
+
+        cmds.append('silent! syntax clear %s' % key)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
