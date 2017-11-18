@@ -52,20 +52,8 @@ You can enable Python3 interface and psutil with pip:
 
 
 ## Highlight Group Names
-By default group name creation is set for all the different group names of all the supported languages. However, no 
-highlighting command is set for any group name. Anyhow this is very easy to configure. Example configuration for
-c\cpp:
-```vim
-let g:neotags#cpp#order = 'ced'
-let g:neotags#c#order = 'ced'
+By default group name creation is set for all the different group names of all the supported languages.
 
-highlight link cTypeTag Special
-highlight link cppTypeTag Special
-highlight link cEnumTag Identifier
-highlight link cppEnumTag Identifier
-highlight link cPreProcTag PreProc
-highlight link cppPreProcTag PreProc
-```
 ### C/Cpp
 Default Highlight all groups:
 ```vim
@@ -208,7 +196,10 @@ You can create custom rules for existing languages or new languages.
 let g:neotags#[ctags language]#order = 'string with ctags kinds'
 let g:neotags#[ctags language]#[ctags kind] = { 'group': 'highlight' }
 ```
-You can get the list of kinds by running `ctags --list-kinds=[language]` (for more advanced rules, check neotags.vim/plugin/neotags.vim).
+For more advanced rules, check the files in `neotags.vim/plugin/neotags/*.vim`.
+
+You can get the list of kinds by running `ctags --list-kinds=[language]`.
+
 order determents priority of the highlight by first to last (tags with the same name will use the one with higher priority). Note that only kinds in the order string will be loaded.
 
 For example, this is what I use in typescript/tsx
