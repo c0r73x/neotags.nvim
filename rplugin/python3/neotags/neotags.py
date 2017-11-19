@@ -296,7 +296,7 @@ class Neotags(object):
         md5 = hashlib.md5()
         strgrp = ''.join(group).encode('utf-8')
 
-        for i in range(0, len(strgrp)):
+        for i in range(0, len(strgrp), 128):
             md5.update(strgrp[i:i + 128])
 
         hash = md5.hexdigest()
