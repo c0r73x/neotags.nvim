@@ -293,14 +293,18 @@ class Neotags(object):
 
         self._debug_start()
 
-        hash = hashlib.md5(''.join(group).encode('utf-8')).hexdigest()
+        md5 = hashlib.md5()
+        strgrp = ''.join(group).encode('utf-8')
+
+        for i in range(0, len(strgrp)):
+            md5.update(strgrp[i:i + 128])
+
+        hash = md5.hexdigest()
 
         # if self.__current_file == file:
         if hlkey in highlights and hash == highlights[hlkey]:
             self._debug_end('No need to update %s for %s' % (hlkey, file))
             return
-
-        cmds.append('silent! syntax clear %s' % hlkey)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
@@ -319,8 +323,9 @@ class Neotags(object):
 
         self.__vim.command('let b:highlight = %s' % highlights)
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
+        self.__vim.command('silent! syntax clear %s' % hlkey)
 
-        [self.__vim.command(cmd) for cmd in cmds]
+        [self.__vim.command(cmd, async=True) for cmd in cmds]
 
     def _parseLine(self, match, groups, to_escape, languages):
         entry = {
