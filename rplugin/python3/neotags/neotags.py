@@ -321,8 +321,9 @@ class Neotags(object):
 
         highlights[hlkey] = hash
 
-        self.__vim.command('let b:highlight = %s' % highlights)
+        cmds.append('let b:highlight = %s' % highlights)
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
+
         self.__vim.command('silent! syntax clear %s' % hlkey)
 
         [self.__vim.command(cmd, async=True) for cmd in cmds]
@@ -354,7 +355,6 @@ class Neotags(object):
         if fstr is not None:
             filter = re.compile(r"%s" % fstr)
 
-        # if hlgroup is not None:
         cmd = entry['cmd']
         name = to_escape.sub(r'\\\g<0>', entry['name'])
 
@@ -371,7 +371,6 @@ class Neotags(object):
         filetypes = ft.lower().split('.')
         languages = self.__vim.eval('&ft').lower().split('.')
         groups = {}
-        # kinds = []
 
         if filetypes is None:
             return groups
