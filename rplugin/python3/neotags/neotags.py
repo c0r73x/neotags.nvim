@@ -85,11 +85,94 @@ class Neotags(object):
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
+        if(self.__is_running):
+            return
+
+        self.__is_running = True
+
         ft = self.__vim.eval('&ft')
-        self.__groups[ft] = self.parsetags(ft)
+        if ft in self.__groups:
+            del self.__groups[ft]
+
+        self.__is_running = False
+
         self.highlight()
 
-    def parsetags(self, ft):
+    def highlight(self):
+        self.__exists_buffer = {}
+
+        if(not self.__vim.vars['neotags_enabled']):
+            self._clear()
+            return
+
+        if(not self.__vim.vars['neotags_highlight']):
+            self._clear()
+            return
+
+        if(self.__is_running):
+            return
+
+        self.__is_running = True
+
+        ft = self.__vim.eval('&ft')
+        if ft not in self.__groups:
+            self.__groups[ft] = self._parsetags(ft)
+
+        order = self._tags_order()
+        groups = self.__groups[ft]
+
+        if not order:
+            order = groups.keys()
+
+        file = self.__vim.eval("expand('%:p:p')")
+
+        self._debug_start()
+        for key in order:
+
+            hlgroup = self._exists(key, '.group', None)
+            filter = self._exists(key, '.filter.group', None)
+
+            if hlgroup is not None and key in groups:
+                prefix = self._exists(key, '.prefix', self.__prefix)
+                suffix = self._exists(key, '.suffix', self.__suffix)
+                notin = self._exists(key, '.notin', [])
+
+                self._highlight(
+                    key,
+                    file,
+                    hlgroup,
+                    groups[key],
+                    prefix,
+                    suffix,
+                    notin
+                )
+
+                self._debug_echo('applied syntax for %s' % key)
+
+            fkey = key + '_filter',
+            if filter is not None and fkey in groups:
+                prefix = self._exists(key, '.filter.prefix', self.__prefix)
+                suffix = self._exists(key, '.filter.suffix', self.__suffix)
+                notin = self._exists(key, '.filter.notin', [])
+
+                self._highlight(
+                    fkey,
+                    file,
+                    filter,
+                    groups[fkey],
+                    prefix,
+                    suffix,
+                    notin
+                )
+
+                self._debug_echo('applied syntax for %s' % fkey)
+
+        self._debug_end('applied syntax')
+
+        self.__current_file = file
+        self.__is_running = False
+
+    def _parsetags(self, ft):
         neotags_file = self.__vim.vars['neotags_file']
         tagfiles = self.__vim.eval('&tags').split(",")
         if neotags_file not in tagfiles:
@@ -113,76 +196,6 @@ class Neotags(object):
             return
 
         return self._getTags(files, ft)
-
-    def highlight(self):
-        self.__exists_buffer = {}
-
-        if(not self.__vim.vars['neotags_enabled']):
-            self._clear()
-            return
-
-        if(not self.__vim.vars['neotags_highlight']):
-            self._clear()
-            return
-
-        if(self.__is_running):
-            return
-
-        self.__is_running = True
-
-        ft = self.__vim.eval('&ft')
-        if ft not in self.__groups:
-            self.__groups[ft] = self.parsetags(ft)
-
-        order = self._tags_order()
-        groups = self.__groups[ft]
-
-        if not order:
-            order = groups.keys()
-
-        file = self.__vim.eval("expand('%:p:p')")
-
-        for key in order:
-            self._debug_start()
-
-            hlgroup = self._exists(key, '.group', None)
-            filter = self._exists(key, '.filter.group', None)
-
-            if hlgroup is not None and key in groups:
-                prefix = self._exists(key, '.prefix', self.__prefix)
-                suffix = self._exists(key, '.suffix', self.__suffix)
-                notin = self._exists(key, '.notin', [])
-
-                self._highlight(
-                    key,
-                    file,
-                    hlgroup,
-                    groups[key],
-                    prefix,
-                    suffix,
-                    notin
-                )
-
-            fkey = key + '_filter',
-            if filter is not None and fkey in groups:
-                prefix = self._exists(key, '.filter.prefix', self.__prefix)
-                suffix = self._exists(key, '.filter.suffix', self.__suffix)
-                notin = self._exists(key, '.filter.notin', [])
-
-                self._highlight(
-                    fkey,
-                    file,
-                    filter,
-                    groups[fkey],
-                    prefix,
-                    suffix,
-                    notin
-                )
-
-            self._debug_end('applied syntax for %s' % key)
-
-        self.__current_file = file
-        self.__is_running = False
 
     def _tags_order(self):
         orderlist = []
@@ -267,14 +280,14 @@ class Neotags(object):
 
         return self.__exists_buffer[buffer]
 
-    def getbufferhl(self):
+    def _getbufferhl(self):
         if not self.__vim.funcs.exists('b:highlight'):
             self.__vim.command('let b:highlight = {}')
 
         return self.__vim.eval('b:highlight')
 
     def _clear(self):
-        highlights = self.getbufferhl()
+        highlights = self._getbufferhl()
 
         for key in highlights.keys():
             self.__vim.command(
@@ -285,7 +298,7 @@ class Neotags(object):
         self.__vim.command('let b:highlight = {}')
 
     def _highlight(self, key, file, hlgroup, group, prefix, suffix, notin):
-        highlights = self.getbufferhl()
+        highlights = self._getbufferhl()
 
         current = []
         cmds = []
@@ -301,7 +314,6 @@ class Neotags(object):
 
         hash = md5.hexdigest()
 
-        # if self.__current_file == file:
         if hlkey in highlights and hash == highlights[hlkey]:
             self._debug_end('No need to update %s for %s' % (hlkey, file))
             return
