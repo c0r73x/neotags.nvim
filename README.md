@@ -242,8 +242,3 @@ let g:neotags#typescript#e = g:neotags#typescript#C
 
 let g:neotags#typescript#d = g:neotags#typescript#c
 ```
-
-## Known issues
-
-* Using denite clears highlights in the previous buffer when opening in splits
-(working on a fix) 

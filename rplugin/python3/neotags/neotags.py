@@ -315,10 +315,11 @@ class Neotags(object):
         hash = md5.hexdigest()
 
         if hlkey in highlights and hash == highlights[hlkey]:
-            self._debug_end('No need to update %s for %s' % (hlkey, file))
-            return
-
-        cmds.append('silent! syntax clear %s' % hlkey)
+            if self.__vim.command('syntax list %s' % hlkey):
+                self._debug_end('No need to update %s for %s' % (hlkey, file))
+                return
+        else:
+            cmds.append('silent! syntax clear %s' % hlkey)
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
