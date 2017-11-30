@@ -88,7 +88,6 @@ class Neotags(object):
             self._run_ctags()
 
         self.__groups[ft] = self._parsetags(ft)
-        self.__vim.command("echom 'updating tags for %s'" % ft)
 
         self.highlight()
 
