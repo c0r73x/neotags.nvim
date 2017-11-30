@@ -82,19 +82,13 @@ class Neotags(object):
             self._clear()
             return
 
+        ft = self.__vim.eval('&ft')
+
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
-        if(self.__is_running):
-            return
-
-        self.__is_running = True
-
-        ft = self.__vim.eval('&ft')
-        if ft in self.__groups:
-            del self.__groups[ft]
-
-        self.__is_running = False
+        self.__groups[ft] = self._parsetags(ft)
+        self.__vim.command("echom 'updating tags for %s'" % ft)
 
         self.highlight()
 
@@ -315,9 +309,8 @@ class Neotags(object):
         hash = md5.hexdigest()
 
         if hlkey in highlights and hash == highlights[hlkey]:
-            if self.__vim.command('syntax list %s' % hlkey):
-                self._debug_end('No need to update %s for %s' % (hlkey, file))
-                return
+            self._debug_end('No need to update %s for %s' % (hlkey, file))
+            return
         else:
             cmds.append('silent! syntax clear %s' % hlkey)
 
@@ -382,7 +375,7 @@ class Neotags(object):
 
     def _getTags(self, files, ft):
         filetypes = ft.lower().split('.')
-        languages = self.__vim.eval('&ft').lower().split('.')
+        languages = ft.lower().split('.')
         groups = {}
 
         if filetypes is None:
