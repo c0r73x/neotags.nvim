@@ -26,6 +26,7 @@ class Neotags(object):
         self.__current_file = ''
         self.__current_type = None
         self.__groups = {}
+        self.__notin = []
         self.__ignore = []
 
     def __void(self, *args):
@@ -40,7 +41,8 @@ class Neotags(object):
             self._debug_echo = self.__void
             self._debug_end = self.__void
 
-        self.__ignore = self.__vim.vars['neotags_global_ignore']
+        self.__notin = self.__vim.vars['neotags_global_notin']
+        self.__ignore = self.__vim.vars['neotags_ignore']
         self.__current_file = self.__vim.eval("expand('%:p:p')")
 
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
@@ -75,6 +77,9 @@ class Neotags(object):
 
         ft = self.__vim.eval('&ft')
 
+        if ft == '' or ft in self.__ignore:
+            return
+
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
@@ -96,13 +101,17 @@ class Neotags(object):
         if(self.__is_running):
             return
 
+        ft = self.__vim.eval('&ft')
+
+        if ft == '' or ft in self.__ignore:
+            return
+
         self.__is_running = True
 
-        ft = self.__vim.eval('&ft')
         if ft not in self.__groups:
             self.__groups[ft] = self._parsetags(ft)
 
-        order = self._tags_order()
+        order = self._tags_order(ft)
         groups = self.__groups[ft]
 
         if not order:
@@ -121,15 +130,17 @@ class Neotags(object):
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
 
-                self._highlight(
+                if (not self._highlight(
                     key,
                     file,
+                    ft,
                     hlgroup,
                     groups[key],
                     prefix,
                     suffix,
                     notin
-                )
+                )):
+                    break
 
                 self._debug_echo('applied syntax for %s' % key)
 
@@ -139,15 +150,17 @@ class Neotags(object):
                 suffix = self._exists(key, '.filter.suffix', self.__suffix)
                 notin = self._exists(key, '.filter.notin', [])
 
-                self._highlight(
+                if (not self._highlight(
                     fkey,
                     file,
+                    ft,
                     filter,
                     groups[fkey],
                     prefix,
                     suffix,
                     notin
-                )
+                )):
+                    break
 
                 self._debug_echo('applied syntax for %s' % fkey)
 
@@ -181,9 +194,9 @@ class Neotags(object):
 
         return self._getTags(files, ft)
 
-    def _tags_order(self):
+    def _tags_order(self, ft):
         orderlist = []
-        filetypes = self.__vim.eval('&ft').lower().split('.')
+        filetypes = ft.lower().split('.')
 
         for filetype in filetypes:
             order = self._exists(filetype, '#order', None)
@@ -273,15 +286,17 @@ class Neotags(object):
     def _clear(self):
         highlights = self._getbufferhl()
 
+        cmds = []
+
         for key in highlights.keys():
-            self.__vim.command(
+            cmds.append(
                 'silent! syntax clear %s' % key,
-                async=True
             )
 
-        self.__vim.command('let b:highlight = {}')
+        cmds.append('let b:highlight = {}')
+        self.__vim.command(' | '.join(cmds))
 
-    def _highlight(self, key, file, hlgroup, group, prefix, suffix, notin):
+    def _highlight(self, key, file, ft, hlgroup, group, prefix, suffix, notin):
         highlights = self._getbufferhl()
 
         current = []
@@ -300,7 +315,7 @@ class Neotags(object):
 
         if hlkey in highlights and hash == highlights[hlkey]:
             self._debug_end('No need to update %s for %s' % (hlkey, file))
-            return
+            return True
         else:
             cmds.append('silent! syntax clear %s' % hlkey)
 
@@ -312,8 +327,12 @@ class Neotags(object):
                 prefix,
                 '\|'.join(current),
                 suffix,
-                ','.join(self.__ignore + notin)
+                ','.join(self.__notin + notin)
             ))
+
+        if ft != self.__vim.eval('&ft'):
+            self._debug_end('filetype changed aborting highlight')
+            return False
 
         self._debug_end('Updated highlight for %s' % hlkey)
 
@@ -322,7 +341,8 @@ class Neotags(object):
         cmds.append('let b:highlight = %s' % highlights)
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
-        [self.__vim.command(cmd) for cmd in cmds]
+        self.__vim.command(' | '.join(cmds))
+        return True
 
     def _parseLine(self, match, groups, to_escape, languages):
         entry = {
@@ -403,7 +423,7 @@ class Neotags(object):
 
             self._debug_end('done reading %s' % file)
 
-        order = self._tags_order()
+        order = self._tags_order(ft)
 
         if not order:
             order = list(groups.keys())

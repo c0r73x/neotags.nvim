@@ -77,8 +77,8 @@ if !exists('g:neotags_ctags_args')
                 \ ]
 endif
 
-if !exists('g:neotags_global_ignore')
-    let g:neotags_global_ignore = [
+if !exists('g:neotags_global_notin')
+    let g:neotags_global_notin = [
                 \ '.*String.*',
                 \ '.*Comment.*',
                 \ 'cIncluded',
@@ -88,6 +88,12 @@ if !exists('g:neotags_global_ignore')
                 \ 'pythonDocTest',
                 \ 'pythonDocTest2',
                 \ 'NERDTree.*',
+                \ ]
+endif
+
+if !exists('g:neotags_ignore')
+    let g:neotags_ignore = [
+                \ 'text',
                 \ ]
 endif
 
