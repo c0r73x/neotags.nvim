@@ -26,17 +26,7 @@ class Neotags(object):
         self.__current_file = ''
         self.__current_type = None
         self.__groups = {}
-
-        self.__ignore = [
-            '.*String.*',
-            '.*Comment.*',
-            'cIncluded',
-            'cCppOut2',
-            'cCppInElse2',
-            'cCppOutIf2',
-            'pythonDocTest',
-            'pythonDocTest2'
-        ]
+        self.__ignore = []
 
     def __void(self, *args):
         return
@@ -50,6 +40,7 @@ class Neotags(object):
             self._debug_echo = self.__void
             self._debug_end = self.__void
 
+        self.__ignore = self.__vim.vars['neotags_global_ignore']
         self.__current_file = self.__vim.eval("expand('%:p:p')")
 
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'

@@ -73,7 +73,21 @@ if !exists('g:neotags_ctags_args')
                 \ '--c-kinds=+p',
                 \ '--c++-kinds=+p',
                 \ '--sort=no',
-                \ '--extras=+q'
+                \ '--extras=+q',
+                \ ]
+endif
+
+if !exists('g:neotags_global_ignore')
+    let g:neotags_global_ignore = [
+                \ '.*String.*',
+                \ '.*Comment.*',
+                \ 'cIncluded',
+                \ 'cCppOut2',
+                \ 'cCppInElse2',
+                \ 'cCppOutIf2',
+                \ 'pythonDocTest',
+                \ 'pythonDocTest2',
+                \ 'NERDTree.*',
                 \ ]
 endif
 
