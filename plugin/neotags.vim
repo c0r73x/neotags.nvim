@@ -94,6 +94,9 @@ endif
 if !exists('g:neotags_ignore')
     let g:neotags_ignore = [
                 \ 'text',
+                \ 'nofile',
+                \ 'mail',
+                \ 'qf',
                 \ ]
 endif
 
