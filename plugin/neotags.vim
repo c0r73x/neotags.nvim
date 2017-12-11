@@ -27,6 +27,13 @@ if !exists('g:neotags_events_highlight')
                 \ ]
 endif
 
+if !exists('g:neotags_events_rehighlight')
+    let g:neotags_events_rehighlight = [
+                \   'FileType',
+                \   'Syntax'
+                \ ]
+endif
+
 if !exists('g:neotags_enabled')
     let g:neotags_enabled = 0
 endif

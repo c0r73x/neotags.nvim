@@ -26,31 +26,32 @@ You can enable Python3 interface and psutil with pip:
 
 | Option                     | Description                                                        | Default                                                      |
 |----------------------------|--------------------------------------------------------------------|--------------------------------------------------------------|
-| g:neotags_enabled          | Option to enable/disable neotags                                   | 0                                                            |
-| g:neotags_file             | Path to where to store the ctags file                              | ./tags                                                       |
-| g:neotags_events_update    | List of vim events when to run tag generation and update highlight | BufWritePost                                                 |
-| g:neotags_events_highlight | List of vim events when to update highlight                        | BufEnter, BufReadPre                                         |
-| g:neotags_run_ctags        | Option to enable/disable ctags generation from neotags             | 1                                                            |
-| g:neotags_highlight        | Option to enable/disable neotags highlighting                      | 1                                                            |
-| g:neotags_recursive        | Option to enable/disable recursive tag generation                  | 1                                                            |
-| g:neotags_appendpath       | Option to append current path to ctags arguments                   | 1                                                            |
-| g:neotags_ctags_bin        | Location of ctags                                                  | ctags                                                        |
-| g:neotags_ctags_args       | ctags arguments                                                    | --fields=+l --c-kinds=+p --c++-kinds+p --sort=no --extras=+q |
-| g:neotags_ctags_timeout    | ctags timeout in seconds                                           | 3                                                            |
-| g:neotags_silent_timeout   | Hide message when ctags timeouts                                   | 0                                                            |
-| g:neotags_verbose          | Verbose output (for debug, must be set before neotags is starated) | 0                                                            |
-| g:neotags_ignore           | List of filetypes to ignore                                        | 'text','nofile','mail','qf'                                  | 
-| g:neotags_global_notin     | List of global syntaxes where not to put highlight                 | '.&ast;String.&ast;', '.&ast;Comment.&ast;', 'cIncluded', 'cCppOut2', 'cCppInElse2', 'cCppOutIf2', 'pythonDocTest', 'pythonDocTest2', 'NERDTree.&ast;' | 
-| g:neotags#c#order          | Group Name creation for the C language                             | cgstuedfpm                                                   |
-| g:neotags#cpp#order        | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
-| g:neotags#python#order     | Group Name creation for the Python language                        | mfc                                                          |
-| g:neotags#ruby#order       | Group Name creation for the Ruby language                          | mfc                                                          |
-| g:neotags#sh#order         | Group Name creation for the Shell language                         | f                                                            |
-| g:neotags#java#order       | Group Name creation for the Java language                          | cim                                                          |
-| g:neotags#javascript#order | Group Name creation for the Javascript language                    | cCfmpo                                                       |
-| g:neotags#vim#order        | Group Name creation for the Vimscript language                     | acf                                                          |
-| g:neotags#perl#order       | Group Name creation for the Perl language                          | s                                                            |
-| g:neotags#php#order        | Group Name creation for the Php language                           | fc                                                           |
+| g:neotags_enabled            | Option to enable/disable neotags                                   | 0                                                            |
+| g:neotags_file               | Path to where to store the ctags file                              | ./tags                                                       |
+| g:neotags_events_update      | List of vim events when to run tag generation and update highlight | BufWritePost                                                 |
+| g:neotags_events_highlight   | List of vim events when to update highlight                        | BufEnter, BufReadPre                                         |
+| g:neotags_events_rehighlight | List of vim events when to clear cache and update highlight        | Syntax, FileType
+| g:neotags_run_ctags          | Option to enable/disable ctags generation from neotags             | 1                                                            |
+| g:neotags_highlight          | Option to enable/disable neotags highlighting                      | 1                                                            |
+| g:neotags_recursive          | Option to enable/disable recursive tag generation                  | 1                                                            |
+| g:neotags_appendpath         | Option to append current path to ctags arguments                   | 1                                                            |
+| g:neotags_ctags_bin          | Location of ctags                                                  | ctags                                                        |
+| g:neotags_ctags_args         | ctags arguments                                                    | --fields=+l --c-kinds=+p --c++-kinds+p --sort=no --extras=+q |
+| g:neotags_ctags_timeout      | ctags timeout in seconds                                           | 3                                                            |
+| g:neotags_silent_timeout     | Hide message when ctags timeouts                                   | 0                                                            |
+| g:neotags_verbose            | Verbose output (for debug, must be set before neotags is starated) | 0                                                            |
+| g:neotags_ignore             | List of filetypes to ignore                                        | 'text','nofile','mail','qf'                                  | 
+| g:neotags_global_notin       | List of global syntaxes where not to put highlight                 | '.&ast;String.&ast;', '.&ast;Comment.&ast;', 'cIncluded', 'cCppOut2', 'cCppInElse2', 'cCppOutIf2', 'pythonDocTest', 'pythonDocTest2', 'NERDTree.&ast;' | 
+| g:neotags#c#order            | Group Name creation for the C language                             | cgstuedfpm                                                   |
+| g:neotags#cpp#order          | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
+| g:neotags#python#order       | Group Name creation for the Python language                        | mfc                                                          |
+| g:neotags#ruby#order         | Group Name creation for the Ruby language                          | mfc                                                          |
+| g:neotags#sh#order           | Group Name creation for the Shell language                         | f                                                            |
+| g:neotags#java#order         | Group Name creation for the Java language                          | cim                                                          |
+| g:neotags#javascript#order   | Group Name creation for the Javascript language                    | cCfmpo                                                       |
+| g:neotags#vim#order          | Group Name creation for the Vimscript language                     | acf                                                          |
+| g:neotags#perl#order         | Group Name creation for the Perl language                          | s                                                            |
+| g:neotags#php#order          | Group Name creation for the Php language                           | fc                                                           |
 
 
 ## Highlight Group Names

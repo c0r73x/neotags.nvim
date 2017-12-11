@@ -22,7 +22,11 @@ class NeotagsHandlers(object):
 
     @neovim.function('NeotagsHighlight')
     def highlight(self, args):
-        self.__vim.async_call(self.__neotags.highlight)
+        self.__vim.async_call(self.__neotags.highlight, False)
+
+    @neovim.function('NeotagsRehighlight')
+    def rehighlight(self, args):
+        self.__vim.async_call(self.__neotags.highlight, True)
 
     @neovim.function('NeotagsUpdate')
     def update(self, args):

@@ -51,14 +51,16 @@ class Neotags(object):
         if(self.__vim.vars['neotags_enabled']):
             evupd = ','.join(self.__vim.vars['neotags_events_update'])
             evhl = ','.join(self.__vim.vars['neotags_events_highlight'])
+            evre = ','.join(self.__vim.vars['neotags_events_rehighlight'])
 
             self.__patternlength = self.__vim.vars['neotags_patternlength']
 
             self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
             self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
+            self.__vim.command('autocmd %s * call NeotagsRehighlight()' % evre)
 
             if(self.__vim.vars['loaded_neotags']):
-                self.highlight()
+                self.highlight(False)
 
         self.__initialized = True
 
@@ -80,15 +82,25 @@ class Neotags(object):
         if ft == '' or ft in self.__ignore:
             return
 
+        if(self.__is_running):
+            return
+
+        self.__is_running = True
+
         if(self.__vim.vars['neotags_run_ctags']):
             self._run_ctags()
 
         self.__groups[ft] = self._parsetags(ft)
 
-        self.highlight()
+        self.__is_running = False
 
-    def highlight(self):
+        self.highlight(False)
+
+    def highlight(self, clear):
         self.__exists_buffer = {}
+
+        if(clear):
+            self._clear()
 
         if(not self.__vim.vars['neotags_enabled']):
             self._clear()
@@ -98,12 +110,12 @@ class Neotags(object):
             self._clear()
             return
 
-        if(self.__is_running):
-            return
-
         ft = self.__vim.eval('&ft')
 
         if ft == '' or ft in self.__ignore:
+            return
+
+        if(self.__is_running):
             return
 
         self.__is_running = True
