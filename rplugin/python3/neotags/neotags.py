@@ -225,11 +225,6 @@ class Neotags(object):
         process.kill()
 
     def _run_ctags(self):
-        if(self.__is_running):
-            return
-
-        self.__is_running = True
-
         ctags_args = self.__vim.vars['neotags_ctags_args']
 
         if(self.__vim.vars['neotags_recursive']):
@@ -271,8 +266,6 @@ class Neotags(object):
                 self.__vim.command("echom 'Ctags process timed out!'")
 
         file.close()
-
-        self.__is_running = False
 
     def _exists(self, kind, var, default):
         buffer = kind + var
