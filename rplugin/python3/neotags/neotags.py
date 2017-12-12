@@ -65,9 +65,18 @@ class Neotags(object):
 
             self.__patternlength = self.__vim.vars['neotags_patternlength']
 
-            self.__vim.command('autocmd %s * call NeotagsUpdate()' % evupd)
-            self.__vim.command('autocmd %s * call NeotagsHighlight()' % evhl)
-            self.__vim.command('autocmd %s * call NeotagsRehighlight()' % evre)
+            self.__vim.command(
+                'autocmd %s * call NeotagsUpdate()' % evupd,
+                async=True
+            )
+            self.__vim.command(
+                'autocmd %s * call NeotagsHighlight()' % evhl,
+                async=True
+            )
+            self.__vim.command(
+                'autocmd %s * call NeotagsRehighlight()' % evre,
+                async=True
+            )
 
             if(self.__vim.vars['loaded_neotags']):
                 self.highlight(False)
@@ -195,7 +204,7 @@ class Neotags(object):
         neotags_file = self.__vim.vars['neotags_file']
         tagfiles = self.__vim.api.eval('&tags').split(",")
         if neotags_file not in tagfiles:
-            self.__vim.command('set tags+=%s' % neotags_file)
+            self.__vim.command('set tags+=%s' % neotags_file, async=True)
             tagfiles.append(neotags_file)
 
         files = []
@@ -211,7 +220,7 @@ class Neotags(object):
                     self._error('unable to open %s' % f.decode('utf-8'))
 
         if files is None:
-            self.__vim.command("echom 'No tag files found!'")
+            self._error("echom 'No tag files found!'")
             return
 
         return self._getTags(files, ft)
@@ -273,7 +282,10 @@ class Neotags(object):
             self._kill(proc.pid)
 
             if self.__vim.vars['neotags_silent_timeout'] == 0:
-                self.__vim.command("echom 'Ctags process timed out!'")
+                self.__vim.command(
+                    "echom 'Ctags process timed out!'",
+                    async=True
+                )
 
         file.close()
 
@@ -309,7 +321,7 @@ class Neotags(object):
             )
 
         cmds.append('let b:neotags_cache = {}')
-        self.__vim.command(' | '.join(cmds))
+        self.__vim.command(' | '.join(cmds), async=True)
 
     def _highlight(self, key, file, ft, hlgroup, group, prefix, suffix, notin):
         highlights = self._getbufferhl()
@@ -356,7 +368,7 @@ class Neotags(object):
         cmds.append('let b:neotags_cache = %s' % highlights)
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
-        self.__vim.command(' | '.join(cmds))
+        self.__vim.command(' | '.join(cmds), async=True)
         return True
 
     def _regexp(self, kind, var):
