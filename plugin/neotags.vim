@@ -107,6 +107,13 @@ if !exists('g:neotags_ignore')
                 \ ]
 endif
 
+if !exists('g:neotags_ft_conv')
+    let g:neotags_ft_conv = {
+                \ 'C++': 'cpp',
+                \ 'C#': 'cs',
+                \ }
+endif
+
 " }}}
 
 runtime! plugin/neotags/*.vim

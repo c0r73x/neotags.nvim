@@ -24,13 +24,13 @@ You can enable Python3 interface and psutil with pip:
 
 ## Options
 
-| Option                     | Description                                                        | Default                                                      |
-|----------------------------|--------------------------------------------------------------------|--------------------------------------------------------------|
+| Option                       | Description                                                        | Default                                                      |
+|------------------------------|--------------------------------------------------------------------|--------------------------------------------------------------|
 | g:neotags_enabled            | Option to enable/disable neotags                                   | 0                                                            |
 | g:neotags_file               | Path to where to store the ctags file                              | ./tags                                                       |
 | g:neotags_events_update      | List of vim events when to run tag generation and update highlight | BufWritePost                                                 |
 | g:neotags_events_highlight   | List of vim events when to update highlight                        | BufEnter, BufReadPre                                         |
-| g:neotags_events_rehighlight | List of vim events when to clear cache and update highlight        | Syntax, FileType
+| g:neotags_events_rehighlight | List of vim events when to clear cache and update highlight        | Syntax, FileType                                             |
 | g:neotags_run_ctags          | Option to enable/disable ctags generation from neotags             | 1                                                            |
 | g:neotags_highlight          | Option to enable/disable neotags highlighting                      | 1                                                            |
 | g:neotags_recursive          | Option to enable/disable recursive tag generation                  | 1                                                            |
@@ -42,6 +42,7 @@ You can enable Python3 interface and psutil with pip:
 | g:neotags_verbose            | Verbose output (for debug, must be set before neotags is starated) | 0                                                            |
 | g:neotags_ignore             | List of filetypes to ignore                                        | 'text','nofile','mail','qf'                                  | 
 | g:neotags_global_notin       | List of global syntaxes where not to put highlight                 | '.&ast;String.&ast;', '.&ast;Comment.&ast;', 'cIncluded', 'cCppOut2', 'cCppInElse2', 'cCppOutIf2', 'pythonDocTest', 'pythonDocTest2', 'NERDTree.&ast;' | 
+| g:neotags_ft_conv            | Dictionary of languages to convert between ctags and vim           | { 'C++': 'cpp', 'C#': 'cs' }                                 | 
 | g:neotags#c#order            | Group Name creation for the C language                             | cgstuedfpm                                                   |
 | g:neotags#cpp#order          | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
 | g:neotags#python#order       | Group Name creation for the Python language                        | mfc                                                          |
@@ -190,6 +191,25 @@ highlight everything but maybe only the tags your interested in the most. Exampl
 let g:neotags#cpp#order = 'ced'
 ```
 The above will only highlight `cppTypeTag, cppPreProcTag, cppEnumTag`.
+
+### Language conversion
+
+The `neotags_ft_conv` variable is used to convert for example C++ to cpp but it 
+can be used to convert custom filetypes to ctag filetypes.
+
+For example this is what i use for flow
+
+```vim
+let g:neotags_ft_conv = {
+            \ 'C++': 'cpp',
+            \ 'C#': 'cs',
+            \ 'JavaScript': 'flow',
+            \ }
+```
+
+Note that you do need to copy the javascript neotags file
+`neotags.vim/plugin/neotags/javascript.vim` to `after/plugin/neotags/flow.vim`
+and do a replace for '#javascript' to '#flow'
 
 ### Custom Rules
 

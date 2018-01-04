@@ -28,14 +28,6 @@ class Neotags(object):
         self.__groups = {}
         self.__notin = []
         self.__ignore = []
-        self.__ctov = {
-            'C++': 'cpp',
-            'C#': 'cs',
-        }
-        self.__vtoc = {
-            y: x for x,
-            y in self.__ctov.items()
-        }
 
     def __void(self, *args):
         return
@@ -53,6 +45,12 @@ class Neotags(object):
         self.__ignore = self.__vim.vars['neotags_ignore']
         self.__current_file = self.__vim.api.eval("expand('%:p:p')")
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
+
+        self.__ctov = self.__vim.vars['neotags_ft_conv']
+        self.__vtoc = {
+            y: x for x,
+            y in self.__ctov.items()
+        }
 
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__exists_buffer = {}
