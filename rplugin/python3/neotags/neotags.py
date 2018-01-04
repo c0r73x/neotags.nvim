@@ -384,13 +384,13 @@ class Neotags(object):
 
         return None
 
-    def _parseLine(self, match, groups, languages):
+    def _parseLine(self, match, groups, languages, ft):
         entry = {
             x: ''.join(map(chr, y)) for x,
             y in match.groupdict().items()
         }
 
-        entry['lang'] = self._ctags_to_vim(entry['lang'])
+        entry['lang'] = self._ctags_to_vim(entry['lang'], ft)
 
         if entry['lang'] not in languages:  # need this for C
             return
@@ -441,7 +441,7 @@ class Neotags(object):
                     mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
 
                     for match in pattern.finditer(mf):
-                        self._parseLine(match, groups, languages)
+                        self._parseLine(match, groups, languages, ft)
 
                     mf.close()
             except IOError as e:
@@ -496,8 +496,8 @@ class Neotags(object):
                 'echohl ErrorMsg | echom "%s" | echohl None' % message
             )
 
-    def _ctags_to_vim(self, lang):
-        if lang in self.__ctov:
+    def _ctags_to_vim(self, lang, ft):
+        if lang in self.__ctov and ft == self.__ctov[lang]:
             return self.__ctov[lang]
 
         return lang.lower()
