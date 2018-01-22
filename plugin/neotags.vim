@@ -94,7 +94,6 @@ if !exists('g:neotags_global_notin')
                 \ 'cCppOutIf2',
                 \ 'pythonDocTest',
                 \ 'pythonDocTest2',
-                \ 'NERDTree.*',
                 \ ]
 endif
 

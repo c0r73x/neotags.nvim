@@ -41,7 +41,7 @@ You can enable Python3 interface and psutil with pip:
 | g:neotags_silent_timeout     | Hide message when ctags timeouts                                   | 0                                                            |
 | g:neotags_verbose            | Verbose output (for debug, must be set before neotags is starated) | 0                                                            |
 | g:neotags_ignore             | List of filetypes to ignore                                        | 'text','nofile','mail','qf'                                  | 
-| g:neotags_global_notin       | List of global syntaxes where not to put highlight                 | '.&ast;String.&ast;', '.&ast;Comment.&ast;', 'cIncluded', 'cCppOut2', 'cCppInElse2', 'cCppOutIf2', 'pythonDocTest', 'pythonDocTest2', 'NERDTree.&ast;' | 
+| g:neotags_global_notin       | List of global syntaxes where not to put highlight                 | '.&ast;String.&ast;', '.&ast;Comment.&ast;', 'cIncluded', 'cCppOut2', 'cCppInElse2', 'cCppOutIf2', 'pythonDocTest', 'pythonDocTest2' | 
 | g:neotags_ft_conv            | Dictionary of languages to convert between ctags and vim           | { 'C++': 'cpp', 'C#': 'cs' }                                 | 
 | g:neotags#c#order            | Group Name creation for the C language                             | cgstuedfpm                                                   |
 | g:neotags#cpp#order          | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
