@@ -50,7 +50,7 @@ You can enable Python3 interface and psutil with pip:
 | g:neotags#sh#order           | Group Name creation for the Shell language                         | f                                                            |
 | g:neotags#java#order         | Group Name creation for the Java language                          | cim                                                          |
 | g:neotags#javascript#order   | Group Name creation for the Javascript language                    | cCfmpo                                                       |
-| g:neotags#vim#order          | Group Name creation for the Vimscript language                     | acf                                                          |
+| g:neotags#vim#order          | Group Name creation for the Vimscript language                     | acfv                                                         |
 | g:neotags#perl#order         | Group Name creation for the Perl language                          | s                                                            |
 | g:neotags#php#order          | Group Name creation for the Php language                           | fc                                                           |
 
@@ -83,13 +83,14 @@ below.
 
 ### Vimscript
 ```vim
-let g:neotags#vim#order = 'acf'
+let g:neotags#vim#order = 'acfv'
 ```
 | Option | Group Name      |
 |--------|-----------------|
 | a      | vimAutoGroupTag |
 | c      | vimCommandTag   |
-| f      | vimFuncNameTag  |
+| f      | vimFuncNameTag (Uses vimScriptFuncNameTag for local script functions)
+| v      | vimVariableTag  |
 
 ### Python
 ```vim
