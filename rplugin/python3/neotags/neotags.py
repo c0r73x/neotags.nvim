@@ -152,7 +152,7 @@ class Neotags(object):
         for key in order:
 
             hlgroup = self._exists(key, '.group', None)
-            filter = self._exists(key, '.filter.group', None)
+            fgroup = self._exists(key, '.filter.group', None)
 
             if hlgroup is not None and key in groups:
                 prefix = self._exists(key, '.prefix', self.__prefix)
@@ -173,8 +173,8 @@ class Neotags(object):
 
                 self._debug_echo('applied syntax for %s' % key)
 
-            fkey = key + '_filter',
-            if filter is not None and fkey in groups:
+            fkey = key + '_filter'
+            if fgroup is not None and fkey in groups:
                 prefix = self._exists(key, '.filter.prefix', self.__prefix)
                 suffix = self._exists(key, '.filter.suffix', self.__suffix)
                 notin = self._exists(key, '.filter.notin', [])
@@ -183,7 +183,7 @@ class Neotags(object):
                     fkey,
                     file,
                     ft,
-                    filter,
+                    fgroup,
                     groups[fkey],
                     prefix,
                     suffix,
@@ -290,15 +290,13 @@ class Neotags(object):
     def _exists(self, kind, var, default):
         buffer = kind + var
 
-        if buffer in self.__exists_buffer:
-            return self.__exists_buffer[buffer]
-
-        if self.__vim.funcs.exists("neotags#%s" % buffer):
-            self.__exists_buffer[buffer] = self.__vim.api.eval(
-                'neotags#%s' % buffer
-            )
-        else:
-            self.__exists_buffer[buffer] = default
+        if buffer not in self.__exists_buffer:
+            if self.__vim.funcs.exists("neotags#%s" % buffer):
+                self.__exists_buffer[buffer] = self.__vim.api.eval(
+                    'neotags#%s' % buffer
+                )
+            else:
+                self.__exists_buffer[buffer] = default
 
         return self.__exists_buffer[buffer]
 
@@ -336,9 +334,9 @@ class Neotags(object):
         for i in range(0, len(strgrp), 128):
             md5.update(strgrp[i:i + 128])
 
-        hash = md5.hexdigest()
+        md5hash = md5.hexdigest()
 
-        if hlkey in highlights and hash == highlights[hlkey]:
+        if hlkey in highlights and md5hash == highlights[hlkey]:
             self._debug_end('No need to update %s for %s' % (hlkey, file))
             return True
         else:
@@ -361,7 +359,7 @@ class Neotags(object):
 
         self._debug_end('Updated highlight for %s' % hlkey)
 
-        highlights[hlkey] = hash
+        highlights[hlkey] = md5hash
 
         cmds.append('let b:neotags_cache = %s' % highlights)
         cmds.append('hi link %s %s' % (hlkey, hlgroup))
@@ -401,10 +399,11 @@ class Neotags(object):
             )
             return
 
-        filter = self._regexp(kind, '.filter.pattern')
+        fgroup = self._regexp(kind, '.filter.pattern')
 
         name = self.__to_escape.sub(r'\\\g<0>', entry['name'])
-        if filter is not None and filter.search(name):
+        if fgroup is not None and fgroup.search(name):
+            name = fgroup.sub('', name)
             kind = entry['lang'] + '#' + entry['kind'] + '_filter'
 
         if kind in groups:

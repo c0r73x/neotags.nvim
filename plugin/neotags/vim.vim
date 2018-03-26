@@ -14,9 +14,9 @@ let g:neotags#vim#c = {
 
 let g:neotags#vim#f = {
             \   'group': 'vimFuncNameTag',
-            \   'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
+            \   'prefix': '\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
             \   'filter': {
-            \       'pattern': '(?i)(<sid>\w|\bs:\w)',
+            \       'pattern': '(?i)(<sid>|\bs:)',
             \       'group': 'vimScriptFuncNameTag',
             \       'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)',
             \   }
