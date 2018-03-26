@@ -110,6 +110,7 @@ if !exists('g:neotags_ft_conv')
     let g:neotags_ft_conv = {
                 \ 'C++': 'cpp',
                 \ 'C#': 'cs',
+                \ 'Sh': 'zsh',
                 \ }
 endif
 

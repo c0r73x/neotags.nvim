@@ -47,7 +47,7 @@ You can enable Python3 interface and psutil with pip:
 | g:neotags#cpp#order          | Group Name creation for the Cpp language                           | cgstuedfpm                                                   |
 | g:neotags#python#order       | Group Name creation for the Python language                        | mfc                                                          |
 | g:neotags#ruby#order         | Group Name creation for the Ruby language                          | mfc                                                          |
-| g:neotags#sh#order           | Group Name creation for the Shell language                         | f                                                            |
+| g:neotags#sh#order           | Group Name creation for the Shell language                         | fa                                                           |
 | g:neotags#java#order         | Group Name creation for the Java language                          | cim                                                          |
 | g:neotags#javascript#order   | Group Name creation for the Javascript language                    | cCfmpo                                                       |
 | g:neotags#vim#order          | Group Name creation for the Vimscript language                     | acfv                                                         |
@@ -112,13 +112,14 @@ let g:neotags#ruby#order = 'mfc'
 | f      | rubyClassNameTag  |
 | c      | rubyMethodNameTag |
 
-### Shell
+### Shell / Zsh
 ```vim
-let g:neotags#sh#order = 'f'
+let g:neotags#sh#order = 'fa'
 ```
 | Option | Group Name    |
 |--------|---------------|
 | f      | shFunctionTag |
+| a      | shAliasTag    |
 
 ### Java
 ```vim
