@@ -1,0 +1,60 @@
+Neotags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^class Neotags(object):$/;"	c	language:Python
+__init__	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def __init__(self, vim):$/;"	m	language:Python	class:Neotags
+Neotags.__init__	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def __init__(self, vim):$/;"	m	language:Python	class:Neotags
+__void	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def __void(self, *args):$/;"	m	language:Python	class:Neotags	file:
+Neotags.__void	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def __void(self, *args):$/;"	m	language:Python	class:Neotags	file:
+init	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def init(self):$/;"	m	language:Python	class:Neotags
+Neotags.init	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def init(self):$/;"	m	language:Python	class:Neotags
+toggle	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def toggle(self):$/;"	m	language:Python	class:Neotags
+Neotags.toggle	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def toggle(self):$/;"	m	language:Python	class:Neotags
+update	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def update(self):$/;"	m	language:Python	class:Neotags
+Neotags.update	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def update(self):$/;"	m	language:Python	class:Neotags
+highlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def highlight(self, clear):$/;"	m	language:Python	class:Neotags
+Neotags.highlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def highlight(self, clear):$/;"	m	language:Python	class:Neotags
+_parsetags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _parsetags(self, ft):$/;"	m	language:Python	class:Neotags
+Neotags._parsetags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _parsetags(self, ft):$/;"	m	language:Python	class:Neotags
+_tags_order	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _tags_order(self, ft):$/;"	m	language:Python	class:Neotags
+Neotags._tags_order	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _tags_order(self, ft):$/;"	m	language:Python	class:Neotags
+_kill	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _kill(self, proc_pid):$/;"	m	language:Python	class:Neotags
+Neotags._kill	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _kill(self, proc_pid):$/;"	m	language:Python	class:Neotags
+_run_ctags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _run_ctags(self):$/;"	m	language:Python	class:Neotags
+Neotags._run_ctags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _run_ctags(self):$/;"	m	language:Python	class:Neotags
+_exists	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _exists(self, kind, var, default):$/;"	m	language:Python	class:Neotags
+Neotags._exists	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _exists(self, kind, var, default):$/;"	m	language:Python	class:Neotags
+_getbufferhl	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _getbufferhl(self):$/;"	m	language:Python	class:Neotags
+Neotags._getbufferhl	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _getbufferhl(self):$/;"	m	language:Python	class:Neotags
+_clear	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _clear(self):$/;"	m	language:Python	class:Neotags
+Neotags._clear	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _clear(self):$/;"	m	language:Python	class:Neotags
+_highlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _highlight(self, key, file, ft, hlgroup, group, prefix, suffix, notin):$/;"	m	language:Python	class:Neotags
+Neotags._highlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _highlight(self, key, file, ft, hlgroup, group, prefix, suffix, notin):$/;"	m	language:Python	class:Neotags
+_regexp	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _regexp(self, kind, var):$/;"	m	language:Python	class:Neotags
+Neotags._regexp	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _regexp(self, kind, var):$/;"	m	language:Python	class:Neotags
+_parseLine	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _parseLine(self, match, groups, languages):$/;"	m	language:Python	class:Neotags
+Neotags._parseLine	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _parseLine(self, match, groups, languages):$/;"	m	language:Python	class:Neotags
+_getTags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _getTags(self, files, ft):$/;"	m	language:Python	class:Neotags
+Neotags._getTags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _getTags(self, files, ft):$/;"	m	language:Python	class:Neotags
+_debug_start	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _debug_start(self):$/;"	m	language:Python	class:Neotags
+Neotags._debug_start	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _debug_start(self):$/;"	m	language:Python	class:Neotags
+_debug_echo	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _debug_echo(self, message):$/;"	m	language:Python	class:Neotags
+Neotags._debug_echo	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _debug_echo(self, message):$/;"	m	language:Python	class:Neotags
+_debug_end	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _debug_end(self, message):$/;"	m	language:Python	class:Neotags
+Neotags._debug_end	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _debug_end(self, message):$/;"	m	language:Python	class:Neotags
+_error	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _error(self, message):$/;"	m	language:Python	class:Neotags
+Neotags._error	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _error(self, message):$/;"	m	language:Python	class:Neotags
+_ctags_to_vim	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _ctags_to_vim(self, lang, languages):$/;"	m	language:Python	class:Neotags
+Neotags._ctags_to_vim	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _ctags_to_vim(self, lang, languages):$/;"	m	language:Python	class:Neotags
+_vim_to_ctags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _vim_to_ctags(self, languages):$/;"	m	language:Python	class:Neotags
+Neotags._vim_to_ctags	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/neotags.py	/^    def _vim_to_ctags(self, languages):$/;"	m	language:Python	class:Neotags
+NeotagsHandlers	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^class NeotagsHandlers(object):$/;"	c	language:Python
+__init__	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def __init__(self, vim):$/;"	m	language:Python	class:NeotagsHandlers
+NeotagsHandlers.__init__	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def __init__(self, vim):$/;"	m	language:Python	class:NeotagsHandlers
+init	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def init(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+NeotagsHandlers.init	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def init(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+highlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def highlight(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+NeotagsHandlers.highlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def highlight(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+rehighlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def rehighlight(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+NeotagsHandlers.rehighlight	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def rehighlight(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+update	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def update(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+NeotagsHandlers.update	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def update(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+toggle	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def toggle(self, args):$/;"	m	language:Python	class:NeotagsHandlers
+NeotagsHandlers.toggle	/home/bml/Downloads/git/neotags.nvim/rplugin/python3/neotags/__init__.py	/^    def toggle(self, args):$/;"	m	language:Python	class:NeotagsHandlers

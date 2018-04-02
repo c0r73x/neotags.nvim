@@ -14,7 +14,8 @@ let g:neotags#cpp#u = g:neotags#cpp#c
 
 let g:neotags#cpp#m = {
             \   'group': 'cppMemberTag',
-            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
+            \   'prefix': '\%(\>\%(\.\|->\)\)\@<='
             \ }
 
 let g:neotags#cpp#e = {

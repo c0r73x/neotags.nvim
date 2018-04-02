@@ -53,7 +53,6 @@ class Neotags(object):
         }
 
         self.__pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
-        self.__pattern_cmember = r'syntax match %s /\%%(\>\%%(\.\|->\)\)\@<=\%%(%s\)\>/'
         self.__exists_buffer = {}
         self.__regex_buffer = {}
 
@@ -345,17 +344,14 @@ class Neotags(object):
 
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
-            # if hlkey == '_Neotags_c_m_cMemberTag':
-            if re.match('_Neotags_.+?_m_(?:c|cpp)MemberTag', hlkey):
-                cmds.append(self.__pattern_cmember % (hlkey, '\|'.join(current)))
-            else:
-                cmds.append(self.__pattern % (
-                    hlkey,
-                    prefix,
-                    '\|'.join(current),
-                    suffix,
-                    ','.join(self.__notin + notin)
-                ))
+
+            cmds.append(self.__pattern % (
+                hlkey,
+                prefix,
+                '\|'.join(current),
+                suffix,
+                ','.join(self.__notin + notin)
+            ))
 
         if ft != self.__vim.api.eval('&ft'):
             self._debug_end('filetype changed aborting highlight')
