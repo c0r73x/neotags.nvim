@@ -16,5 +16,5 @@ let g:neotags#python#c = {
             \ }
 
 highlight def link PythonMethodTag Function
-highlight def link PythonFunctionTag Function
+highlight def link PythonFunction Function
 highlight def link PythonClassTag Type

@@ -9,8 +9,7 @@ let g:neotags#c#c = {
 
 let g:neotags#c#m = {
             \   'group': 'cMemberTag',
-            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
-            \   'prefix': '\%(\>\%(\.\|->\)\)\@<='
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
             \ }
 
 let g:neotags#c#g = g:neotags#c#c
