@@ -7,16 +7,16 @@ let g:neotags#cpp#c = {
             \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
             \ }
 
+let g:neotags#c#m = {
+            \   'group': 'cppmembertag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
+            \   'prefix': '\%(\%(\>\|\]\|)\)\%(\.\|->\)\)\@5<=',
+            \ }
+
 let g:neotags#cpp#g = g:neotags#cpp#c
 let g:neotags#cpp#s = g:neotags#cpp#c
 let g:neotags#cpp#t = g:neotags#cpp#c
 let g:neotags#cpp#u = g:neotags#cpp#c
-
-let g:neotags#cpp#m = {
-            \   'group': 'cppMemberTag',
-            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
-            \   'prefix': '\%(\%(\>\|\]\)\%(\.\|->\)\)\@<='
-            \ }
 
 let g:neotags#cpp#e = {
             \   'group': 'cppEnumTag',
@@ -29,10 +29,12 @@ let g:neotags#cpp#d = {
 
 let g:neotags#cpp#f = {
             \   'group': 'cppFunctionTag',
-            \   'ignore': '^(~|[_\w]+::|operator)'
+            \   'ignore': '^(~|[_\w]+::|operator)',
+            \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
 let g:neotags#cpp#p = g:neotags#cpp#f
+
 
 highlight def link cppEnumTag Define
 highlight def link cppFunctionTag Function

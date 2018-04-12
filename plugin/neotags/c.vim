@@ -1,5 +1,5 @@
 if !exists('g:neotags#c#order')
-	let g:neotags#c#order = 'cgstuedfpm'
+	let g:neotags#c#order = 'cgstuedfpmz'
 endif
 
 let g:neotags#c#c = {
@@ -10,7 +10,7 @@ let g:neotags#c#c = {
 let g:neotags#c#m = {
             \   'group': 'cMemberTag',
             \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
-            \   'prefix': '\%(\%(\>\|\]\)\%(\.\|->\)\)\@<='
+            \   'prefix': '\%(\%(\>\|\]\|)\)\%(\.\|->\)\)\@5<=',
             \ }
 
 let g:neotags#c#g = g:neotags#c#c
@@ -29,10 +29,12 @@ let g:neotags#c#d = {
 
 let g:neotags#c#f = {
             \   'group': 'cFunctionTag',
-            \   'ignore': '^(~|[_\w]+::)'
+            \   'ignore': '^(~|[_\w]+::)',
+            \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
 let g:neotags#c#p = g:neotags#c#f
+
 
 highlight def link cEnumTag Define
 highlight def link cFunctionTag Function
