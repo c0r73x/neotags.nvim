@@ -1,5 +1,5 @@
 if !exists('g:neotags#c#order')
-	let g:neotags#c#order = 'cgstuedfpmz'
+	let g:neotags#c#order = 'cgstuedfpm'
 endif
 
 let g:neotags#c#c = {
