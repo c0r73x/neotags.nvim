@@ -15,10 +15,6 @@ import subprocess
 import psutil
 from sys import platform
 
-AUTOCONF_FILES = ('configure', 'Makefile.in', 'aclocal.m4', 'config.guess',
-                  'config.sub', 'install-sh', 'depcomp', 'missing', 'compile',
-                  'config.status', 'config.log', 'config.h.in')
-
 
 class Neotags(object):
 
@@ -181,16 +177,6 @@ class Neotags(object):
                 suffix = self._exists(key, '.suffix', self.__suffix)
                 notin = self._exists(key, '.notin', [])
 
-                # if (not self._highlight(
-                #     key,
-                #     file,
-                #     ft,
-                #     hlgroup,
-                #     groups[key],
-                #     prefix,
-                #     suffix,
-                #     notin
-                # )):
                 if not self._highlight(key, file, ft, hlgroup, groups[key],
                                        prefix, suffix, notin):
                     break
@@ -203,16 +189,6 @@ class Neotags(object):
                 suffix = self._exists(key, '.filter.suffix', self.__suffix)
                 notin = self._exists(key, '.filter.notin', [])
 
-                # if (not self._highlight(
-                #     fkey,
-                #     file,
-                #     ft,
-                #     fgroup,
-                #     groups[fkey],
-                #     prefix,
-                #     suffix,
-                #     notin
-                # )):
                 if not self._highlight(fkey, file, ft, fgroup, groups[fkey],
                                        prefix, suffix, notin):
                     break
@@ -330,29 +306,18 @@ class Neotags(object):
         self._debug_start()
 
         recurse, path = self._get_file()
-        # if recurse:
-        #     ctags_args.append('-R')
-        # else:
-        #     self._debug_echo(
-        #         "Not running ctags recursively for dir '%s'" % path
-        #     )
+        if recurse:
+            ctags_args.append('-R')
+        else:
+            self._debug_echo(
+                "Not running ctags recursively for dir '%s'" % path
+            )
 
-        # ctags_args.append('-f-')
         ctags_args.append('-f "%s"' % self.__tagfile)
 
-        if (self.__vim.vars['neotags_appendpath'] and recurse):
-            if (self.__vim.vars['neotags_no_autoconf']):
-                from glob import glob
-                file_list = glob('%s/**' % path, recursive=True)
-                for this in file_list:
-                    if os.path.isfile(this) \
-                            and not os.path.basename(this) in AUTOCONF_FILES \
-                            and not ((path + '/configure' in file_list)
-                                     and (this.find('Makefile') > 0)):
-                        ctags_args.append('"%s"' % this)
-            else:
-                ctags_args.append('"%s/"' % path)
-                self._debug_echo("Running ctags on dir '%s'" % path)
+        if recurse:
+            ctags_args.append('"%s/"' % path)
+            self._debug_echo("Running ctags on dir '%s'" % path)
         else:
             File = os.path.realpath(self.__vim.api.eval("expand('%:p')"))
             ctags_args.append('"%s"' % File)
@@ -361,14 +326,6 @@ class Neotags(object):
         self._debug_echo('%s %s' % (self.__vim.vars['neotags_ctags_bin'],
                          ' '.join(ctags_args)))
 
-        # try:
-        #    file = open(self.__tagfile, 'wb')
-        # except IOError as error:
-        #    self._error(error)
-        #
-        #  self._debug_echo("Running ctags, output -> '%s'" % self.__tagfile)
-        #  file = open('', 'a')
-
         try:
             proc = subprocess.Popen(
                 '%s %s' % (self.__vim.vars['neotags_ctags_bin'],
@@ -376,13 +333,6 @@ class Neotags(object):
                 shell=True,
                 stderr=subprocess.PIPE
             )
-            # proc = subprocess.Popen(
-            #      '%s %s' % (self.__vim.vars['neotags_ctags_bin'],
-            #                ' '.join(ctags_args)),
-            #     shell=True,
-            #     stdout=file,
-            #     stderr=subprocess.PIPE
-            # )
 
             proc.wait(self.__vim.vars['neotags_ctags_timeout'])
             err = proc.communicate()[1]
@@ -404,8 +354,6 @@ class Neotags(object):
                     "echom 'Ctags process timed out!'",
                     async=True
                 )
-
-        # file.close()
 
     def _exists(self, kind, var, default):
         buffer = kind + var

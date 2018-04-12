@@ -63,9 +63,6 @@ if !exists('g:neotags_events_rehighlight')
                 \ ]
 endif
 
-if !exists('g:neotags_no_autoconf')
-    let g:neotags_no_autoconf = 1
-endif
 
 if !exists('g:neotags_enabled')
     let g:neotags_enabled = 0
@@ -115,6 +112,22 @@ if !exists('g:neotags_ctags_args')
                 \ '--sort=yes',
                 \ '--extras=+q'
                 \ ]
+
+    if g:neotags_no_autoconf == 1
+        call extend(g:neotags_ctags_args, [
+                    \ "--exclude='*config.log'",
+                    \ "--exclude='*config.guess'",
+                    \ "--exclude='*configure'",
+                    \ "--exclude='*Makefile.in'",
+                    \ "--exclude='*missing'",
+                    \ "--exclude='*depcomp'",
+                    \ "--exclude='*aclocal.m4'",
+                    \ "--exclude='*install-sh'",
+                    \ "--exclude='*config.status'",
+                    \ "--exclude='*config.h.in'",
+                    \ "--exclude='*Makefile'"
+                    \])
+    endif
 endif
 
 if !exists('g:neotags_global_notin')
@@ -146,6 +159,7 @@ if !exists('g:neotags_ft_conv')
                 \ 'Sh': 'zsh',
                 \ }
 endif
+
 
 " }}}
 
