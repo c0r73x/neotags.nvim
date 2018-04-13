@@ -42,6 +42,10 @@ if !exists('g:neotags_ignored_tags')
     let g:neotags_ignored_tags = []
 endif
 
+if !exists('g:neotags_no_autoconf')
+    let g:neotags_no_autoconf = 1
+endif
+
 
 if !exists('g:neotags_events_update')
     let g:neotags_events_update = [
