@@ -18,7 +18,7 @@ if !isdirectory(g:neotags_directory)
 endif
 
 if !exists('g:neotags_settings_file')
-    let g:neotags_settings_file = expand('~/.vim_tags/neotags.txt')
+    let g:neotags_settings_file = expand(g:neotags_directory . '/neotags.txt')
 endif
 
 if !exists('g:neotags_file')
