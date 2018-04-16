@@ -63,10 +63,10 @@ class Neotags(object):
             y in self.__ctov.items()
         }
 
-        # self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
-        self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/'
-        # self.__keyword_pattern = r'syntax keyword %s %s containedin=ALLBUT,%s'
-        self.__keyword_pattern = r'syntax keyword %s %s'
+        self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
+        # self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/'
+        self.__keyword_pattern = r'syntax keyword %s %s containedin=ALLBUT,%s'
+        # self.__keyword_pattern = r'syntax keyword %s %s'
         self.__exists_buffer = {}
         self.__regex_buffer = {}
 
