@@ -417,29 +417,28 @@ class Neotags(object):
             current = group[i:i + self.__patternlength]
 
             # if prefix == self.__prefix and suffix == self.__suffix:
-            if False:
-                self._debug_echo("%s is a keyword arg" % current)
-                cmds.append(self.__keyword_pattern %
-                            (hlkey, ' '.join(current)))
-            else:
-                cmds.append(self.__match_pattern %
-                            (hlkey, prefix, '\|'.join(current), suffix))
-
-            # if prefix == self.__prefix and suffix == self.__suffix:
             #     self._debug_echo("%s is a keyword arg" % current)
-            #     cmds.append(self.__keyword_pattern % (
-            #         hlkey,
-            #         ' '.join(current),
-            #         ','.join(self.__notin + notin)
-            #     ))
+            #     cmds.append(self.__keyword_pattern %
+            #                 (hlkey, ' '.join(current)))
             # else:
-            #     cmds.append(self.__match_pattern % (
-            #         hlkey,
-            #         prefix,
-            #         '\|'.join(current),
-            #         suffix,
-            #         ','.join(self.__notin + notin)
-            #     ))
+            #     cmds.append(self.__match_pattern %
+            #                 (hlkey, prefix, '\|'.join(current), suffix))
+
+            if prefix == self.__prefix and suffix == self.__suffix:
+                self._debug_echo("%s is a keyword arg" % current)
+                cmds.append(self.__keyword_pattern % (
+                    hlkey,
+                    ' '.join(current),
+                    ','.join(self.__notin + notin)
+                ))
+            else:
+                cmds.append(self.__match_pattern % (
+                    hlkey,
+                    prefix,
+                    '\|'.join(current),
+                    suffix,
+                    ','.join(self.__notin + notin)
+                ))
 
         if ft != self.__vim.api.eval('&ft'):
             self._debug_end('filetype changed aborting highlight')
