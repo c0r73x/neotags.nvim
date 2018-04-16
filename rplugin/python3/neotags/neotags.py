@@ -416,7 +416,8 @@ class Neotags(object):
         for i in range(0, len(group), self.__patternlength):
             current = group[i:i + self.__patternlength]
 
-            if prefix == self.__prefix and suffix == self.__suffix:
+            # if prefix == self.__prefix and suffix == self.__suffix:
+            if False:
                 self._debug_echo("%s is a keyword arg" % current)
                 cmds.append(self.__keyword_pattern %
                             (hlkey, ' '.join(current)))
