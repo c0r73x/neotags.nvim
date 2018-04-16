@@ -96,6 +96,10 @@ if !exists('g:neotags_ctags_bin')
     let g:neotags_ctags_bin = 'ctags'
 endif
 
+if !exists('g:neotags_find_tool')
+    let g:neotags_find_tool = 0
+endif
+
 if !exists('g:neotags_ctags_timeout')
     let g:neotags_ctags_timeout = 3
 endif
@@ -178,5 +182,9 @@ augroup END
 command! NeotagsToggle call NeotagsToggle()
 command! -nargs=1 NeotagsAddProject call NeotagsAddProject(<args>)
 command! -nargs=1 NeotagsRemoveProject call NeotagsRemoveProject(<args>)
+
+nnoremap <unique> <Plug>NeotagsToggle :call NeotagsToggle()<CR>
+nmap <silent> <leader>tag <Plug>NeotagsToggle
+
 
 " vim:fdm=marker

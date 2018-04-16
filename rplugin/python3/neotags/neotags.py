@@ -38,6 +38,7 @@ class Neotags(object):
         self.__settingsFile = None
         self.__slurp = None
         self.__tagfile = None
+        self.__find_tool = None
 
     def __void(self, *args):
         return
@@ -73,6 +74,7 @@ class Neotags(object):
         self.__settingsFile = self.__vim.vars['neotags_settings_file']
         self.__noRecurseDirs = self.__vim.vars['neotags_norecurse_dirs']
         self.__ignored_tags = self.__vim.vars['neotags_ignored_tags']
+        self.__find_tool = self.__vim.vars['neotags_find_tool']
 
         if (self.__vim.vars['neotags_enabled']):
             evupd = ','.join(self.__vim.vars['neotags_events_update'])
@@ -96,8 +98,6 @@ class Neotags(object):
 
             if (self.__vim.vars['loaded_neotags']):
                 self.highlight(False)
-
-        # self.update()
 
         self.__initialized = True
 
@@ -306,33 +306,38 @@ class Neotags(object):
         self._debug_start()
 
         recurse, path = self._get_file()
+        ctags_args.append('-f "%s"' % self.__tagfile)
+        ctags_binary = None
+
         if recurse:
-            ctags_args.append('-R')
+            if self.__find_tool:
+                ctags_args.append('-L-')
+                ctags_binary = "%s %s | %s" % (
+                    self.__find_tool, path, self.__vim.vars['neotags_ctags_bin']
+                )
+                self._debug_echo("Using %s to find files recursively in dir '%s'"
+                                 % (self.__find_tool, path))
+            else:
+                ctags_args.append('-R')
+                ctags_args.append('"%s/"' % path)
+                ctags_binary = self.__vim.vars['neotags_ctags_bin']
+                self._debug_echo("Running ctags on dir '%s'" % path)
+
         else:
             self._debug_echo(
                 "Not running ctags recursively for dir '%s'" % path
             )
-
-        ctags_args.append('-f "%s"' % self.__tagfile)
-
-        if recurse:
-            ctags_args.append('"%s/"' % path)
-            self._debug_echo("Running ctags on dir '%s'" % path)
-        else:
             File = os.path.realpath(self.__vim.api.eval("expand('%:p')"))
             ctags_args.append('"%s"' % File)
+            ctags_binary = self.__vim.vars['neotags_ctags_bin']
             self._debug_echo("Running ctags on file '%s'" % File)
 
-        self._debug_echo('%s %s' % (self.__vim.vars['neotags_ctags_bin'],
-                         ' '.join(ctags_args)))
+        full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
+        self._debug_echo(full_command)
 
         try:
-            proc = subprocess.Popen(
-                '%s %s' % (self.__vim.vars['neotags_ctags_bin'],
-                           ' '.join(ctags_args)),
-                shell=True,
-                stderr=subprocess.PIPE
-            )
+            proc = subprocess.Popen(full_command, shell=True,
+                                    stderr=subprocess.PIPE)
 
             proc.wait(self.__vim.vars['neotags_ctags_timeout'])
             err = proc.communicate()[1]
@@ -618,8 +623,8 @@ class Neotags(object):
 
         self._debug_start()
 
-        if self.__vim.vars['neotags_recursive']:
-            recurse = (path not in self.__noRecurseDirs)
+        recurse = (self.__vim.vars['neotags_recursive']
+                   and path not in self.__noRecurseDirs)
 
         if recurse:
             try:
