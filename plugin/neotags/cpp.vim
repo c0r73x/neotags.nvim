@@ -1,5 +1,6 @@
 if !exists('g:neotags#cpp#order')
-	let g:neotags#cpp#order = 'cgstuedfpm'
+	" let g:neotags#cpp#order = 'cgstuedfpm'
+	let g:neotags#cpp#order = 'cgstuedfm'
 endif
 
 let g:neotags#cpp#c = {
@@ -33,7 +34,7 @@ let g:neotags#cpp#f = {
             \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
-let g:neotags#cpp#p = g:neotags#cpp#f
+" let g:neotags#cpp#p = g:neotags#cpp#f
 
 
 highlight def link cppEnumTag Define

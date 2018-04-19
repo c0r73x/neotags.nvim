@@ -1,5 +1,6 @@
 if !exists('g:neotags#c#order')
-	let g:neotags#c#order = 'cgstuedfpm'
+	" let g:neotags#c#order = 'cgstuedfpm'
+	let g:neotags#c#order = 'cgstuedfm'
 endif
 
 let g:neotags#c#c = {
@@ -33,7 +34,7 @@ let g:neotags#c#f = {
             \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
-let g:neotags#c#p = g:neotags#c#f
+" let g:neotags#c#p = g:neotags#c#f
 
 
 highlight def link cEnumTag Define
