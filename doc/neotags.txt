@@ -87,13 +87,6 @@ files, and thereby conglomerate a project into one file, you may designate any
 directory as a "project" top directory using the `NeotagsAddProject` command.
 See below for details.
 
-It is also worthy mention to say that to reduce the required processing, all
-tags found in all open buffers are included, not just the current buffer. This
-is so you may switch buffers at will without having to regenerate the list
-every time you do so. If you have many buffers open, performance can drop back
-to easytags' level. Should this happen, it is recommended to close some of them
-and toggle this plugin on and off to forcibly regenerate the list.
-
 
 ===============================================================================
                                                              *neotags-commands*
