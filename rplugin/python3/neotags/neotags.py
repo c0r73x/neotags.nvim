@@ -41,6 +41,7 @@ class Neotags(object):
         self.__slurp = None
         self.__tagfile = None
         self.__find_tool = None
+        self.__globtime = time.time()
         self.__hlbuf = 1
 
     def __void(self, *args):
@@ -106,6 +107,8 @@ class Neotags(object):
 
     def toggle(self):
         """Toggle state of the plugin."""
+        self.__cmd_cache = {}
+        self.__md5_cache = {}
         if (not self.__vim.vars['neotags_enabled']):
             self.__vim.vars['neotags_enabled'] = 1
         else:
@@ -136,6 +139,7 @@ class Neotags(object):
 
     def highlight(self, clear):
         """Analyze the tags data and format it for nvim's regex engine."""
+        self.__globtime = time.time()
         self.__exists_buffer = {}
         force = clear
 
@@ -321,7 +325,7 @@ class Neotags(object):
             cmds.append('hi link %s %s' % (hlkey, hlgroup))
 
         full_cmd = ' | '.join(cmds)
-        self._debug_echo("Sending command %s" % full_cmd)
+        # self._debug_echo("Sending command %s" % full_cmd)
 
         self.__vim.command(full_cmd, async=True)
 
@@ -390,24 +394,27 @@ class Neotags(object):
             + bytes(lang, 'utf8') + b'(?:\w+)?)', re.IGNORECASE
         )
 
-        for File in files:
-            self._debug_start()
-            if (os.stat(File).st_size == 0):
-                continue
-            try:
-                with open(File, 'r') as f:
-                    mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
+        # for File in files:
+        File = files[0]
 
-                    for match in pattern.finditer(mf):
-                        self._parseLine(match, groups, languages)
+        self._debug_start()
+        if (os.stat(File).st_size == 0):
+            # continue
+            return
+        try:
+            with open(File, 'r') as f:
+                mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
 
-                    mf.close()
+                for match in pattern.finditer(mf):
+                    self._parseLine(match, groups, languages)
 
-            except IOError as e:
-                self._error("could not read %s: %s" % (File, e))
-                continue
+                mf.close()
 
-            self._debug_end('done reading %s' % File)
+        except IOError as e:
+            self._error("could not read %s: %s" % (File, e))
+            return
+
+        self._debug_end('done reading %s' % File)
 
         order = self._tags_order(ft)
         if not order:
@@ -505,7 +512,7 @@ class Neotags(object):
             self._debug_echo("Running ctags on file '%s'" % File)
 
         full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
-        self._debug_echo(full_command)
+        # self._debug_echo(full_command)
 
         try:
             proc = subprocess.Popen(full_command, shell=True,
@@ -532,7 +539,7 @@ class Neotags(object):
                     async=True
                 )
         finally:
-            self._debug_end("")
+            self._debug_end("Finished running ctags")
 
     def _exists(self, kind, var, default):
         buffer = kind + var
@@ -597,6 +604,8 @@ class Neotags(object):
     def _debug_end(self, message):
         self._debug_echo(message)
         self.__start_time.pop()
+        self._inform_echo(str(self.__start_time))
+        self._inform_echo("Total elapsed: " + str(time.time() - self.__globtime))
 
     def _inform_echo(self, message):
         self.__vim.command(
