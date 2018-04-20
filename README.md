@@ -95,11 +95,6 @@ See below for details.
 | g:neotags#perl#order           | Group Name creation for the Perl language                                                                                               | `s`                                                                                                                                    |
 | g:neotags#php#order            | Group Name creation for the Php language                                                                                                | `fc`                                                                                                                                   |
 
-
-## Commands
-| `NeotagsToggle`                   | Toggle the plugin on and off (sometimes useful to clear the current list of tags to speed things up a little) |
-
-
 ## Highlight Group Names
 By default group name creation is set for all the different group names of all the supported languages.
 
