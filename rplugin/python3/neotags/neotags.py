@@ -593,19 +593,21 @@ class Neotags(object):
     def _debug_start(self):
         self.__start_time.append(time.time())
 
-    def _debug_echo(self, message):
-        elapsed = time.time() - self.__start_time[-1]
-        self.__vim.command(
-            'echom "%s (%.2fs)"' %
-            (self.__to_escape.sub(r'\\\g<0>', message).replace('"', r'\"'),
-             elapsed)
-        )
+    def _debug_echo(self, message, pop=True):
+        if pop:
+            elapsed = time.time() - self.__start_time[-1]
+            self.__vim.command(
+                'echom "%s (%.2fs)"' %
+                (self.__to_escape.sub(r'\\\g<0>', message).replace('"', r'\"'),
+                 elapsed)
+            )
+        else:
+            self._inform_echo(message)
 
     def _debug_end(self, message):
         self._debug_echo(message)
         self.__start_time.pop()
-        self._inform_echo(str(self.__start_time))
-        self._inform_echo("Total elapsed: " + str(time.time() - self.__globtime))
+        self._debug_echo("Total elapsed: " + str(time.time() - self.__globtime), pop=False)
 
     def _inform_echo(self, message):
         self.__vim.command(
