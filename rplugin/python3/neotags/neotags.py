@@ -163,7 +163,8 @@ class Neotags(object):
         self._debug_start()
         file = self.__vim.api.eval("expand('%:p:p')")
 
-        if self.__vim.current.buffer.number not in self.__seen:
+        if self.__vim.current.buffer.number not in self.__seen \
+                or ft not in self.__groups:
             self._debug_echo("Forcing an update!")
             self.__seen = [i.number for i in self.__vim.buffers]
             self.__groups[ft] = self._parseTags(ft)

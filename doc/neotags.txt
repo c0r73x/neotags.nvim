@@ -71,7 +71,7 @@ pypy3 as well (including psutil).
 
 
 ===============================================================================
-                                                         *neotags-requirements*
+                                                        *neotags-configuration*
 Configuration ~
 
 There are several configuration options to tweak the processing behavior. By
