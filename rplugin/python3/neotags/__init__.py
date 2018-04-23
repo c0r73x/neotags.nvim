@@ -35,3 +35,11 @@ class NeotagsHandlers(object):
     @neovim.function('NeotagsToggle')
     def toggle(self, args):
         self.__vim.async_call(self.__neotags.toggle)
+
+    @neovim.function('NeotagsAddProject')
+    def setbase(self, args):
+        self.__vim.async_call(self.__neotags.setBase, args)
+
+    @neovim.function('NeotagsRemoveProject')
+    def removebase(self, args):
+        self.__vim.async_call(self.__neotags.removeBase, args)

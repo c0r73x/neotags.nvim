@@ -10,9 +10,42 @@ if exists('g:loaded_neotags')
     finish
 endif
 
-if !exists('g:neotags_file')
-    let g:neotags_file = './tags'
+if !exists('g:neotags_directory')
+    let g:neotags_directory = expand('~/.vim_tags')
 endif
+if !isdirectory(g:neotags_directory)
+    call mkdir(g:neotags_directory)
+endif
+
+if !exists('g:neotags_settings_file')
+    let g:neotags_settings_file = expand(g:neotags_directory . '/neotags.txt')
+endif
+
+if !exists('g:neotags_file')
+    " let g:neotags_file = './tags'
+    let g:neotags_file = ''
+endif
+
+if !exists('g:neotags_norecurse_dirs')
+    let g:neotags_norecurse_dirs = [
+                \ $HOME,
+                \ '/',
+                \ '/include',
+                \ '/usr/include',
+                \ '/usr/share',
+                \ '/usr/local/include',
+                \ '/usr/local/share'
+                \ ]
+endif
+
+if !exists('g:neotags_ignored_tags')
+    let g:neotags_ignored_tags = []
+endif
+
+if !exists('g:neotags_no_autoconf')
+    let g:neotags_no_autoconf = 1
+endif
+
 
 if !exists('g:neotags_events_update')
     let g:neotags_events_update = [
@@ -34,8 +67,9 @@ if !exists('g:neotags_events_rehighlight')
                 \ ]
 endif
 
+
 if !exists('g:neotags_enabled')
-    let g:neotags_enabled = 0
+    let g:neotags_enabled = 1
 endif
 
 if !exists('g:neotags_verbose')
@@ -62,6 +96,10 @@ if !exists('g:neotags_ctags_bin')
     let g:neotags_ctags_bin = 'ctags'
 endif
 
+if !exists('g:neotags_find_tool')
+    let g:neotags_find_tool = 0
+endif
+
 if !exists('g:neotags_ctags_timeout')
     let g:neotags_ctags_timeout = 3
 endif
@@ -79,9 +117,25 @@ if !exists('g:neotags_ctags_args')
                 \ '--fields=+l',
                 \ '--c-kinds=+p',
                 \ '--c++-kinds=+p',
-                \ '--sort=no',
-                \ '--extras=+q',
+                \ '--sort=yes',
+                \ '--extras=+q'
                 \ ]
+endif
+
+if g:neotags_no_autoconf == 1
+    call extend(g:neotags_ctags_args, [
+                \ "--exclude='*config.log'",
+                \ "--exclude='*config.guess'",
+                \ "--exclude='*configure'",
+                \ "--exclude='*Makefile.in'",
+                \ "--exclude='*missing'",
+                \ "--exclude='*depcomp'",
+                \ "--exclude='*aclocal.m4'",
+                \ "--exclude='*install-sh'",
+                \ "--exclude='*config.status'",
+                \ "--exclude='*config.h.in'",
+                \ "--exclude='*Makefile'"
+                \])
 endif
 
 if !exists('g:neotags_global_notin')
@@ -114,6 +168,7 @@ if !exists('g:neotags_ft_conv')
                 \ }
 endif
 
+
 " }}}
 
 runtime! plugin/neotags/*.vim
@@ -125,5 +180,11 @@ augroup NeoTags
 augroup END
 
 command! NeotagsToggle call NeotagsToggle()
+command! -nargs=1 NeotagsAddProject call NeotagsAddProject(<args>)
+command! -nargs=1 NeotagsRemoveProject call NeotagsRemoveProject(<args>)
+
+nnoremap <unique> <Plug>NeotagsToggle :call NeotagsToggle()<CR>
+nmap <silent> <leader>tag <Plug>NeotagsToggle
+
 
 " vim:fdm=marker
