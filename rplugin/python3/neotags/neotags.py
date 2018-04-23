@@ -12,8 +12,10 @@ import time
 import hashlib
 import subprocess
 
-import psutil
 from sys import platform
+
+import psutil
+
 # from neovim.api.nvim import NvimError
 
 
@@ -108,7 +110,6 @@ class Neotags(object):
     def toggle(self):
         """Toggle state of the plugin."""
         self.__cmd_cache = {}
-        self.__md5_cache = {}
         if (not self.__vim.vars['neotags_enabled']):
             self.__vim.vars['neotags_enabled'] = 1
         else:
@@ -574,6 +575,7 @@ class Neotags(object):
             cmds.append('silent! syntax clear %s' % key,)
 
         # cmds.append('let b:neotags_cache = {}')
+        self.__md5_cache = {}
         self.__vim.command(' | '.join(cmds), async=True)
 
     def _regexp(self, kind, var):
