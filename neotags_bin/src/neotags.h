@@ -1,5 +1,5 @@
-#ifndef SRC_PREPROC_H
-#define SRC_PREPROC_H
+#ifndef SRC_NEOTAGS_H
+#define SRC_NEOTAGS_H
 /*===========================================================================*/
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
