@@ -456,7 +456,7 @@ class Neotags(object):
         #     self._debug_echo(str(s))
         err = err.split('\n')
         for s in err:
-            self._debug_echo(str(s), pop=False)
+            self._debug_echo(str(s), False)
 
         for i in range(0, len(out) - 1, 2):
             key = "%s#%s" % (lang, out[i])

@@ -24,7 +24,6 @@ AC_PROG_CC
 
 # Checks for libraries.
 AC_CHECK_LIB([bsd], [strlcpy])
-AC_CHECK_LIB([pthread], [pthread_create])
 PKG_CHECK_MODULES([PCRE2], [libpcre2-8])
 
 # Checks for header files.

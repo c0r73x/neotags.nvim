@@ -89,6 +89,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = neotags$(EXEEXT)
+@NEED_BSD_FUNCS_TRUE@am__append_1 = bsd_funcs.c bsd_funcs.h
 subdir = src
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -101,8 +102,11 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
+am__neotags_SOURCES_DIST = neotags.c utility.c linked_list.c neotags.h \
+	bsd_funcs.c bsd_funcs.h
+@NEED_BSD_FUNCS_TRUE@am__objects_1 = bsd_funcs.$(OBJEXT)
 am_neotags_OBJECTS = neotags.$(OBJEXT) utility.$(OBJEXT) \
-	linked_list.$(OBJEXT) bsd_funcs.$(OBJEXT)
+	linked_list.$(OBJEXT) $(am__objects_1)
 neotags_OBJECTS = $(am_neotags_OBJECTS)
 am__DEPENDENCIES_1 =
 neotags_DEPENDENCIES = $(am__DEPENDENCIES_1)
@@ -138,7 +142,7 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(neotags_SOURCES)
-DIST_SOURCES = $(neotags_SOURCES)
+DIST_SOURCES = $(am__neotags_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -266,13 +270,8 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-
-#			options.c
-
-# if NEED_BSD_FUNCS
 neotags_SOURCES = neotags.c utility.c linked_list.c neotags.h \
-	bsd_funcs.c bsd_funcs.h
-# endif
+	$(am__append_1)
 neotags_LDADD = ${PCRE2_LIBS}
 all: all-am
 

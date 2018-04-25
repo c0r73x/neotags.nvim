@@ -4,10 +4,8 @@ neotags_SOURCES=	neotags.c     \
 			linked_list.c \
 			neotags.h
 
-#			options.c
-
-# if NEED_BSD_FUNCS
+if NEED_BSD_FUNCS
 neotags_SOURCES+=	bsd_funcs.c bsd_funcs.h
-# endif
+endif
 
 neotags_LDADD =		${PCRE2_LIBS}
