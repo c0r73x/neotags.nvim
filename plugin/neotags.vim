@@ -21,6 +21,13 @@ if !exists('g:neotags_settings_file')
     let g:neotags_settings_file = expand(g:neotags_directory . '/neotags.txt')
 endif
 
+if !exists('g:neotags_bin')
+    let g:neotags_bin = g:neotags_directory . '/bin/neotags'
+    if !isdirectory(g:neotags_directory . '/bin')
+        call mkdir(g:neotags_directory . '/bin')
+    endif
+endif
+
 if !exists('g:neotags_file')
     " let g:neotags_file = './tags'
     let g:neotags_file = ''
