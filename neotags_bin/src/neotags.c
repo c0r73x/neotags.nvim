@@ -13,7 +13,7 @@ static struct linked_list * search(struct strlst *taglist,
                                    char **ctov, char **skip);
 
 static void sanity_check         (int argc, char **argv);
-static void get_colon_delim_data (char ** data, char *arg);
+static void get_colon_delim_data (char **data, char *arg);
 static void print_data           (struct linked_list *ll, char *buffer);
 static bool skip_tag             (char **skip, const char *find);
 static bool is_correct_lang      (char **ctov, const char *lang, const char *match_lang);
@@ -164,7 +164,7 @@ search(struct strlst *taglist,
                 strlcpy(data + 1, substr(tNAME), len - 1);
 
                 if (    strchr(order, (int)data[0])  /* Is tag in order list? */
-                    &&  is_correct_lang(ctov, lang, match_lang) /* Correct language? */
+                    &&  is_correct_lang(ctov, lang, match_lang)
                     && !skip_tag(skip, data + 1)     /* Is tag in 'skip' list? */
                     && !ll_find_str(ll, data)        /* Is tag a duplicate? */
                    )
@@ -200,9 +200,8 @@ static bool
 skip_tag(char **skip, const char *find)
 {
         char *buf;
-        char * * tmp = skip;
 
-        while ((buf = *tmp++) != NULL)
+        while ((buf = *skip++) != NULL)
                 if (streq(buf, find)) 
                         return true;
 
@@ -216,9 +215,8 @@ is_correct_lang(char **ctov, const char *lang, const char *match_lang)
         if (strCeq(match_lang, lang))
                 return true;
         
-        char * * tmp = ctov;
-        while (*tmp != NULL)
-                if (strCeq(match_lang, *tmp++) && strCeq(lang, *tmp++))
+        while (*ctov != NULL)
+                if (strCeq(match_lang, *ctov++) && strCeq(lang, *ctov++))
                         return true;
 
         if ((strCeq(lang, "C") || strCeq(lang, "C++")) &&
