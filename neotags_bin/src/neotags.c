@@ -1,12 +1,13 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include "neotags.h"
-#include <bsd/bsd.h>
 #include <pcre2.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <string.h>
+#include <unistd.h>
 
 static struct linked_list * search(struct strlst *taglist,
                                    const char *lang, const char *order,

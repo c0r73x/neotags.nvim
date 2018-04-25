@@ -1,6 +1,7 @@
 #include "neotags.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 static struct Node * getnode_at_index(struct linked_list *list, int64_t index);
 static void remove_node(struct linked_list *list, struct Node *node);

@@ -17,7 +17,7 @@ AC_CANONICAL_HOST
 AC_GNU_SOURCE
 AC_PREFIX_DEFAULT(["$HOME/.vim_tags"])
 
-CFLAGS=['-march=native -s -Ofast -Wall -Wextra -Wpedantic']
+CFLAGS=['-march=native -Ofast -Wall -Wextra -Wpedantic -isystem /usr/local/include']
 
 # Checks for programs.
 AC_PROG_CC
@@ -27,7 +27,7 @@ AC_CHECK_LIB([bsd], [strlcpy])
 PKG_CHECK_MODULES([PCRE2], [libpcre2-8])
 
 # Checks for header files.
-AC_CHECK_HEADERS([limits.h stdint.h stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([limits.h stdint.h stdlib.h string.h unistd.h bsd/bsd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDC
@@ -41,7 +41,7 @@ AC_TYPE_UINT32_T
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([strchr strdup strstr strtol])
+AC_CHECK_FUNCS([strchr strdup strstr strtol strlcpy])
 
 AM_CONDITIONAL([NEED_BSD_FUNCS], [test "x$ac_cv_func_strlcpy" = "xno"])
 
