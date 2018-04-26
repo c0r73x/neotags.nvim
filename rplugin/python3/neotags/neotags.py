@@ -16,6 +16,7 @@ import psutil
 from sys import platform
 from neovim.api.nvim import NvimError
 
+
 class Neotags(object):
 
     def __init__(self, vim):
@@ -509,7 +510,6 @@ class Neotags(object):
         clean = reversed(order)
 
         self._debug_start()
-        self._debug_echo(':'.join([i for sub in self.__ctov.items() for i in sub]) + ':')
 
         for a in list(clean):
             if a not in groups:
@@ -571,10 +571,11 @@ class Neotags(object):
 
     def _run_ctags(self):
         ctags_args = self.__vim.vars['neotags_ctags_args']
+        ft = self.__vim.api.eval('&ft')
         self._debug_start()
 
         recurse, path = self._get_file()
-        ctags_args.append('-f "%s"' % self.__tagfile)
+        ctags_args.append("-f '%s' --language-force='%s'" % (self.__tagfile, self._vim_to_ctags([ft])[0]))
         ctags_binary = None
 
         if recurse:
@@ -600,7 +601,7 @@ class Neotags(object):
             ctags_binary = self.__vim.vars['neotags_ctags_bin']
             self._debug_echo("Running ctags on file '%s'" % File)
 
-        full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
+        full_command = "%s %s" % (ctags_binary, ' '.join(ctags_args))
         # self._debug_echo(full_command)
 
         try:
@@ -668,7 +669,6 @@ class Neotags(object):
 
         self._debug_echo(str(cmds), False)
 
-        # cmds.append('let b:neotags_cache = {}')
         self.__md5_cache = {}
         self.__vim.command(' | '.join(cmds), async=True)
 
