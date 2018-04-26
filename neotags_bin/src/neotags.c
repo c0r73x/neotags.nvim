@@ -2,7 +2,6 @@
 
 #include "neotags.h"
 #include <pcre2.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
