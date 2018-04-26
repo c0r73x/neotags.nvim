@@ -1,12 +1,15 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include "neotags.h"
-#include <bsd/bsd.h>
-#include <pcre2.h>
-#include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _MSC_VER
+#  include "pcre2-local.h"
+#else
+#  include <pcre2.h>
+#endif
 
 static struct linked_list * search(struct strlst *taglist,
                                    const char *lang, const char *order,
@@ -26,6 +29,11 @@ static bool is_correct_lang      (char **ctov, const char *lang, const char *mat
 #define substr(IND)    ((char *)(subject + ovector[(IND)*2]))
 #define substrlen(IND) ((int)(ovector[(2*(IND))+1] - ovector[2*(IND)]))
 
+#if BUFSIZ < 8000  /* Microsoft VC defines BUFSIZ as 512 for some baffling reason */
+#  undef BUFSIZ
+#  define BUFSIZ 8192
+#endif
+
 enum mgid_e {
         tNAME = 1,
         tKIND,
@@ -41,9 +49,9 @@ main(int argc, char **argv)
         char *tagfile = *argv++;
         char *lang    = *argv++;;
         char *order   = *argv++;
-        long nchars   = xatoi(*argv++);
-        long nskip    = xatoi(*argv++);
-        long nctov    = xatoi(*argv++);
+        int64_t nchars = xatoi(*argv++);
+        int64_t nskip  = xatoi(*argv++);
+        int64_t nctov  = xatoi(*argv++);
         char *buffer  = xmalloc(nchars + 2);
         char **skip   = xmalloc(sizeof *skip * (nskip + 1));
         char **ctov   = xmalloc(sizeof *ctov * (nctov + 1));
@@ -51,7 +59,7 @@ main(int argc, char **argv)
         get_colon_delim_data(skip, *argv++);
         get_colon_delim_data(ctov, *argv++);
         struct strlst *taglist = get_all_lines(tagfile);
-        long i;
+        int64_t i;
 
         /* Slurp the whole buffer from the python code */
         for (i = 0; i < nchars;)

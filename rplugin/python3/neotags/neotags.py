@@ -85,7 +85,10 @@ class Neotags(object):
         self.__noRecurseDirs = self.__vim.vars['neotags_norecurse_dirs']
         self.__settingsFile = self.__vim.vars['neotags_settings_file']
 
-        if not os.access(self.__neotags_bin, os.X_OK):
+        if platform == 'win32':
+            self.__neotags_bin += '.exe'
+        if not os.path.exists(self.__neotags_bin):
+            self._debug_echo("Binary '%s' doesn't exist." % self.__neotags_bin, False)
             self.__neotags_bin = None
 
         if (self.__vim.vars['neotags_enabled']):
@@ -431,7 +434,7 @@ class Neotags(object):
         #                          '--leak-check=full',
         #                          '--track-origins=yes',
         #                          self.__neotags_bin,
-        proc = subprocess.Popen([self.__neotags_bin,
+        proc = subprocess.Popen((self.__neotags_bin,
                                  File,
                                  lang,
                                  order,
@@ -441,28 +444,28 @@ class Neotags(object):
                                  ':'.join(self.__ignored_tags) + ':',
                                  ':'.join([i for sub in self.__ctov.items()
                                            for i in sub]) + ':'
-                                 ],
-                                stdin=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
-                                universal_newlines=True)
-        out, err = proc.communicate(input=self.__slurp)
+                                 ),
+                                 stdin=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 stdout=subprocess.PIPE)
+        #                         universal_newlines=True)
+        out, err = proc.communicate(input=self.__slurp.encode('utf-8'))
 
         self._debug_end('done reading %s' % File)
-        out = out.split('\n')
+        out = out.decode().split('\n')
 
         # for s in out:
         #     self._debug_echo(str(s))
-        err = err.split('\n')
+        err = err.decode().split('\n')
         for s in err:
             self._debug_echo(str(s), False)
 
         for i in range(0, len(out) - 1, 2):
-            key = "%s#%s" % (lang, out[i])
+            key = "%s#%s" % (lang, out[i].rstrip('\r'))
             try:
-                groups[key].append(out[i + 1])
+                groups[key].append(out[i + 1].rstrip('\r'))
             except KeyError:
-                groups[key] = [out[i + 1]]
+                groups[key] = [out[i + 1].rstrip('\r')]
 
         return groups
 
@@ -588,7 +591,7 @@ class Neotags(object):
                                  % (self.__find_tool, path))
             else:
                 ctags_args.append('-R')
-                ctags_args.append('"%s/"' % path)
+                ctags_args.append('"%s"' % path)
                 ctags_binary = self.__vim.vars['neotags_ctags_bin']
                 self._debug_echo("Running ctags on dir '%s'" % path)
 
@@ -601,7 +604,7 @@ class Neotags(object):
             ctags_binary = self.__vim.vars['neotags_ctags_bin']
             self._debug_echo("Running ctags on file '%s'" % File)
 
-        full_command = "%s %s" % (ctags_binary, ' '.join(ctags_args))
+        full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
         # self._debug_echo(full_command)
 
         try:

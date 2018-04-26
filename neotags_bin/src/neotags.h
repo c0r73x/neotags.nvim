@@ -15,6 +15,11 @@
 #else
 #  include "bsd_funcs.h"
 #endif
+#if defined(_WIN64) || defined(_WIN32)
+#  include <io.h>
+#else
+#  include <unistd.h>
+#endif
 /*===========================================================================*/
 
 
@@ -52,6 +57,13 @@ char *program_name;
 
 /*===========================================================================*/
 
+#ifdef _MSC_VER 
+#  define strcasecmp  _stricmp
+#  define strncasecmp _strnicmp
+#  define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#  define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#  define __attribute__(...)
+#endif
 
 #define streq(SA, SB)    (strcmp((SA), (SB)) == 0)
 #define strneq(SA, SB)   (strcmp((SA), (SB)) != 0)
@@ -86,11 +98,10 @@ char *program_name;
 
 int64_t __xatoi         (char *str, bool strict);
 int     my_fgetline     (char **ptr, FILE *fp);
-void    destroy_strlst (struct strlst *vec);
+void    destroy_strlst  (struct strlst *vec);
 void *  xmalloc         (const size_t size)                __attribute__((malloc));
 void *  xcalloc         (const int num, const size_t size) __attribute__((malloc));
 void *  xrealloc        (void *ptr, const size_t size)     __attribute__((malloc));
-int     xasprintf       (char ** restrict ptr, const char * restrict fmt, ...);
 FILE *  safe_fopen      (const char * const restrict filename, const char * const restrict mode);
 void    dump_list       (char **list, FILE *fp);
 

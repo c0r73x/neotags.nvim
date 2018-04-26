@@ -2,6 +2,7 @@
 #define BSD_FUNCS_H
 
 #include <string.h>
+#define restrict __restrict
 
 size_t    strlcpy(char * restrict dst, const char * restrict src, size_t dst_size);
 size_t    strlcat(char * restrict dst, const char * restrict src, size_t dst_size);
