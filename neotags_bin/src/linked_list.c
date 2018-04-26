@@ -20,7 +20,7 @@ new_list(void)
 void
 ll_add(struct linked_list *list, LLTYPE data)
 {
-        struct Node *node = malloc(sizeof *node);
+        struct Node *node = xmalloc(sizeof *node);
 
         if (list->head != NULL)
                 list->head->prev = node;
@@ -39,7 +39,7 @@ ll_add(struct linked_list *list, LLTYPE data)
 void
 ll_append(struct linked_list *list, LLTYPE data)
 {
-        struct Node *node = malloc(sizeof *node);
+        struct Node *node = xmalloc(sizeof *node);
 
         if (list->tail != NULL)
                 list->tail->next = node;

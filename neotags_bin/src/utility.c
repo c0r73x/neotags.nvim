@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #define STARTSIZE 2048
 #define INCSIZE   256
@@ -154,21 +153,6 @@ xrealloc(void *ptr, const size_t size)
         if (tmp == NULL)
                 xerr(150, "Realloc call failed - attempted %zu bytes.\n", size);
         return tmp;
-}
-
-
-int
-xasprintf(char ** restrict ptr, const char * restrict fmt, ...)
-{
-        va_list ap;
-        va_start(ap, fmt);
-        int size;
-
-        if ((size = vasprintf(ptr, fmt, ap)) < 0)
-                xerr(2, "Error allocating memory for asprintf.\n");
-
-        va_end(ap);
-        return size;
 }
 
 

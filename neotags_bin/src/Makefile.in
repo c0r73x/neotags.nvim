@@ -103,7 +103,7 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__neotags_SOURCES_DIST = neotags.c utility.c linked_list.c neotags.h \
-	bsd_funcs.c bsd_funcs.h
+	pcre2-local.h bsd_funcs.c bsd_funcs.h
 @NEED_BSD_FUNCS_TRUE@am__objects_1 = bsd_funcs.$(OBJEXT)
 am_neotags_OBJECTS = neotags.$(OBJEXT) utility.$(OBJEXT) \
 	linked_list.$(OBJEXT) $(am__objects_1)
@@ -268,7 +268,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 neotags_SOURCES = neotags.c utility.c linked_list.c neotags.h \
-	$(am__append_1)
+	pcre2-local.h $(am__append_1)
 neotags_LDADD = ${PCRE2_LIBS}
 all: all-am
 

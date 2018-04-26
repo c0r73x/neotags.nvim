@@ -108,7 +108,7 @@ if !exists('g:neotags_find_tool')
 endif
 
 if !exists('g:neotags_ctags_timeout')
-    let g:neotags_ctags_timeout = 3
+    let g:neotags_ctags_timeout = 30
 endif
 
 if !exists('g:neotags_silent_timeout')
