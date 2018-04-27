@@ -4,6 +4,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include <inttypes.h>
+
 #define STARTSIZE 2048
 #define INCSIZE   256
 #define GUESS 100
@@ -131,7 +133,7 @@ xmalloc(const size_t size)
 {
         void *tmp = malloc(size);
         if (tmp == NULL)
-                xerr(100, "Malloc call failed - attempted %zu bytes.\n", size);
+                xerr(100, "Malloc call failed - attempted "Psize_t" bytes.\n", size);
         return tmp;
 }
 
@@ -141,7 +143,7 @@ xcalloc(const int num, const size_t size)
 {
         void *tmp = calloc(num, size);
         if (tmp == NULL)
-                xerr(125, "Calloc call failed - attempted %zu bytes.\n", size);
+                xerr(125, "Calloc call failed - attempted "Psize_t" bytes.\n", size);
         return tmp;
 }
 
@@ -151,7 +153,7 @@ xrealloc(void *ptr, const size_t size)
 {
         void *tmp = realloc(ptr, size);
         if (tmp == NULL)
-                xerr(150, "Realloc call failed - attempted %zu bytes.\n", size);
+                xerr(150, "Realloc call failed - attempted "Psize_t" bytes.\n", size);
         return tmp;
 }
 

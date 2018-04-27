@@ -1,6 +1,9 @@
 #ifndef SRC_NEOTAGS_H
 #define SRC_NEOTAGS_H
 /*===========================================================================*/
+#ifdef __cplusplus
+   extern "C" {
+#endif
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #else  /* This just shuts up linters too lazy to include config.h */
@@ -8,17 +11,12 @@
 #  define PACKAGE_STRING ""
 #  define _GNU_SOURCE
 #endif
-#ifdef HAVE_STRLCPY
-#  ifdef HAVE_BSD_BSD_H
+#ifndef HAVE_STRLCPY
+#  if defined(HAVE_LIBBSD) && defined(HAVE_BSD_BSD_H)
 #    include <bsd/bsd.h>
+#  else
+#    include "bsd_funcs.h"
 #  endif
-#else
-#  include "bsd_funcs.h"
-#endif
-#if defined(_WIN64) || defined(_WIN32)
-#  include <io.h>
-#else
-#  include <unistd.h>
 #endif
 /*===========================================================================*/
 
@@ -56,6 +54,15 @@ enum ll_pop_type {
 char *program_name;
 
 /*===========================================================================*/
+
+
+#if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
+#  define Psize_t "%I64d"  /* Just have to assume size_t is size 8... */
+#  include <io.h>
+#else
+#  define Psize_t "%zu"
+#  include <unistd.h>
+#endif
 
 #ifdef _MSC_VER 
 #  define strcasecmp  _stricmp
@@ -124,4 +131,8 @@ bool   ll_find_str(struct linked_list *list, char *str);
 void   destroy_list(struct linked_list *list);
 
 
+#ifdef __cplusplus
+   }
+#endif
+/*===========================================================================*/
 #endif /* neotags.h */

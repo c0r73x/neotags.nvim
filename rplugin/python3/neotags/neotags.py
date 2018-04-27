@@ -66,10 +66,9 @@ class Neotags(object):
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
         self.__ctov = self.__vim.vars['neotags_ft_conv']
-        self.__vtoc = {
-            y: x for x,
-            y in self.__ctov.items()
-        }
+        self.__vtoc = {y: x for x, y in self.__ctov.items()}
+
+        self._debug_echo("vtoc -> %s, ctov -> %s" % (str(self.__vtoc), str(self.__ctov)), False)
 
         # self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/'
@@ -218,7 +217,7 @@ class Neotags(object):
 
                 self._debug_echo('applied syntax for %s' % fkey)
 
-        self._debug_end('applied syntax')
+        self._debug_end('applied syntax for %s' % ft)
 
         self.__hlbuf = self.__vim.current.buffer.number
 
@@ -304,6 +303,7 @@ class Neotags(object):
             try:
                 cmds = self.__cmd_cache[number][hlkey]
             except KeyError:
+                self._debug_echo("Blargh", False)
                 return True
             # self._debug_echo(str(self.__cmd_cache))
             self._debug_echo("Updating from cache" % cmds)
@@ -417,7 +417,7 @@ class Neotags(object):
             return
 
         groups = {
-            "%s#%s" % (lang, kind): []
+            "%s#%s" % (ft, kind): []
             for kind in [chr(i) for i in order.encode('ascii')]
         }
 
@@ -445,28 +445,34 @@ class Neotags(object):
                                  ':'.join([i for sub in self.__ctov.items()
                                            for i in sub]) + ':'
                                  ),
-                                 stdin=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 stdout=subprocess.PIPE)
+                                stdin=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
         #                         universal_newlines=True)
         out, err = proc.communicate(input=self.__slurp.encode('utf-8'))
 
         self._debug_end('done reading %s' % File)
         out = out.decode().split('\n')
-
-        # for s in out:
-        #     self._debug_echo(str(s))
         err = err.decode().split('\n')
-        for s in err:
-            self._debug_echo(str(s), False)
+
+        with open("/home/bml/blargh2", 'w') as fp:
+            print("OUTPUT", file=fp)
+            print(out, file=fp)
+            for s in out:
+                print(s, file=fp)
+            print("ERROR", file=fp)
+            print(err, file=fp)
+            for s in err:
+                print(s, file=fp)
 
         for i in range(0, len(out) - 1, 2):
-            key = "%s#%s" % (lang, out[i].rstrip('\r'))
+            key = "%s#%s" % (ft, out[i].rstrip('\r'))
             try:
                 groups[key].append(out[i + 1].rstrip('\r'))
             except KeyError:
                 groups[key] = [out[i + 1].rstrip('\r')]
 
+        # self._debug_echo(str(groups), False)
         return groups
 
 ###############################################################################
@@ -513,6 +519,7 @@ class Neotags(object):
         clean = reversed(order)
 
         self._debug_start()
+        self._debug_echo(':'.join([i for sub in self.__ctov.items() for i in sub]) + ':')
 
         for a in list(clean):
             if a not in groups:
@@ -574,11 +581,10 @@ class Neotags(object):
 
     def _run_ctags(self):
         ctags_args = self.__vim.vars['neotags_ctags_args']
-        ft = self.__vim.api.eval('&ft')
         self._debug_start()
 
         recurse, path = self._get_file()
-        ctags_args.append("-f '%s' --language-force='%s'" % (self.__tagfile, self._vim_to_ctags([ft])[0]))
+        ctags_args.append('-f "%s"' % self.__tagfile)
         ctags_binary = None
 
         if recurse:
@@ -605,7 +611,7 @@ class Neotags(object):
             self._debug_echo("Running ctags on file '%s'" % File)
 
         full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
-        # self._debug_echo(full_command)
+        self._debug_echo(full_command)
 
         try:
             proc = subprocess.Popen(full_command, shell=True,
@@ -672,6 +678,7 @@ class Neotags(object):
 
         self._debug_echo(str(cmds), False)
 
+        # cmds.append('let b:neotags_cache = {}')
         self.__md5_cache = {}
         self.__vim.command(' | '.join(cmds), async=True)
 
@@ -729,6 +736,7 @@ class Neotags(object):
         process.kill()
 
     def _ctags_to_vim(self, lang, languages):
+        lang = lang.strip('\\')
         if lang in self.__ctov and self.__ctov[lang] in languages:
             return self.__ctov[lang]
 
@@ -739,6 +747,7 @@ class Neotags(object):
 
             if lang in self.__vtoc:
                 languages[i] = self.__vtoc[lang]
+                languages[i] = languages[i].strip('\\')
 
             languages[i] = re.escape(languages[i])
 

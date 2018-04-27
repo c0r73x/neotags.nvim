@@ -11,25 +11,31 @@
 #  include <pcre2.h>
 #endif
 
-static struct linked_list * search(struct strlst *taglist,
-                                   const char *lang, const char *order,
-                                   char **ctov, char **skip);
+static struct linked_list *
+search(struct strlst *taglist, const char *lang, const char *order,
+       char **ctov, char **skip);
 
 static void sanity_check         (int argc, char **argv);
 static void get_colon_delim_data (char **data, char *arg);
 static void print_data           (struct linked_list *ll, char *buffer);
 static bool skip_tag             (char **skip, const char *find);
-static bool is_correct_lang      (char **ctov, const char *lang, const char *match_lang);
+static bool is_correct_lang      (char **ctov, const char *lang,
+                                  const char *match_lang);
+static void normalize_lang       (char * restrict buf,
+                                  const char * const restrict lang,
+                                  const size_t max);
 
 #define REQUIRED_INPUT 8
-#define PATSIZ 128
+#define PATSIZ 256
 #define PATTERN_PT1 "^([^\\t]+)\\t(?:[^\\t]+)\\t\\/(?:.+)\\/;\"\\t(\\w)\\tlanguage:("
-#define PATTERN_PT2 "(?:\\w+)?)"
+#define PATTERN_PT2 "(?:\\[a-zA-Z]+)?)"
 
 #define substr(IND)    ((char *)(subject + ovector[(IND)*2]))
 #define substrlen(IND) ((int)(ovector[(2*(IND))+1] - ovector[2*(IND)]))
 
-#if BUFSIZ < 8000  /* Microsoft VC defines BUFSIZ as 512 for some baffling reason */
+/* Microsoft VC defines BUFSIZ as 512 for some baffling reason. This is too
+ * small in my opinion. Safety first. */
+#if BUFSIZ < 8192
 #  undef BUFSIZ
 #  define BUFSIZ 8192
 #endif
@@ -65,6 +71,11 @@ main(int argc, char **argv)
         for (i = 0; i < nchars;)
                 buffer[i++] = (char)getchar();
         buffer[i] = '\0';
+
+#ifdef DEBUG
+        eprintf("ORDER -> '%s'\n", order);
+        eprintf("LANG -> '%s'\n", lang);
+#endif
 
         struct linked_list *ll = search(taglist, lang, order, ctov, skip);
         print_data(ll, buffer);
@@ -132,8 +143,10 @@ search(struct strlst *taglist,
         pcre2_match_data *match_data;
         PCRE2_SIZE erroroffset;
         int errornumber;
+        char norm_lang[PATSIZ/2];
+        normalize_lang(norm_lang, lang, PATSIZ);
 
-        snprintf(pat, PATSIZ, "%s%s%s", PATTERN_PT1, lang, PATTERN_PT2);
+        snprintf(pat, PATSIZ, "%s%s%s", PATTERN_PT1, norm_lang, PATTERN_PT2);
         PCRE2_SPTR pattern = (PCRE2_SPTR)pat;
 
         pcre2_code *cre = pcre2_compile(
@@ -171,6 +184,24 @@ search(struct strlst *taglist,
                 strlcpy(match_lang, substr(tLANG), substrlen(tLANG) + 1);
                 strlcpy(data + 1, substr(tNAME), len - 1);
 
+#ifdef DEBUG
+                if (!strchr(order, (int)data[0])) {     /* Is tag in order list? */
+                        eprintf("Tag '%s' not in order.\n", data+1);
+                        free(data);
+                } else if (!is_correct_lang(ctov, lang, match_lang)) {
+                        eprintf("Tag '%s' is the wrong language.\n", data+1);
+                        free(data);
+                } else if (skip_tag(skip, data + 1)) {  /* Is tag in 'skip' list? */
+                        eprintf("Tag '%s' is in skip list.\n", data+1);
+                        free(data);
+                } else if (ll_find_str(ll, data)) {     /* Is tag a duplicate? */
+                        eprintf("Tag '%s' is a duplicate.\n", data+1);
+                        free(data);
+                } else {
+                        eprintf("Tag '%s' is acceptable! It is type '%c'.\n", data + 1, data[0]);
+                        ll_add(ll, data);
+                }
+#elif 1
                 if (    strchr(order, (int)data[0])  /* Is tag in order list? */
                     &&  is_correct_lang(ctov, lang, match_lang)
                     && !skip_tag(skip, data + 1)     /* Is tag in 'skip' list? */
@@ -179,6 +210,18 @@ search(struct strlst *taglist,
                         ll_add(ll, data);
                 else
                         free(data);
+#else
+                if (!strchr(order, (int)data[0]))      /* Is tag in order list? */
+                        free(data);
+                else if (!is_correct_lang(ctov, lang, match_lang)) 
+                        free(data);
+                else if (skip_tag(skip, data + 1))   /* Is tag in 'skip' list? */
+                        free(data);
+                else if (ll_find_str(ll, data))      /* Is tag a duplicate? */
+                        free(data);
+                else 
+                        ll_add(ll, data);
+#endif
 
 next:
                 pcre2_match_data_free(match_data);
@@ -222,14 +265,29 @@ is_correct_lang(char **ctov, const char *lang, const char *match_lang)
 {
         if (strCeq(match_lang, lang))
                 return true;
+
+        if ((strCeq(lang, "C") && streq(lang, "C\\+\\+")) &&
+            (streq(match_lang, "C++") || streq(match_lang, "C")))
+                return true;
         
         while (*ctov != NULL)
                 if (strCeq(match_lang, *ctov++) && strCeq(lang, *ctov++))
                         return true;
 
-        if ((strCeq(lang, "C") || strCeq(lang, "C++")) &&
-            (strCeq(match_lang, "C") || strCeq(match_lang, "C++")))
-                return true;
-
         return false;
+}
+
+
+/*
+ * c and c++ should be considered equivalent as far as tags are concerned.
+ */
+static void
+normalize_lang(char * restrict buf,
+               const char * const restrict lang,
+               const size_t max)
+{
+        if (strCeq(lang, "C") || strCeq(lang, "C++") || strCeq(lang, "C\\+\\+"))
+                strlcpy(buf, "(?:C|C\\+\\+)", max);
+        else
+                strlcpy(buf, lang, max);
 }
