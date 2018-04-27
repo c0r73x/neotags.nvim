@@ -189,6 +189,7 @@ augroup END
 command! NeotagsToggle call NeotagsToggle()
 command! -nargs=1 NeotagsAddProject call NeotagsAddProject(<args>)
 command! -nargs=1 NeotagsRemoveProject call NeotagsRemoveProject(<args>)
+command! NeotagsBinaryToggle call Neotags_Toggle_C_Binary()
 
 nnoremap <unique> <Plug>NeotagsToggle :call NeotagsToggle()<CR>
 nmap <silent> <leader>tag <Plug>NeotagsToggle

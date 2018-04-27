@@ -68,8 +68,6 @@ class Neotags(object):
         self.__ctov = self.__vim.vars['neotags_ft_conv']
         self.__vtoc = {y: x for x, y in self.__ctov.items()}
 
-        self._debug_echo("vtoc -> %s, ctov -> %s" % (str(self.__vtoc), str(self.__ctov)), False)
-
         # self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
         self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/'
         # self.__keyword_pattern = r'syntax keyword %s %s containedin=ALLBUT,%s'
@@ -80,9 +78,10 @@ class Neotags(object):
         self.__directory = self.__vim.vars['neotags_directory']
         self.__find_tool = self.__vim.vars['neotags_find_tool']
         self.__ignored_tags = self.__vim.vars['neotags_ignored_tags']
-        self.__neotags_bin = self.__vim.vars['neotags_bin']
         self.__noRecurseDirs = self.__vim.vars['neotags_norecurse_dirs']
         self.__settingsFile = self.__vim.vars['neotags_settings_file']
+
+        self.__neotags_bin = self._get_binary()
 
         if platform == 'win32':
             self.__neotags_bin += '.exe'
@@ -124,6 +123,16 @@ class Neotags(object):
             self.__vim.vars['neotags_enabled'] = 0
 
         self.update()
+
+    def toggle_C_bin(self, args):
+        if self.__neotags_bin is None:
+            self.__neotags_bin = self._get_binary(loud=True)
+            if self.__neotags_bin is not None:
+                self._inform_echo("Switching to use C binary.")
+        else:
+            self.__neotags_bin = None
+            self.__vim.vars['neotags_use_binary'] = 0
+            self._inform_echo("Switching to use python code.")
 
     def update(self):
         """Update tags file, tags cache, and highlighting."""
@@ -303,7 +312,6 @@ class Neotags(object):
             try:
                 cmds = self.__cmd_cache[number][hlkey]
             except KeyError:
-                self._debug_echo("Blargh", False)
                 return True
             # self._debug_echo(str(self.__cmd_cache))
             self._debug_echo("Updating from cache" % cmds)
@@ -799,3 +807,21 @@ class Neotags(object):
 
         self.__tagfile = "%s/%s.tags" % (self.__directory,
                                          path.replace(sep_char, '__'))
+
+    def _get_binary(self, loud=False):
+        binary = self.__vim.vars['neotags_bin']
+        if platform == 'win32' and binary.find('.exe') < 0:
+            binary += '.exe'
+
+        if os.path.exists(binary):
+            self.__vim.vars['neotags_use_binary'] = 1
+        else:
+            self.__vim.vars['neotags_use_binary'] = 0
+            binary = None
+            if loud:
+                self._inform_echo("Binary '%s' doesn't exist. Cannot enable."
+                                  % self.__neotags_bin, False)
+            else:
+                self._debug_echo("Binary '%s' doesn't exist." % self.__neotags_bin, False)
+
+        return binary

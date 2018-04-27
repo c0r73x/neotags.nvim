@@ -43,3 +43,7 @@ class NeotagsHandlers(object):
     @neovim.function('NeotagsRemoveProject')
     def removebase(self, args):
         self.__vim.async_call(self.__neotags.removeBase, args)
+
+    @neovim.function('Neotags_Toggle_C_Binary')
+    def toggle_C_bin(self, args):
+        self.__vim.async_call(self.__neotags.toggle_C_bin, args)
