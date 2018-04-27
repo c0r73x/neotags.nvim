@@ -453,17 +453,17 @@ class Neotags(object):
 
         self._debug_end('done reading %s' % File)
         out = out.decode().split('\n')
-        err = err.decode().split('\n')
 
-        with open("/home/bml/blargh2", 'w') as fp:
-            print("OUTPUT", file=fp)
-            print(out, file=fp)
-            for s in out:
-                print(s, file=fp)
-            print("ERROR", file=fp)
-            print(err, file=fp)
-            for s in err:
-                print(s, file=fp)
+        # err = err.decode().split('\n')
+        # with open(os.environ['HOME'] + 'nt_debug', 'w') as fp:
+        #     print("OUTPUT", file=fp)
+        #     print(out, file=fp)
+        #     for s in out:
+        #         print(s, file=fp)
+        #     print("ERROR", file=fp)
+        #     print(err, file=fp)
+        #     for s in err:
+        #         print(s, file=fp)
 
         for i in range(0, len(out) - 1, 2):
             key = "%s#%s" % (ft, out[i].rstrip('\r'))
