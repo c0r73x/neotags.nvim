@@ -1,15 +1,10 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include "neotags.h"
+#include <pcre2.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-
-#ifdef _MSC_VER
-#  include "pcre2-local.h"
-#else
-#  include <pcre2.h>
-#endif
 
 static struct linked_list *
 search(struct strlst *taglist, const char *lang, const char *order,
@@ -72,11 +67,6 @@ main(int argc, char **argv)
                 buffer[i++] = (char)getchar();
         buffer[i] = '\0';
 
-#ifdef DEBUG
-        eprintf("ORDER -> '%s'\n", order);
-        eprintf("LANG -> '%s'\n", lang);
-#endif
-
         struct linked_list *ll = search(taglist, lang, order, ctov, skip);
         print_data(ll, buffer);
 
@@ -113,7 +103,6 @@ get_colon_delim_data(char **data, char *arg)
 {
         int ch, it = 0, dit = 0;
         char buf[BUFSIZ];
-        eprintf("%s\n", arg);
 
         while ((ch = *arg++) != '\0') {
                 if (ch == ':') {
@@ -201,7 +190,7 @@ search(struct strlst *taglist,
                         eprintf("Tag '%s' is acceptable! It is type '%c'.\n", data + 1, data[0]);
                         ll_add(ll, data);
                 }
-#elif 1
+#else
                 if (    strchr(order, (int)data[0])  /* Is tag in order list? */
                     &&  is_correct_lang(ctov, lang, match_lang)
                     && !skip_tag(skip, data + 1)     /* Is tag in 'skip' list? */
@@ -210,17 +199,6 @@ search(struct strlst *taglist,
                         ll_add(ll, data);
                 else
                         free(data);
-#else
-                if (!strchr(order, (int)data[0]))      /* Is tag in order list? */
-                        free(data);
-                else if (!is_correct_lang(ctov, lang, match_lang)) 
-                        free(data);
-                else if (skip_tag(skip, data + 1))   /* Is tag in 'skip' list? */
-                        free(data);
-                else if (ll_find_str(ll, data))      /* Is tag a duplicate? */
-                        free(data);
-                else 
-                        ll_add(ll, data);
 #endif
 
 next:

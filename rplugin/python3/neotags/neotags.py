@@ -83,12 +83,6 @@ class Neotags(object):
 
         self.__neotags_bin = self._get_binary()
 
-        if platform == 'win32':
-            self.__neotags_bin += '.exe'
-        if not os.path.exists(self.__neotags_bin):
-            self._debug_echo("Binary '%s' doesn't exist." % self.__neotags_bin, False)
-            self.__neotags_bin = None
-
         if (self.__vim.vars['neotags_enabled']):
             evupd = ','.join(self.__vim.vars['neotags_events_update'])
             evhl = ','.join(self.__vim.vars['neotags_events_highlight'])
@@ -810,6 +804,7 @@ class Neotags(object):
 
     def _get_binary(self, loud=False):
         binary = self.__vim.vars['neotags_bin']
+
         if platform == 'win32' and binary.find('.exe') < 0:
             binary += '.exe'
 

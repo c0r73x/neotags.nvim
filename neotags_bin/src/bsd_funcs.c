@@ -46,7 +46,7 @@ strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
 
         /* Copy as many bytes as will fit */
         if (nleft != 0)
-                while (--nleft != 0)
+                while (--nleft != 0)  /* Break when nleft is 1 -> room for null */
                         if ((*dst++ = *src++) == '\0')
                                 break;
 
