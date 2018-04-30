@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 
 #include <inttypes.h>
+#include <zlib.h>
 
 #define STARTSIZE 2048
 #define INCSIZE   256
@@ -17,11 +18,13 @@
                      xperror("Failed to stat file '%s", (PATH));    \
      } while (0)
 
-static inline bool file_is_reg(const char *filename);
+static bool file_is_reg(const char *filename);
+static void safe_gzopen(gzFile *fp, const char *filename, const char *mode);
+static int my_gfgetline(char **ptr, gzFile *fp);
 
 
-int
-my_fgetline(char **ptr, FILE *fp)
+static int
+my_gfgetline(char **ptr, gzFile *fp)
 {
         int ch, it, size;
         char *buf, *temp;
@@ -31,7 +34,7 @@ my_fgetline(char **ptr, FILE *fp)
         size = STARTSIZE;
 
         it = 0;
-        while ((ch = fgetc(fp)) != '\n' && ch != EOF) {
+        while ((ch = gzgetc(*fp)) != '\n' && ch != EOF) {
                 if (ch == '\r')
                         continue;
                 if (it >= (size - 1)) {
@@ -58,57 +61,51 @@ my_fgetline(char **ptr, FILE *fp)
 }
 
 
-
 struct strlst *
 get_all_lines(const char *filename)
 {
-        FILE *fp = safe_fopen(filename, "r");
-        struct strlst *vec = xmalloc(sizeof *vec);
+        gzFile fp;
+        safe_gzopen(&fp, filename, "rb");
+        struct strlst *lst = xmalloc(sizeof *lst);
         uint32_t max = GUESS;
-        {
-                char **strvec = xmalloc(sizeof *strvec * max);
-                uint32_t *intvec = xmalloc(sizeof *intvec * max);
-                vec->s = strvec;
-                vec->slen = intvec;
-                vec->num = 0;
-        }
+
+        lst->s    = xmalloc(sizeof *lst->s * max);
+        lst->slen = xmalloc(sizeof *lst->slen * max);
+        lst->num  = 0;
 
         do {
-                if (vec->num == max) {
+                if (lst->num == max) {
                         max += INC;
-                        vec->slen = xrealloc(vec->slen,
-                                             sizeof *vec->slen * max);
-                        vec->s = xrealloc(vec->s,
-                                          sizeof *vec->s * max);
+                        lst->slen = xrealloc(lst->slen, sizeof *lst->slen * max);
+                        lst->s    = xrealloc(lst->s, sizeof *lst->s * max);
                 }
-                vec->slen[vec->num] = my_fgetline((vec->s + vec->num), fp);
+                lst->slen[lst->num] = my_gfgetline((lst->s + lst->num), &fp);
 
-        } while (vec->slen[vec->num++] > 0);
+        } while (lst->slen[lst->num++] > 0);
 
-        vec->slen = xrealloc(vec->slen, sizeof *vec->slen * vec->num);
-        vec->s = xrealloc(vec->s, sizeof *vec->s * vec->num);
-        --vec->num;
+        lst->slen = xrealloc(lst->slen, sizeof *lst->slen * lst->num);
+        lst->s = xrealloc(lst->s, sizeof *lst->s * lst->num);
+        --lst->num;
 
-        fclose(fp);
-        return vec;
+        gzclose(fp);
+        return lst;
 }
 
 
-FILE *
-safe_fopen(const char * const restrict filename,
-           const char * const restrict mode)
+static void
+safe_gzopen(gzFile *fp,
+            const char * const restrict filename,
+            const char * const restrict mode)
 {
-        FILE *fp = fopen(filename, mode);
-        if (!fp)
+        *fp = gzopen(filename, mode);
+        if (!*fp)
                 xperror("Failed to open file '%s'", filename);
         if (!file_is_reg(filename))
                 xerr(1, "Invalid filetype '%s'\n", filename);
-
-        return fp;
 }
 
 
-static inline bool
+static bool
 file_is_reg(const char *filename)
 {
         struct stat st;
@@ -118,13 +115,13 @@ file_is_reg(const char *filename)
 
 
 void
-destroy_strlst(struct strlst *vec)
+destroy_strlst(struct strlst *lst)
 {
-        for (uint32_t i = 0; i < vec->num; ++i)
-                free(vec->s[i]);
-        free(vec->s);
-        free(vec->slen);
-        free(vec);
+        for (uint32_t i = 0; i < lst->num; ++i)
+                free(lst->s[i]);
+        free(lst->s);
+        free(lst->slen);
+        free(lst);
 }
 
 
@@ -178,3 +175,24 @@ dump_list(char **list, FILE *fp)
         while ((tmp = *lcpy++) != NULL)
                 fprintf(fp, "%s\n", tmp);
 }
+
+
+#if 0
+static FILE *
+open_gz(const char *filename, const char *mode)
+{
+        gzFile *zfp;
+
+        /* try gzopen */
+        zfp = gzopen(filename, mode);
+        if (zfp == NULL)
+                return fopen(filename, mode);
+
+        /* open file pointer */
+        return funopen(zfp,
+                        (int(*)(void*,char*,int))gzread,
+                        (int(*)(void*,const char*,int))gzwrite,
+                        (fpos_t(*)(void*,fpos_t,int))gzseek,
+                        (int(*)(void*))gzclose);
+}
+#endif

@@ -1,5 +1,3 @@
-# Why am I bothering.
-
 cmake_minimum_required (VERSION 3.6.0)
 project (neotags C)
 
@@ -10,6 +8,7 @@ if (MSVC)
     set (CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_C_FLAGS_RELEASE})
     set (CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELEASE})
     include_directories("C:/Program Files/PCRE2/include")
+    include_directories("D:/libs/include")
 else()
     include (FindPkgConfig)
     include (CheckFunctionExists)
@@ -30,6 +29,8 @@ else()
             endif()
         endif()
     endif()
+    
+    pkg_check_modules (neotags REQUIRED zlib)
 
     set (CMAKE_C_FLAGS_DEBUG "-Og -g -Wall -fdiagnostics-color=always")
     set (CMAKE_C_FLAGS_MINSIZEREL "-Os -s -Wall -fdiagnostics-color=always")

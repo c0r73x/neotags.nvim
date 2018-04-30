@@ -5,21 +5,29 @@
 # Repository:  https://github.com/c0r73x/neotags.nvim
 #              Released under the MIT license
 # ============================================================================
+# NOTE: Psutil import moved to Neotags._kill() to allow the script to run
+# without the module (and therefore essentially without the kill function,
+# beggers can't be choosers). Psutil is not and will never be available on
+# cygwin, which makes this plugin unusable there without this change.
+import gzip
+import hashlib
+import mmap
 import os
 import re
-import time
-import hashlib
 import subprocess
-import mmap
-import psutil
-
+import time
 from sys import platform
 from neovim.api.nvim import NvimError
+from tempfile import NamedTemporaryFile
+
+SUFFIX = '.gz'
 
 
 class Neotags(object):
 
     def __init__(self, vim):
+        self.vimtf = VimTagFiles(vim, self._debug_echo, self._error)
+
         self.__vim = vim
         self.__prefix = '\C\<'
         self.__suffix = '\>'
@@ -30,6 +38,7 @@ class Neotags(object):
         self.__cmd_cache = {}
         self.__groups = {}
         self.__md5_cache = {}
+        self.__tempfiles = {}
 
         self.__ignore = []
         self.__ignored_tags = []
@@ -301,8 +310,8 @@ class Neotags(object):
 
         if not force  \
             and (hlkey in highlights and md5hash == highlights[hlkey]) \
-            or (number != self.__hlbuf and number in self.__cmd_cache and hlkey
-                in self.__cmd_cache[number]):
+            or (number != self.__hlbuf and number in self.__cmd_cache
+                and hlkey in self.__cmd_cache[number]):
             try:
                 cmds = self.__cmd_cache[number][hlkey]
             except KeyError:
@@ -316,7 +325,6 @@ class Neotags(object):
                 current = group[i:i + self.__patternlength]
 
                 if prefix == self.__prefix and suffix == self.__suffix:
-                    # self._debug_echo("%s is a keyword arg" % current)
                     cmds.append(self.__keyword_pattern %
                                 (hlkey, ' '.join(current)))
                 else:
@@ -361,33 +369,25 @@ class Neotags(object):
 
     def _parseTags(self, ft):
         self._get_file()
-        neotags_file = self.__tagfile
-        tagfiles = self.__vim.api.eval('&tags').split(",")
+        comp_file = self.__tagfile + SUFFIX
 
         self._debug_start()
-        self._debug_echo("Using tags file " + neotags_file)
-        if neotags_file not in tagfiles:
-            self.__vim.command('set tags+=%s' % neotags_file, async=True)
-            tagfiles.append(neotags_file)
+        self._debug_echo("Using tags file %s" % comp_file)
 
-        if not os.path.exists(neotags_file):
+        if not os.path.exists(comp_file):
             self._debug_echo("Tags file does not exist. Running ctags.")
             self._run_ctags()
+        else:
+            if self.vimtf.need_update(comp_file):
+                self._debug_echo('updating vim-tagfile', False)
+                with gzip.open(comp_file, 'rb', 9) as File:
+                    self.vimtf.update(comp_file, File)
+            else:
+                self._debug_echo('not updating vim-tagfile', False)
 
         self._debug_end("Finished updating file list")
 
-        # files = []
-        files = [neotags_file]
-
-        for f in tagfiles:
-            f = f.replace(';', '').encode('utf-8')
-
-            if (os.path.isfile(f)):
-                try:
-                    if (os.stat(f).st_size > 0):
-                        files.append(f)
-                except IOError:
-                    self._error('unable to open %s' % f.decode('utf-8'))
+        files = [self.__tagfile]
 
         if files is None:
             self._error("echom 'No tag files found!'")
@@ -405,7 +405,7 @@ class Neotags(object):
             self._debug_echo("Using C binary to analyze tags.", False)
             return self._bin_getTags(files, ft)
 
-###############################################################################
+# =============================================================================
     # Yes C binary
 
     def _bin_getTags(self, files, ft):
@@ -426,16 +426,12 @@ class Neotags(object):
         if filetypes is None:
             return groups
 
-        File = files[0]
+        File = files[0] + SUFFIX
 
         self._debug_start()
         if (os.stat(File).st_size == 0):
             return
 
-        # proc = subprocess.Popen(['valgrind', '-v'
-        #                          '--leak-check=full',
-        #                          '--track-origins=yes',
-        #                          self.__neotags_bin,
         proc = subprocess.Popen((self.__neotags_bin,
                                  File,
                                  lang,
@@ -450,22 +446,10 @@ class Neotags(object):
                                 stdin=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 stdout=subprocess.PIPE)
-        #                         universal_newlines=True)
         out, err = proc.communicate(input=self.__slurp.encode('utf-8'))
 
         self._debug_end('done reading %s' % File)
         out = out.decode().split('\n')
-
-        # err = err.decode().split('\n')
-        # with open(os.environ['HOME'] + 'nt_debug', 'w') as fp:
-        #     print("OUTPUT", file=fp)
-        #     print(out, file=fp)
-        #     for s in out:
-        #         print(s, file=fp)
-        #     print("ERROR", file=fp)
-        #     print(err, file=fp)
-        #     for s in err:
-        #         print(s, file=fp)
 
         for i in range(0, len(out) - 1, 2):
             key = "%s#%s" % (ft, out[i].rstrip('\r'))
@@ -474,10 +458,9 @@ class Neotags(object):
             except KeyError:
                 groups[key] = [out[i + 1].rstrip('\r')]
 
-        # self._debug_echo(str(groups), False)
         return groups
 
-###############################################################################
+# =============================================================================
     # No C binary
 
     def _getTags(self, files, ft):
@@ -494,21 +477,17 @@ class Neotags(object):
             + bytes(lang, 'utf8') + b'(?:\w+)?)', re.IGNORECASE
         )
 
-        # for File in files:
-        File = files[0]
-
+        File = files[0] + SUFFIX
         self._debug_start()
         if (os.stat(File).st_size == 0):
             return
-        try:
-            with open(File, 'r') as f:
-                mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
 
+        try:
+            with gzip.open(File, 'r') as fp:
+                mf = mmap.mmap(fp.fileno(), 0,  access=mmap.ACCESS_READ)
                 for match in pattern.finditer(mf):
                     self._parseLine(match, groups, languages)
-
                 mf.close()
-
         except IOError as e:
             self._error("could not read %s: %s" % (File, e))
             return
@@ -521,16 +500,15 @@ class Neotags(object):
         clean = reversed(order)
 
         self._debug_start()
-        self._debug_echo(':'.join([i for sub in self.__ctov.items() for i in sub]) + ':')
+        self._debug_echo(':'.join([i for sub in self.__ctov.items()
+                                   for i in sub]) + ':')
 
         for a in list(clean):
             if a not in groups:
                 continue
-
             for b in list(order):
                 if b not in groups or a == b:
                     continue
-
                 groups[a] = [x for x in groups[a] if x not in groups[b]]
 
         self._debug_end('done cleaning groups')
@@ -567,7 +545,7 @@ class Neotags(object):
         """Reject tags that do not appear in the current buffer."""
         return (self.__slurp.find(tag) > 0) and tag not in self.__ignored_tags
 
-###############################################################################
+# =============================================================================
 
     def _tags_order(self, ft):
         orderlist = []
@@ -628,11 +606,31 @@ class Neotags(object):
             else:
                 self._debug_echo('Ctags completed successfully')
 
+            # tagfiles = self.__vim.api.eval('&tags').split(",")
+            self._debug_start()
+
+            try:
+                with open(self.__tagfile) as src:
+                    with gzip.open(self.__tagfile + SUFFIX, 'wb', 9) as dst:
+                        dst.write(src.buffer.read())
+                    src.seek(0)
+                    self.vimtf.update(self.__tagfile + SUFFIX, src)
+
+                os.unlink(self.__tagfile)
+
+            except IOError as err:
+                self._error("Unexpected IO Error -> '%s'" % err)
+
+            self._debug_end('Finished compressing file.')
+
         except FileNotFoundError as error:
             self._error('failed to run Ctags %s' % error)
 
         except subprocess.TimeoutExpired:
-            self._kill(proc.pid)
+            try:
+                self._kill(proc.pid)
+            except ImportError:
+                proc.kill()
 
             if self.__vim.vars['neotags_silent_timeout'] == 0:
                 self.__vim.command(
@@ -680,7 +678,6 @@ class Neotags(object):
 
         self._debug_echo(str(cmds), False)
 
-        # cmds.append('let b:neotags_cache = {}')
         self.__md5_cache = {}
         self.__vim.command(' | '.join(cmds), async=True)
 
@@ -727,11 +724,13 @@ class Neotags(object):
     def _error(self, message):
         if message:
             message = message.replace('\\', '\\\\').replace('"', '\\"')
+            self.__vim.command("echom 'severe error, see log file'")
             self.__vim.command(
-                'echohl ErrorMsg | echom "%s" | echohl None' % message
+               'echohl ErrorMsg | echom "%s" | echohl None' % message
             )
 
     def _kill(self, proc_pid):
+        import psutil
         process = psutil.Process(proc_pid)
         for proc in process.children():
             proc.kill()
@@ -817,6 +816,56 @@ class Neotags(object):
                 self._inform_echo("Binary '%s' doesn't exist. Cannot enable."
                                   % self.__neotags_bin, False)
             else:
-                self._debug_echo("Binary '%s' doesn't exist." % self.__neotags_bin, False)
+                self._debug_echo("Binary '%s' doesn't exist."
+                                 % self.__neotags_bin, False)
 
         return binary
+
+
+class VimTagFiles:
+    def __init__(self, vim, debug_echo, error):
+        self.__cache = {}
+        self.__vim = vim
+        self._debug_echo = debug_echo
+        self._error = error
+
+    def need_update(self, tagfile):
+        need_update = False
+        if tagfile in self.__cache:
+            try:
+                need_update = self.__cache[tagfile]['mtime'] != os.path.getmtime(tagfile)
+            except IOError:
+                need_update = True
+        else:
+            need_update = True
+
+        return need_update
+
+    def update(self, tagfile, open_file):
+        try:
+            if tagfile not in self.__cache:
+                self.__cache[tagfile] = {}
+                tmp = NamedTemporaryFile(mode='wb')
+
+                self._write_file(open_file, tmp)
+
+                self.__cache[tagfile]['tmp'] = tmp
+                self.__vim.command('set tags+=%s' % tmp.name, async=True)
+
+            else:
+                tmp = self.__cache[tagfile]['tmp']
+                tmp.file.seek(0)
+                tmp.file.truncate(0)
+                self._write_file(open_file, tmp)
+
+            tmp.file.flush()
+            self.__cache[tagfile]['mtime'] = os.path.getmtime(tagfile)
+
+        except IOError:
+            pass
+
+    def _write_file(self, File, tmp):
+        if isinstance(File, gzip.GzipFile):
+            tmp.raw.write(File.fileobj.raw.read())
+        else:
+            tmp.raw.write(File.buffer.read())

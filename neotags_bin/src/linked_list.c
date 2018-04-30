@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct Node * getnode_at_index(struct linked_list *list, int64_t index);
+static struct Node * getnode_at_index(struct linked_list *list, long index);
 static void remove_node(struct linked_list *list, struct Node *node);
 
 
@@ -56,7 +56,7 @@ ll_append(struct linked_list *list, LLTYPE data)
 
 
 LLTYPE
-_ll_popat(struct linked_list *list, int64_t index, enum ll_pop_type type)
+_ll_popat(struct linked_list *list, long index, enum ll_pop_type type)
 {
         struct Node *node = getnode_at_index(list, index);
 
@@ -119,7 +119,7 @@ destroy_list(struct linked_list *list)
 
 
 static struct Node *
-getnode_at_index(struct linked_list *list, int64_t index)
+getnode_at_index(struct linked_list *list, long index)
 {
         assert(list->size > 0);
 
@@ -138,13 +138,13 @@ getnode_at_index(struct linked_list *list, int64_t index)
          * first half of the list) start the search from the head, otherwise
          * start from the tail. */
         if (index < ((list->size - 1) / 2)) {
-                int64_t x = 0;
+                long x = 0;
                 current = list->head;
 
                 while (x++ != index)
                         current = current->next;
         } else {
-                int64_t x = list->size - 1;
+                long x = list->size - 1;
                 current = list->tail;
 
                 while (x-- != index)

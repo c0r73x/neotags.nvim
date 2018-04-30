@@ -70,6 +70,8 @@ char *program_name;
 #  define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #  define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 #  define __attribute__(...)
+#  undef BUFSIZ
+#  define BUFSIZ 8192
 #endif
 
 #define streq(SA, SB)    (strcmp((SA), (SB)) == 0)
@@ -103,14 +105,14 @@ char *program_name;
 #define s_xatoi(STR)    __xatoi((STR), true)
 #define my_getline(PTR) my_fgetline((PTR), stdin)
 
-int64_t __xatoi         (char *str, bool strict);
-int     my_fgetline     (char **ptr, FILE *fp);
-void    destroy_strlst  (struct strlst *vec);
-void *  xmalloc         (const size_t size)                __attribute__((malloc));
-void *  xcalloc         (const int num, const size_t size) __attribute__((malloc));
-void *  xrealloc        (void *ptr, const size_t size)     __attribute__((malloc));
-FILE *  safe_fopen      (const char * const restrict filename, const char * const restrict mode);
-void    dump_list       (char **list, FILE *fp);
+long   __xatoi        (char *str, bool strict);
+int    my_fgetline    (char **ptr, FILE *fp);
+void   destroy_strlst (struct strlst *lst);
+void * xmalloc        (const size_t size)                __attribute__((malloc));
+void * xcalloc        (const int num, const size_t size) __attribute__((malloc));
+void * xrealloc       (void *ptr, const size_t size)     __attribute__((malloc));
+FILE * safe_fopen     (const char * const restrict filename, const char * const restrict mode);
+void   dump_list      (char **list, FILE *fp);
 
 struct strlst * get_all_lines(const char *filename);
 
@@ -126,7 +128,7 @@ struct linked_list * new_list(void);
 
 void   ll_add(struct linked_list *list, LLTYPE data);
 void   ll_append(struct linked_list *list, LLTYPE data);
-LLTYPE _ll_popat(struct linked_list *list, int64_t index, enum ll_pop_type type);
+LLTYPE _ll_popat(struct linked_list *list, long index, enum ll_pop_type type);
 bool   ll_find_str(struct linked_list *list, char *str);
 void   destroy_list(struct linked_list *list);
 
