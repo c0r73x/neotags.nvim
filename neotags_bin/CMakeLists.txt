@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.6.0)
 project (neotags C)
 
 if (MSVC)
+    # Most of the directories listed for Windows are wild guesses. This may need
+    # to be edited to reflect your computer.
     set (CMAKE_C_FLAGS_RELEASE "/Ox /Oi /Ot /GL /MD /favor:INTEL64 /MP")
     set (CMAKE_BUILD_TYPE Release)
     set (CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_RELEASE})

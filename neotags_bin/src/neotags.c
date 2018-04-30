@@ -7,7 +7,7 @@
 #include <string.h>
 
 static struct linked_list * search(
-        const struct strlst *taglist, const char *lang, const char *order,
+        const struct strlist *taglist, const char *lang, const char *order,
         const char *const *ctov, const char *const *skip
 );
 static void get_colon_delim_data(char **data, char *arg);
@@ -19,8 +19,8 @@ static void normalize_lang(char *buf, const char *lang, const size_t max);
 
 #define REQUIRED_INPUT 8
 #define PATSIZ 256
-#define PATTERN_PT1 \
-        "^([^\\t]+)\\t(?:[^\\t]+)\\t\\/(?:.+)\\/;\"\\t(\\w)\\tlanguage:("
+
+#define PATTERN_PT1 "^([^\\t]+)\\t(?:[^\\t]+)\\t\\/(?:.+)\\/;\"\\t(\\w)\\tlanguage:("
 #define PATTERN_PT2 "(?:\\[a-zA-Z]+)?)"
 
 #define CCC(ARG) ((const char *const *)(ARG))
@@ -53,7 +53,7 @@ main(int argc, char **argv)
 
         get_colon_delim_data(skip, *argv++);
         get_colon_delim_data(ctov, *argv++);
-        struct strlst *taglist = get_all_lines(tagfile);
+        struct strlist *taglist = get_all_lines(tagfile);
         long i;
 
         /* Slurp the whole vim_buf from the python code */
@@ -66,7 +66,7 @@ main(int argc, char **argv)
 
         /* pointlessly free everything */
         destroy_list(ll);
-        destroy_strlst(taglist);
+        destroy_strlist(taglist);
         char *buf, **tmp = skip;
         while ((buf = *tmp++) != NULL)
                 free(buf);
@@ -82,7 +82,7 @@ main(int argc, char **argv)
 
 
 static struct linked_list *
-search(const struct strlst *taglist,
+search(const struct strlist *taglist,
        const char *lang,
        const char *order,
        const char *const *ctov,
@@ -122,39 +122,41 @@ search(const struct strlst *taglist,
                 int rcnt   = pcre2_match(cre, subject, subject_len, 0,
                                          PCRE2_CASELESS, match_data, NULL);
 
-                if (rcnt < 0) /* no match */
-                        goto next;
+                if (rcnt >= 0) {  /* match found */
+                        PCRE2_SIZE *ovector =
+                            pcre2_get_ovector_pointer(match_data);
 
-                PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
-
-#define substr(INDEX) _substr(INDEX, subject, ovector)
+#define substr(INDEX)    _substr(INDEX, subject, ovector)
 #define substrlen(INDEX) _substrlen(INDEX, ovector)
 
-                int len    = substrlen(tNAME) + 2;
-                char *data = xmalloc(len);
-                data[0]    = substr(tKIND)[0];
+                        int len    = substrlen(tNAME) + 2;
+                        char *data = xmalloc(len);
+                        data[0]    = substr(tKIND)[0];
 
-                strlcpy(match_lang, substr(tLANG), substrlen(tLANG) + 1);
-                strlcpy(data + 1, substr(tNAME), len - 1);
+                        strlcpy(match_lang, substr(tLANG),
+                                substrlen(tLANG) + 1);
+                        strlcpy(data + 1, substr(tNAME), len - 1);
 
-                /* Prune tags. Include only those that are:
-                 *         1) of a type in the `order' list,
-                 *         2) of the correct language (applies mainly to C and
-                 *            C++, generally ctags filters for that),
-                 *         3) are not included in the `skip' list, and
-                 *         4) are not duplicates.
-                 *    If invalid, just free and move on.
-                 */
-                if ( strchr(order, (int)data[0]) &&
-                     is_correct_lang(ctov, lang, match_lang) &&
-                    !skip_tag(skip, data + 1) &&
-                    !ll_find_str(ll, data)
-                   )
-                        ll_add(ll, data);
-                else
-                        free(data);
+                        /*
+                         * Prune tags. Include only those that are:
+                         *    1) of a type in the `order' list,
+                         *    2) of the correct language (applies mainly to C
+                         *       and C++, generally ctags filters languages),
+                         *    3) are not included in the `skip' list, and
+                         *    4) are not duplicates.
+                         * If invalid, just free and move on.
+                         */
+                        if ( strchr(order, (int)data[0]) &&
+                             is_correct_lang(ctov, lang, match_lang) &&
+                            !skip_tag(skip, data + 1) &&
+                            !ll_find_str(ll, data))
+                        {
+                                ll_add(ll, data);
+                        } else {
+                                free(data);
+                        }
+                }
 
-        next:
                 pcre2_match_data_free(match_data);
         }
 

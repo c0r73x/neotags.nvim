@@ -11,14 +11,14 @@
 # cygwin, which makes this plugin unusable there without this change.
 import gzip
 import hashlib
-import mmap
+# import mmap
 import os
 import re
 import subprocess
 import time
 from sys import platform
 from neovim.api.nvim import NvimError
-from tempfile import NamedTemporaryFile
+from tempfile import mkstemp
 
 SUFFIX = '.gz'
 
@@ -26,8 +26,6 @@ SUFFIX = '.gz'
 class Neotags(object):
 
     def __init__(self, vim):
-        self.vimtf = VimTagFiles(vim, self._debug_echo, self._error)
-
         self.__vim = vim
         self.__prefix = '\C\<'
         self.__suffix = '\>'
@@ -38,7 +36,7 @@ class Neotags(object):
         self.__cmd_cache = {}
         self.__groups = {}
         self.__md5_cache = {}
-        self.__tempfiles = {}
+        self.__tmp_cache = {}
 
         self.__ignore = []
         self.__ignored_tags = []
@@ -289,7 +287,7 @@ class Neotags(object):
         highlights, number = self._getbufferhl()
 
         self._debug_echo("Highlighting for buffer %s" % number)
-        if number in self.__md5_cache.keys():
+        if number in self.__md5_cache:
             highlights = self.__md5_cache[number]
         else:
             self.__md5_cache[number] = highlights = {}
@@ -316,7 +314,6 @@ class Neotags(object):
                 cmds = self.__cmd_cache[number][hlkey]
             except KeyError:
                 return True
-            # self._debug_echo(str(self.__cmd_cache))
             self._debug_echo("Updating from cache" % cmds)
         else:
             cmds.append('silent! syntax clear %s' % hlkey)
@@ -378,12 +375,9 @@ class Neotags(object):
             self._debug_echo("Tags file does not exist. Running ctags.")
             self._run_ctags()
         else:
-            if self.vimtf.need_update(comp_file):
-                self._debug_echo('updating vim-tagfile', False)
-                with gzip.open(comp_file, 'rb', 9) as File:
-                    self.vimtf.update(comp_file, File)
-            else:
-                self._debug_echo('not updating vim-tagfile', False)
+            self._debug_echo('updating vim-tagfile', False)
+            with gzip.open(comp_file, 'rt', encoding='utf8', errors='replace') as File:
+                self.update_vim_tagfile(comp_file, File)
 
         self._debug_end("Finished updating file list")
 
@@ -451,6 +445,9 @@ class Neotags(object):
         self._debug_end('done reading %s' % File)
         out = out.decode().split('\n')
 
+        # for s in out:
+        #     self._debug_echo("OUT: %s" % s, False)
+
         for i in range(0, len(out) - 1, 2):
             key = "%s#%s" % (ft, out[i].rstrip('\r'))
             try:
@@ -483,11 +480,13 @@ class Neotags(object):
             return
 
         try:
+            # with gzip.open(File, 'r', errors='replace', encoding=None) as fp:
             with gzip.open(File, 'r') as fp:
-                mf = mmap.mmap(fp.fileno(), 0,  access=mmap.ACCESS_READ)
+                # mf = mmap.mmap(fp.fileno(), 0,  access=mmap.ACCESS_READ)
+                mf = fp.read()
                 for match in pattern.finditer(mf):
                     self._parseLine(match, groups, languages)
-                mf.close()
+                # mf.close()
         except IOError as e:
             self._error("could not read %s: %s" % (File, e))
             return
@@ -610,11 +609,11 @@ class Neotags(object):
             self._debug_start()
 
             try:
-                with open(self.__tagfile) as src:
+                with open(self.__tagfile, errors='replace') as src:
                     with gzip.open(self.__tagfile + SUFFIX, 'wb', 9) as dst:
                         dst.write(src.buffer.read())
                     src.seek(0)
-                    self.vimtf.update(self.__tagfile + SUFFIX, src)
+                    self.update_vim_tagfile(self.__tagfile + SUFFIX, src)
 
                 os.unlink(self.__tagfile)
 
@@ -678,7 +677,7 @@ class Neotags(object):
 
         self._debug_echo(str(cmds), False)
 
-        self.__md5_cache = {}
+        # self.__md5_cache = {}
         self.__vim.command(' | '.join(cmds), async=True)
 
     def _regexp(self, kind, var):
@@ -713,7 +712,7 @@ class Neotags(object):
     def _debug_end(self, message):
         self._debug_echo(message)
         self.__start_time.pop()
-        self._debug_echo("Total elapsed: " + str(time.time() - self.__globtime), False)
+        # self._debug_echo("Total elapsed: " + str(time.time() - self.__globtime), False)
 
     def _inform_echo(self, message):
         self.__vim.command(
@@ -821,51 +820,32 @@ class Neotags(object):
 
         return binary
 
-
-class VimTagFiles:
-    def __init__(self, vim, debug_echo, error):
-        self.__cache = {}
-        self.__vim = vim
-        self._debug_echo = debug_echo
-        self._error = error
-
-    def need_update(self, tagfile):
-        need_update = False
-        if tagfile in self.__cache:
-            try:
-                need_update = self.__cache[tagfile]['mtime'] != os.path.getmtime(tagfile)
-            except IOError:
-                need_update = True
-        else:
-            need_update = True
-
-        return need_update
-
-    def update(self, tagfile, open_file):
+    def update_vim_tagfile(self, tagfile, open_file):
         try:
-            if tagfile not in self.__cache:
-                self.__cache[tagfile] = {}
-                tmp = NamedTemporaryFile(mode='wb')
+            if tagfile not in self.__tmp_cache:
+                self.__tmp_cache[tagfile] = {}
+                fd, name = mkstemp()
+                tmpfile = os.fdopen(fd, errors='replace', mode='w')
 
-                self._write_file(open_file, tmp)
+                self._write_file(open_file, tmpfile, tagfile)
 
-                self.__cache[tagfile]['tmp'] = tmp
-                self.__vim.command('set tags+=%s' % tmp.name, async=True)
+                self.__tmp_cache[tagfile]['fp'] = tmpfile
+                self.__tmp_cache[tagfile]['name'] = name
 
             else:
-                tmp = self.__cache[tagfile]['tmp']
-                tmp.file.seek(0)
-                tmp.file.truncate(0)
-                self._write_file(open_file, tmp)
+                tmpfile = self.__tmp_cache[tagfile]['fp']
+                name = self.__tmp_cache[tagfile]['name']
+                tmpfile.seek(0)
+                tmpfile.truncate(0)
+                tmpfile.flush()
+                self._write_file(open_file, tmpfile, tagfile)
 
-            tmp.file.flush()
-            self.__cache[tagfile]['mtime'] = os.path.getmtime(tagfile)
+            tmpfile.flush()
+            self.__tmp_cache[tagfile]['mtime'] = os.path.getmtime(tagfile)
+            self.__vim.command('set tags+=%s' % name, async=True)
 
-        except IOError:
-            pass
+        except IOError as err:
+            self._error("something horrible happened -> %s" % err)
 
-    def _write_file(self, File, tmp):
-        if isinstance(File, gzip.GzipFile):
-            tmp.raw.write(File.fileobj.raw.read())
-        else:
-            tmp.raw.write(File.buffer.read())
+    def _write_file(self, File, tmp, name):
+        tmp.write(File.read())

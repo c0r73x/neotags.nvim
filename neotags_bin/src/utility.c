@@ -61,12 +61,12 @@ my_gfgetline(char **ptr, gzFile *fp)
 }
 
 
-struct strlst *
+struct strlist *
 get_all_lines(const char *filename)
 {
         gzFile fp;
         safe_gzopen(&fp, filename, "rb");
-        struct strlst *lst = xmalloc(sizeof *lst);
+        struct strlist *lst = xmalloc(sizeof *lst);
         uint32_t max = GUESS;
 
         lst->s    = xmalloc(sizeof *lst->s * max);
@@ -115,7 +115,7 @@ file_is_reg(const char *filename)
 
 
 void
-destroy_strlst(struct strlst *lst)
+destroy_strlist(struct strlist *lst)
 {
         for (uint32_t i = 0; i < lst->num; ++i)
                 free(lst->s[i]);

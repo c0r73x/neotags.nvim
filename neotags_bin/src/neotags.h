@@ -27,7 +27,7 @@
 
 #define LLTYPE char *
 
-struct strlst {
+struct strlist {
         char **s;
         uint32_t *slen;
         uint32_t num;
@@ -105,16 +105,16 @@ char *program_name;
 #define s_xatoi(STR)    __xatoi((STR), true)
 #define my_getline(PTR) my_fgetline((PTR), stdin)
 
-long   __xatoi        (char *str, bool strict);
-int    my_fgetline    (char **ptr, FILE *fp);
-void   destroy_strlst (struct strlst *lst);
-void * xmalloc        (const size_t size)                __attribute__((malloc));
-void * xcalloc        (const int num, const size_t size) __attribute__((malloc));
-void * xrealloc       (void *ptr, const size_t size)     __attribute__((malloc));
-FILE * safe_fopen     (const char * const restrict filename, const char * const restrict mode);
-void   dump_list      (char **list, FILE *fp);
+long   __xatoi         (char *str, bool strict);
+int    my_fgetline     (char **ptr, FILE *fp);
+void   destroy_strlist (struct strlist *lst);
+void * xmalloc         (const size_t size)                __attribute__((malloc));
+void * xcalloc         (const int num, const size_t size) __attribute__((malloc));
+void * xrealloc        (void *ptr, const size_t size)     __attribute__((malloc));
+FILE * safe_fopen      (const char * const restrict filename, const char * const restrict mode);
+void   dump_list       (char **list, FILE *fp);
 
-struct strlst * get_all_lines(const char *filename);
+struct strlist * get_all_lines(const char *filename);
 
 
 /* linked_list.c */
