@@ -33,8 +33,8 @@ class Neotags(object):
         self.__initialized = False
         self.__is_running = False
 
-        self.__cmd_cache = {}
         self.__groups = {}
+        self.__cmd_cache = {}
         self.__md5_cache = {}
         self.__tmp_cache = {}
 
@@ -43,6 +43,7 @@ class Neotags(object):
         self.__notin = []
         self.__seen = []
         self.__start_time = []
+        self.__backup = []
 
         self.__directory = None
         self.__find_tool = None
@@ -61,6 +62,7 @@ class Neotags(object):
     def init(self):
         if (self.__initialized):
             return
+        self.__backup = [self._debug_echo, self._debug_start, self._debug_end]
 
         if (not self.__vim.vars['neotags_verbose']):
             self._debug_start = self.__void
@@ -117,15 +119,19 @@ class Neotags(object):
 
     def toggle(self):
         """Toggle state of the plugin."""
-        self.__cmd_cache = {}
         if (not self.__vim.vars['neotags_enabled']):
             self.__vim.vars['neotags_enabled'] = 1
+            self._inform_echo("Re-enabling neotags.")
+            self.update(force=True)
         else:
             self.__vim.vars['neotags_enabled'] = 0
+            self._inform_echo("Disabling neotags.")
+            self.__seen = []
+            self.__md5_cache = {}
+            self.__cmd_cache = {}
+            self.update()
 
-        self.update()
-
-    def toggle_C_bin(self, args):
+    def toggle_C_bin(self):
         if self.__neotags_bin is None:
             self.__neotags_bin = self._get_binary(loud=True)
             if self.__neotags_bin is not None:
@@ -135,10 +141,23 @@ class Neotags(object):
             self.__vim.vars['neotags_use_binary'] = 0
             self._inform_echo("Switching to use python code.")
 
-    def update(self):
+    def toggle_verbosity(self):
+        if self._debug_echo == self.__void:
+            self._inform_echo('Switching to verbose output.')
+            self._debug_echo = self.__backup[0]
+            self._debug_start = self.__backup[1]
+            self._debug_end = self.__backup[2]
+            self.__vim.vars['neotags_verbose'] = 1
+        else:
+            self._inform_echo('Switching off verbose output.')
+            self._debug_start = self._debug_echo = self._debug_end = self.__void
+            self.__vim.vars['neotags_verbose'] = 0
+
+    def update(self, force=False):
         """Update tags file, tags cache, and highlighting."""
         ft = self.__vim.api.eval('&ft')
         if (not self.__vim.vars['neotags_enabled']):
+            self._debug_echo('Update called when plugin disabled...', False)
             self._clear(ft)
             return
 
@@ -149,9 +168,7 @@ class Neotags(object):
             return
         self.__is_running = True
 
-        if (self.__vim.vars['neotags_run_ctags']):
-            self._run_ctags()
-        self.__groups[ft] = self._parseTags(ft)
+        self._update(ft)
 
         self.__is_running = False
         self.highlight(False)
@@ -160,8 +177,8 @@ class Neotags(object):
         """Analyze the tags data and format it for nvim's regex engine."""
         self.__globtime = time.time()
         self.__exists_buffer = {}
-        force = clear
         ft = self.__vim.api.eval('&ft')
+        force = clear
 
         if (clear):
             self._clear(ft)
@@ -183,10 +200,9 @@ class Neotags(object):
         file = self.__vim.api.eval("expand('%:p:p')")
 
         if self.__vim.current.buffer.number not in self.__seen \
-                or ft not in self.__groups:
+                or ft not in self.__groups or force:
             self._debug_echo("Forcing an update!")
-            self.__seen = [i.number for i in self.__vim.buffers]
-            self.__groups[ft] = self._parseTags(ft)
+            self._update(ft)
             force = True
 
         order = self._tags_order(ft)
@@ -213,7 +229,7 @@ class Neotags(object):
                                        prefix, suffix, notin, force):
                     break
 
-                self._debug_echo('applied syntax for %s' % key)
+                # self._debug_echo('applied syntax for %s' % key)
 
             fkey = key + '_filter'
             if fgroup is not None and fkey in groups:
@@ -225,7 +241,7 @@ class Neotags(object):
                                        prefix, suffix, notin, force):
                     break
 
-                self._debug_echo('applied syntax for %s' % fkey)
+                # self._debug_echo('applied syntax for %s' % fkey)
 
         self._debug_end('applied syntax for %s' % ft)
 
@@ -282,6 +298,11 @@ class Neotags(object):
 ##############################################################################
     # Private
 
+    def _update(self, ft):
+        self.__seen.append(self.__vim.current.buffer.number)
+        self._run_ctags()
+        self.__groups[ft] = self._parseTags(ft)
+
     def _highlight(self, key, file, ft, hlgroup, group, prefix, suffix, notin, force):
         self._debug_start()
         highlights, number = self._getbufferhl()
@@ -313,6 +334,7 @@ class Neotags(object):
             try:
                 cmds = self.__cmd_cache[number][hlkey]
             except KeyError:
+                self._error('Key error in _highlight()!')
                 return True
             self._debug_echo("Updating from cache" % cmds)
         else:
@@ -445,8 +467,11 @@ class Neotags(object):
         self._debug_end('done reading %s' % File)
         out = out.decode().split('\n')
 
-        # for s in out:
-        #     self._debug_echo("OUT: %s" % s, False)
+        for s in out:
+            self._debug_echo("OUT: %s" % s, False)
+        err = err.decode().split('\n')
+        for s in err:
+            self._debug_echo("ERR: %s" % s, False)
 
         for i in range(0, len(out) - 1, 2):
             key = "%s#%s" % (ft, out[i].rstrip('\r'))
@@ -664,6 +689,7 @@ class Neotags(object):
 
     def _clear(self, ft):
         if ft is None:
+            self._debug_echo('Clear called with null ft')
             return
 
         highlights, _ = self._getbufferhl()
@@ -677,7 +703,7 @@ class Neotags(object):
 
         self._debug_echo(str(cmds), False)
 
-        # self.__md5_cache = {}
+
         self.__vim.command(' | '.join(cmds), async=True)
 
     def _regexp(self, kind, var):
@@ -723,7 +749,6 @@ class Neotags(object):
     def _error(self, message):
         if message:
             message = message.replace('\\', '\\\\').replace('"', '\\"')
-            self.__vim.command("echom 'severe error, see log file'")
             self.__vim.command(
                'echohl ErrorMsg | echom "%s" | echohl None' % message
             )

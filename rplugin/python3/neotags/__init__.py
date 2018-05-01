@@ -46,4 +46,8 @@ class NeotagsHandlers(object):
 
     @neovim.function('Neotags_Toggle_C_Binary')
     def toggle_C_bin(self, args):
-        self.__vim.async_call(self.__neotags.toggle_C_bin, args)
+        self.__vim.async_call(self.__neotags.toggle_C_bin)
+
+    @neovim.function('Neotags_Toggle_Verbosity')
+    def toggle_verbosity(self, args):
+        self.__vim.async_call(self.__neotags.toggle_verbosity)
