@@ -52,13 +52,52 @@ files, and thereby conglomerate a project into one file, you may designate any
 directory as a "project" top directory using the `NeotagsAddProject` command.
 See below for details.
 
+## Optional C Extension
+
+Because the original implementation in python can take a modestly long time for
+very large projects, the section of code that does the tag filtering has been
+rewritten in C. If used, this can quite dramatically decrease the waiting time,
+often by up to 4+ times.
+
+It can be enabled simply by compiling it. Run `make` in the root git directory
+and the small project will be automatically configured, compiled, and installed
+into `~/.vim_tags/bin`. The requirements are cmake, libpcre2, and of course
+a working C compiler. All of these should be readily available on any Unix like
+platform. If you want to install it elsewhere feel free to configure and build
+the project yourself. It is also possible to configure with autotools by
+running the included `autogen.sh` if you really prefer.
+
+The build process can be easily automated with a package manager such as dein.
+Just add
+
+    call dein#add('c0r73x/neotags.nvim', {'build:' 'make'})
+
+to your .vimrc or init.nvim file and dein will handle the rest. To disable it
+after installing either delete the binary or add `let g:neotags_bin = ''` to
+your setup.
+
+As usual, on Windows things are more difficult. It is possible to compile with
+MinGW, but the resulting binary is usually slower than the original python! If
+you have Visual Studio installed then it is possible to generate a project with
+cmake, provided that you can source a copy of `libpcre2-8.lib` or similar from
+somewhere. There are no easily available pre-compiled version of this library,
+so you'll either have to compile it yourself or download MinGW and use its
+pre-compiled version (called `libpcre2-8.dll.a`). Put it in the same directory
+as the top `CMakeFiles.txt` file and everything should work. There isn't any
+shortcut around this, unfortunately.
+
+If all of this seems like too much bother (especially for Windows users!) then
+as mentioned the python version will work perfectly fine, and is probably
+plenty fast enough for the majority of cases.
+
 ## Commands
 
-| Command                           | Description                                         |
-|-----------------------------------|------------------------------------------------------
-| `NeotagsToggle`                   | Toggle neotags on the fly                                           |
-| `NeotagsAddProject <DIRECTORY>`   | Add a directory to the global list of "project" top directories     |
-| `NeotagsRemoveProject <DIRECTORY` | Remove a directry from the global list of "project" top directories |
+| Command                             | Description                                                         |
+| ----------------------------------- | ------------------------------------------------------
+| `NeotagsToggle`                     | Toggle neotags on the fly                                           |
+| `NeotagsAddProject <DIRECTORY>`     | Add a directory to the global list of "project" top directories     |
+| `NeotagsRemoveProject <DIRECTORY`   | Remove a directry from the global list of "project" top directories |
+| `NeotagsBinToggle`                  | Toggle usage of the compiled C binary                               |
 
 ## Options
 

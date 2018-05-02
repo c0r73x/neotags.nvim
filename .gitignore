@@ -92,3 +92,5 @@ ENV/
 core
 tags
 .tags
+compile_commands.json
+*\~*

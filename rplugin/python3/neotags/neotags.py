@@ -5,18 +5,22 @@
 # Repository:  https://github.com/c0r73x/neotags.nvim
 #              Released under the MIT license
 # ============================================================================
+# NOTE: Psutil import moved to Neotags._kill() to allow the script to run
+# without the module (and therefore essentially without the kill function,
+# beggers can't be choosers). Psutil is not and will never be available on
+# cygwin, which makes this plugin unusable there without this change.
+import gzip
+import hashlib
+# import mmap
 import os
 import re
-import mmap
-import time
-import hashlib
 import subprocess
-
+import time
 from sys import platform
+from neovim.api.nvim import NvimError
+from tempfile import mkstemp
 
-import psutil
-
-# from neovim.api.nvim import NvimError
+SUFFIX = '.gz'
 
 
 class Neotags(object):
@@ -25,24 +29,30 @@ class Neotags(object):
         self.__vim = vim
         self.__prefix = '\C\<'
         self.__suffix = '\>'
-        self.__is_running = False
-        self.__initialized = False
-        self.__start_time = []
         self.__current_file = ''
-        self.__groups = {}
-        self.__notin = []
-        self.__ignore = []
+        self.__initialized = False
+        self.__is_running = False
 
-        self.__seen = []
-        self.__ignored_tags = []
-        self.__md5_cache = {}
+        self.__groups = {}
         self.__cmd_cache = {}
+        self.__md5_cache = {}
+        self.__tmp_cache = {}
+
+        self.__ignore = []
+        self.__ignored_tags = []
+        self.__notin = []
+        self.__seen = []
+        self.__start_time = []
+        self.__backup = []
+
         self.__directory = None
+        self.__find_tool = None
+        self.__neotags_bin = None
         self.__noRecurseDirs = None
         self.__settingsFile = None
         self.__slurp = None
         self.__tagfile = None
-        self.__find_tool = None
+
         self.__globtime = time.time()
         self.__hlbuf = 1
 
@@ -52,6 +62,7 @@ class Neotags(object):
     def init(self):
         if (self.__initialized):
             return
+        self.__backup = [self._debug_echo, self._debug_start, self._debug_end]
 
         if (not self.__vim.vars['neotags_verbose']):
             self._debug_start = self.__void
@@ -64,23 +75,22 @@ class Neotags(object):
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
         self.__ctov = self.__vim.vars['neotags_ft_conv']
-        self.__vtoc = {
-            y: x for x,
-            y in self.__ctov.items()
-        }
+        self.__vtoc = {y: x for x, y in self.__ctov.items()}
 
-        self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
-        # self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/'
-        self.__keyword_pattern = r'syntax keyword %s %s containedin=ALLBUT,%s'
-        # self.__keyword_pattern = r'syntax keyword %s %s'
+        # self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s'
+        self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/'
+        # self.__keyword_pattern = r'syntax keyword %s %s containedin=ALLBUT,%s'
+        self.__keyword_pattern = r'syntax keyword %s %s'
         self.__exists_buffer = {}
         self.__regex_buffer = {}
 
         self.__directory = self.__vim.vars['neotags_directory']
-        self.__settingsFile = self.__vim.vars['neotags_settings_file']
-        self.__noRecurseDirs = self.__vim.vars['neotags_norecurse_dirs']
-        self.__ignored_tags = self.__vim.vars['neotags_ignored_tags']
         self.__find_tool = self.__vim.vars['neotags_find_tool']
+        self.__ignored_tags = self.__vim.vars['neotags_ignored_tags']
+        self.__noRecurseDirs = self.__vim.vars['neotags_norecurse_dirs']
+        self.__settingsFile = self.__vim.vars['neotags_settings_file']
+
+        self.__neotags_bin = self._get_binary()
 
         if (self.__vim.vars['neotags_enabled']):
             evupd = ','.join(self.__vim.vars['neotags_events_update'])
@@ -109,21 +119,48 @@ class Neotags(object):
 
     def toggle(self):
         """Toggle state of the plugin."""
-        self.__cmd_cache = {}
         if (not self.__vim.vars['neotags_enabled']):
             self.__vim.vars['neotags_enabled'] = 1
+            self._inform_echo("Re-enabling neotags.")
+            self.update(force=True)
         else:
             self.__vim.vars['neotags_enabled'] = 0
+            self._inform_echo("Disabling neotags.")
+            self.__seen = []
+            self.__md5_cache = {}
+            self.__cmd_cache = {}
+            self.update()
 
-        self.update()
+    def toggle_C_bin(self):
+        if self.__neotags_bin is None:
+            self.__neotags_bin = self._get_binary(loud=True)
+            if self.__neotags_bin is not None:
+                self._inform_echo("Switching to use C binary.")
+        else:
+            self.__neotags_bin = None
+            self.__vim.vars['neotags_use_binary'] = 0
+            self._inform_echo("Switching to use python code.")
 
-    def update(self):
+    def toggle_verbosity(self):
+        if self._debug_echo == self.__void:
+            self._inform_echo('Switching to verbose output.')
+            self._debug_echo = self.__backup[0]
+            self._debug_start = self.__backup[1]
+            self._debug_end = self.__backup[2]
+            self.__vim.vars['neotags_verbose'] = 1
+        else:
+            self._inform_echo('Switching off verbose output.')
+            self._debug_start = self._debug_echo = self._debug_end = self.__void
+            self.__vim.vars['neotags_verbose'] = 0
+
+    def update(self, force=False):
         """Update tags file, tags cache, and highlighting."""
+        ft = self.__vim.api.eval('&ft')
         if (not self.__vim.vars['neotags_enabled']):
-            self._clear()
+            self._debug_echo('Update called when plugin disabled...', False)
+            self._clear(ft)
             return
 
-        ft = self.__vim.api.eval('&ft')
         if (ft == '' or ft in self.__ignore):
             return
 
@@ -131,9 +168,7 @@ class Neotags(object):
             return
         self.__is_running = True
 
-        if (self.__vim.vars['neotags_run_ctags']):
-            self._run_ctags()
-        self.__groups[ft] = self._parseTags(ft)
+        self._update(ft)
 
         self.__is_running = False
         self.highlight(False)
@@ -142,18 +177,18 @@ class Neotags(object):
         """Analyze the tags data and format it for nvim's regex engine."""
         self.__globtime = time.time()
         self.__exists_buffer = {}
+        ft = self.__vim.api.eval('&ft')
         force = clear
 
         if (clear):
-            self._clear()
+            self._clear(ft)
         if (not self.__vim.vars['neotags_enabled']):
-            self._clear()
+            self._clear(ft)
             return
         if (not self.__vim.vars['neotags_highlight']):
-            self._clear()
+            self._clear(ft)
             return
 
-        ft = self.__vim.api.eval('&ft')
         if (ft == '' or ft in self.__ignore):
             return
 
@@ -165,14 +200,18 @@ class Neotags(object):
         file = self.__vim.api.eval("expand('%:p:p')")
 
         if self.__vim.current.buffer.number not in self.__seen \
-                or ft not in self.__groups:
+                or ft not in self.__groups or force:
             self._debug_echo("Forcing an update!")
-            self.__seen = [i.number for i in self.__vim.buffers]
-            self.__groups[ft] = self._parseTags(ft)
+            self._update(ft)
             force = True
 
         order = self._tags_order(ft)
         groups = self.__groups[ft]
+
+        if groups is None:
+            self._debug_echo("Skipping file", False)
+            self.__is_running = False
+            return
 
         if not order:
             order = groups.keys()
@@ -190,7 +229,7 @@ class Neotags(object):
                                        prefix, suffix, notin, force):
                     break
 
-                self._debug_echo('applied syntax for %s' % key)
+                # self._debug_echo('applied syntax for %s' % key)
 
             fkey = key + '_filter'
             if fgroup is not None and fkey in groups:
@@ -202,9 +241,9 @@ class Neotags(object):
                                        prefix, suffix, notin, force):
                     break
 
-                self._debug_echo('applied syntax for %s' % fkey)
+                # self._debug_echo('applied syntax for %s' % fkey)
 
-        self._debug_end('applied syntax')
+        self._debug_end('applied syntax for %s' % ft)
 
         self.__hlbuf = self.__vim.current.buffer.number
 
@@ -259,12 +298,17 @@ class Neotags(object):
 ##############################################################################
     # Private
 
+    def _update(self, ft):
+        self.__seen.append(self.__vim.current.buffer.number)
+        self._run_ctags()
+        self.__groups[ft] = self._parseTags(ft)
+
     def _highlight(self, key, file, ft, hlgroup, group, prefix, suffix, notin, force):
         self._debug_start()
         highlights, number = self._getbufferhl()
 
         self._debug_echo("Highlighting for buffer %s" % number)
-        if number in self.__md5_cache.keys():
+        if number in self.__md5_cache:
             highlights = self.__md5_cache[number]
         else:
             self.__md5_cache[number] = highlights = {}
@@ -272,6 +316,8 @@ class Neotags(object):
         current = []
         cmds = []
         hlkey = '_Neotags_%s_%s' % (key.replace('#', '_'), hlgroup)
+
+        # self._debug_echo(str(group))
 
         md5 = hashlib.md5()
         strgrp = ''.join(group).encode('utf8')
@@ -283,11 +329,12 @@ class Neotags(object):
 
         if not force  \
             and (hlkey in highlights and md5hash == highlights[hlkey]) \
-            or (number != self.__hlbuf and number in self.__cmd_cache and hlkey
-                in self.__cmd_cache[number]):
+            or (number != self.__hlbuf and number in self.__cmd_cache
+                and hlkey in self.__cmd_cache[number]):
             try:
                 cmds = self.__cmd_cache[number][hlkey]
             except KeyError:
+                self._error('Key error in _highlight()!')
                 return True
             self._debug_echo("Updating from cache" % cmds)
         else:
@@ -296,28 +343,27 @@ class Neotags(object):
             for i in range(0, len(group), self.__patternlength):
                 current = group[i:i + self.__patternlength]
 
-                # if prefix == self.__prefix and suffix == self.__suffix:
-                #     self._debug_echo("%s is a keyword arg" % current)
-                #     cmds.append(self.__keyword_pattern %
-                #                 (hlkey, ' '.join(current)))
-                # else:
-                #     cmds.append(self.__match_pattern %
-                #                 (hlkey, prefix, '\|'.join(current), suffix))
-
                 if prefix == self.__prefix and suffix == self.__suffix:
-                    cmds.append(self.__keyword_pattern % (
-                        hlkey,
-                        ' '.join(current),
-                        ','.join(self.__notin + notin)
-                    ))
+                    cmds.append(self.__keyword_pattern %
+                                (hlkey, ' '.join(current)))
                 else:
-                    cmds.append(self.__match_pattern % (
-                        hlkey,
-                        prefix,
-                        '\|'.join(current),
-                        suffix,
-                        ','.join(self.__notin + notin)
-                    ))
+                    cmds.append(self.__match_pattern %
+                                (hlkey, prefix, '\|'.join(current), suffix))
+
+                # if prefix == self.__prefix and suffix == self.__suffix:
+                #     cmds.append(self.__keyword_pattern % (
+                #         hlkey,
+                #         ' '.join(current),
+                #         ','.join(self.__notin + notin)
+                #     ))
+                # else:
+                #     cmds.append(self.__match_pattern % (
+                #         hlkey,
+                #         prefix,
+                #         '\|'.join(current),
+                #         suffix,
+                #         ','.join(self.__notin + notin)
+                #     ))
 
             if ft != self.__vim.api.eval('&ft'):
                 self._debug_end('filetype changed aborting highlight')
@@ -342,47 +388,104 @@ class Neotags(object):
 
     def _parseTags(self, ft):
         self._get_file()
-        neotags_file = self.__tagfile
-        tagfiles = self.__vim.api.eval('&tags').split(",")
+        comp_file = self.__tagfile + SUFFIX
 
         self._debug_start()
-        self._debug_echo("Using tags file " + neotags_file)
-        if neotags_file not in tagfiles:
-            self.__vim.command('set tags+=%s' % neotags_file, async=True)
-            tagfiles.append(neotags_file)
+        self._debug_echo("Using tags file %s" % comp_file)
 
-        if not os.path.exists(neotags_file):
+        if not os.path.exists(comp_file):
             self._debug_echo("Tags file does not exist. Running ctags.")
             self._run_ctags()
+        else:
+            self._debug_echo('updating vim-tagfile', False)
+            with gzip.open(comp_file, 'rt', encoding='utf8', errors='replace') as File:
+                self.update_vim_tagfile(comp_file, File)
 
         self._debug_end("Finished updating file list")
 
-        # files = []
-        files = [neotags_file]
-
-        for f in tagfiles:
-            f = f.replace(';', '').encode('utf-8')
-
-            if (os.path.isfile(f)):
-                try:
-                    if (os.stat(f).st_size > 0):
-                        files.append(f)
-                except IOError:
-                    self._error('unable to open %s' % f.decode('utf-8'))
+        files = [self.__tagfile]
 
         if files is None:
             self._error("echom 'No tag files found!'")
             return
 
-        return self._getTags(files, ft)
-
-    def _getTags(self, files, ft):
         # Slurp the whole content of the current buffer
-        # self.__slurp = ''
         self._debug_start()
-        self.__slurp = ''.join(self.__vim.current.buffer)
+        self.__slurp = ' '.join(self.__vim.current.buffer)
         self._debug_end("Finished updating slurp")
 
+        if self.__neotags_bin is None:
+            self._debug_echo("Using python code to analyze tags.", False)
+            return self._getTags(files, ft)
+        else:
+            self._debug_echo("Using C binary to analyze tags.", False)
+            return self._bin_getTags(files, ft)
+
+# =============================================================================
+    # Yes C binary
+
+    def _bin_getTags(self, files, ft):
+        filetypes = ft.lower().split('.')
+        languages = ft.lower().split('.')
+
+        lang = self._vim_to_ctags(languages)[0]
+        try:
+            order = self.__vim.api.eval('neotags#%s#order' % ft)
+        except NvimError:
+            return
+
+        groups = {
+            "%s#%s" % (ft, kind): []
+            for kind in [chr(i) for i in order.encode('ascii')]
+        }
+
+        if filetypes is None:
+            return groups
+
+        File = files[0] + SUFFIX
+
+        self._debug_start()
+        if (os.stat(File).st_size == 0):
+            return
+
+        proc = subprocess.Popen((self.__neotags_bin,
+                                 File,
+                                 lang,
+                                 order,
+                                 str(len(self.__slurp)),
+                                 str(len(self.__ignored_tags)),
+                                 str(len(self.__ctov) * 2),
+                                 ':'.join(self.__ignored_tags) + ':',
+                                 ':'.join([i for sub in self.__ctov.items()
+                                           for i in sub]) + ':'
+                                 ),
+                                stdin=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                stdout=subprocess.PIPE)
+        out, err = proc.communicate(input=self.__slurp.encode('utf-8'))
+
+        self._debug_end('done reading %s' % File)
+        out = out.decode().split('\n')
+
+        for s in out:
+            self._debug_echo("OUT: %s" % s, False)
+        err = err.decode().split('\n')
+        for s in err:
+            self._debug_echo("ERR: %s" % s, False)
+
+        for i in range(0, len(out) - 1, 2):
+            key = "%s#%s" % (ft, out[i].rstrip('\r'))
+            try:
+                groups[key].append(out[i + 1].rstrip('\r'))
+            except KeyError:
+                groups[key] = [out[i + 1].rstrip('\r')]
+
+        return groups
+
+# =============================================================================
+    # No C binary
+
+    def _getTags(self, files, ft):
         filetypes = ft.lower().split('.')
         languages = ft.lower().split('.')
         groups = {}
@@ -396,22 +499,19 @@ class Neotags(object):
             + bytes(lang, 'utf8') + b'(?:\w+)?)', re.IGNORECASE
         )
 
-        # for File in files:
-        File = files[0]
-
+        File = files[0] + SUFFIX
         self._debug_start()
         if (os.stat(File).st_size == 0):
-            # continue
             return
-        try:
-            with open(File, 'r') as f:
-                mf = mmap.mmap(f.fileno(), 0,  access=mmap.ACCESS_READ)
 
+        try:
+            # with gzip.open(File, 'r', errors='replace', encoding=None) as fp:
+            with gzip.open(File, 'r') as fp:
+                # mf = mmap.mmap(fp.fileno(), 0,  access=mmap.ACCESS_READ)
+                mf = fp.read()
                 for match in pattern.finditer(mf):
                     self._parseLine(match, groups, languages)
-
-                mf.close()
-
+                # mf.close()
         except IOError as e:
             self._error("could not read %s: %s" % (File, e))
             return
@@ -424,15 +524,15 @@ class Neotags(object):
         clean = reversed(order)
 
         self._debug_start()
+        self._debug_echo(':'.join([i for sub in self.__ctov.items()
+                                   for i in sub]) + ':')
 
         for a in list(clean):
             if a not in groups:
                 continue
-
             for b in list(order):
                 if b not in groups or a == b:
                     continue
-
                 groups[a] = [x for x in groups[a] if x not in groups[b]]
 
         self._debug_end('done cleaning groups')
@@ -440,10 +540,7 @@ class Neotags(object):
         return groups
 
     def _parseLine(self, match, groups, languages):
-        entry = {
-            x: ''.join(map(chr, y)) for x,
-            y in match.groupdict().items()
-        }
+        entry = {x: ''.join(map(chr, y)) for x, y in match.groupdict().items()}
 
         entry['lang'] = self._ctags_to_vim(entry['lang'], languages)
 
@@ -451,8 +548,6 @@ class Neotags(object):
         ignore = self._regexp(kind, '.ignore')
 
         if ignore and ignore.search(entry['name']):
-            # self._debug_echo("Ignoring %s based on pattern %s" %
-            #                  (entry['name'], ignore))
             return
 
         fgroup = self._regexp(kind, '.filter.pattern')
@@ -469,6 +564,12 @@ class Neotags(object):
         else:
             if self._check_tags(name):
                 groups[kind] = [name]
+
+    def _check_tags(self, tag):
+        """Reject tags that do not appear in the current buffer."""
+        return (self.__slurp.find(tag) > 0) and tag not in self.__ignored_tags
+
+# =============================================================================
 
     def _tags_order(self, ft):
         orderlist = []
@@ -500,7 +601,7 @@ class Neotags(object):
                                  % (self.__find_tool, path))
             else:
                 ctags_args.append('-R')
-                ctags_args.append('"%s/"' % path)
+                ctags_args.append('"%s"' % path)
                 ctags_binary = self.__vim.vars['neotags_ctags_bin']
                 self._debug_echo("Running ctags on dir '%s'" % path)
 
@@ -514,7 +615,7 @@ class Neotags(object):
             self._debug_echo("Running ctags on file '%s'" % File)
 
         full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
-        # self._debug_echo(full_command)
+        self._debug_echo(full_command)
 
         try:
             proc = subprocess.Popen(full_command, shell=True,
@@ -529,11 +630,31 @@ class Neotags(object):
             else:
                 self._debug_echo('Ctags completed successfully')
 
+            # tagfiles = self.__vim.api.eval('&tags').split(",")
+            self._debug_start()
+
+            try:
+                with open(self.__tagfile, errors='replace') as src:
+                    with gzip.open(self.__tagfile + SUFFIX, 'wb', 9) as dst:
+                        dst.write(src.buffer.read())
+                    src.seek(0)
+                    self.update_vim_tagfile(self.__tagfile + SUFFIX, src)
+
+                os.unlink(self.__tagfile)
+
+            except IOError as err:
+                self._error("Unexpected IO Error -> '%s'" % err)
+
+            self._debug_end('Finished compressing file.')
+
         except FileNotFoundError as error:
             self._error('failed to run Ctags %s' % error)
 
         except subprocess.TimeoutExpired:
-            self._kill(proc.pid)
+            try:
+                self._kill(proc.pid)
+            except ImportError:
+                proc.kill()
 
             if self.__vim.vars['neotags_silent_timeout'] == 0:
                 self.__vim.command(
@@ -544,17 +665,17 @@ class Neotags(object):
             self._debug_end("Finished running ctags")
 
     def _exists(self, kind, var, default):
-        buffer = kind + var
+        Buffer = kind + var
 
-        if buffer not in self.__exists_buffer:
-            if self.__vim.funcs.exists("neotags#%s" % buffer):
-                self.__exists_buffer[buffer] = self.__vim.api.eval(
-                    'neotags#%s' % buffer
+        if Buffer not in self.__exists_buffer:
+            if self.__vim.funcs.exists("neotags#%s" % Buffer):
+                self.__exists_buffer[Buffer] = self.__vim.api.eval(
+                    'neotags#%s' % Buffer
                 )
             else:
-                self.__exists_buffer[buffer] = default
+                self.__exists_buffer[Buffer] = default
 
-        return self.__exists_buffer[buffer]
+        return self.__exists_buffer[Buffer]
 
     def _getbufferhl(self):
         number = self.__vim.current.buffer.number
@@ -566,29 +687,36 @@ class Neotags(object):
 
         return highlights, number
 
-    def _clear(self):
+    def _clear(self, ft):
+        if ft is None:
+            self._debug_echo('Clear called with null ft')
+            return
+
         highlights, _ = self._getbufferhl()
-
         cmds = []
+        order = self._tags_order(ft)
 
-        for key in highlights.keys():
-            cmds.append('silent! syntax clear %s' % key,)
+        for key in order:
+            hlgroup = self._exists(key, '.group', None)
+            hlkey = '_Neotags_%s_%s' % (key.replace('#', '_'), hlgroup)
+            cmds.append('silent! syntax clear %s' % hlkey)
 
-        # cmds.append('let b:neotags_cache = {}')
-        self.__md5_cache = {}
+        self._debug_echo(str(cmds), False)
+
+
         self.__vim.command(' | '.join(cmds), async=True)
 
     def _regexp(self, kind, var):
-        buffer = kind + var
+        Buffer = kind + var
 
-        if buffer in self.__regex_buffer:
-            return self.__regex_buffer[buffer]
+        if Buffer in self.__regex_buffer:
+            return self.__regex_buffer[Buffer]
 
-        str = self._exists(kind, var, None)
+        string = self._exists(kind, var, None)
 
-        if str is not None:
-            regexp = re.compile(r'%s' % str)
-            self.__regex_buffer[buffer] = regexp
+        if string is not None:
+            regexp = re.compile(r'%s' % string)
+            self.__regex_buffer[Buffer] = regexp
             return regexp
 
         return None
@@ -610,7 +738,7 @@ class Neotags(object):
     def _debug_end(self, message):
         self._debug_echo(message)
         self.__start_time.pop()
-        self._debug_echo("Total elapsed: " + str(time.time() - self.__globtime), pop=False)
+        # self._debug_echo("Total elapsed: " + str(time.time() - self.__globtime), False)
 
     def _inform_echo(self, message):
         self.__vim.command(
@@ -622,16 +750,18 @@ class Neotags(object):
         if message:
             message = message.replace('\\', '\\\\').replace('"', '\\"')
             self.__vim.command(
-                'echohl ErrorMsg | echom "%s" | echohl None' % message
+               'echohl ErrorMsg | echom "%s" | echohl None' % message
             )
 
     def _kill(self, proc_pid):
+        import psutil
         process = psutil.Process(proc_pid)
         for proc in process.children():
             proc.kill()
         process.kill()
 
     def _ctags_to_vim(self, lang, languages):
+        lang = lang.strip('\\')
         if lang in self.__ctov and self.__ctov[lang] in languages:
             return self.__ctov[lang]
 
@@ -642,17 +772,11 @@ class Neotags(object):
 
             if lang in self.__vtoc:
                 languages[i] = self.__vtoc[lang]
+                languages[i] = languages[i].strip('\\')
 
             languages[i] = re.escape(languages[i])
 
         return languages
-
-    def _check_tags(self, tag):
-        """Reject tags that do not appear in the current buffer."""
-        # This trick can give an astronomical performance increase when working
-        # on a very large project with thousands of tags (tested example was
-        # EFL - performance went from unusable to buttery smooth).
-        return (self.__slurp.find(tag) > 0) and tag not in self.__ignored_tags
 
     def _get_file(self):
         File = os.path.realpath(self.__vim.api.eval("expand('%:p')"))
@@ -671,6 +795,7 @@ class Neotags(object):
             except FileNotFoundError:
                 with open(self.__settingsFile, 'x') as fp:
                     fp.write('')
+                projects = []
 
             for proj_path in projects:
                 if os.path.commonpath([path, proj_path]) == proj_path:
@@ -699,3 +824,53 @@ class Neotags(object):
 
         self.__tagfile = "%s/%s.tags" % (self.__directory,
                                          path.replace(sep_char, '__'))
+
+    def _get_binary(self, loud=False):
+        binary = self.__vim.vars['neotags_bin']
+
+        if platform == 'win32' and binary.find('.exe') < 0:
+            binary += '.exe'
+
+        if os.path.exists(binary):
+            self.__vim.vars['neotags_use_binary'] = 1
+        else:
+            self.__vim.vars['neotags_use_binary'] = 0
+            binary = None
+            if loud:
+                self._inform_echo("Binary '%s' doesn't exist. Cannot enable."
+                                  % self.__neotags_bin, False)
+            else:
+                self._debug_echo("Binary '%s' doesn't exist."
+                                 % self.__neotags_bin, False)
+
+        return binary
+
+    def update_vim_tagfile(self, tagfile, open_file):
+        try:
+            if tagfile not in self.__tmp_cache:
+                self.__tmp_cache[tagfile] = {}
+                fd, name = mkstemp()
+                tmpfile = os.fdopen(fd, errors='replace', mode='w')
+
+                self._write_file(open_file, tmpfile, tagfile)
+
+                self.__tmp_cache[tagfile]['fp'] = tmpfile
+                self.__tmp_cache[tagfile]['name'] = name
+
+            else:
+                tmpfile = self.__tmp_cache[tagfile]['fp']
+                name = self.__tmp_cache[tagfile]['name']
+                tmpfile.seek(0)
+                tmpfile.truncate(0)
+                tmpfile.flush()
+                self._write_file(open_file, tmpfile, tagfile)
+
+            tmpfile.flush()
+            self.__tmp_cache[tagfile]['mtime'] = os.path.getmtime(tagfile)
+            self.__vim.command('set tags+=%s' % name, async=True)
+
+        except IOError as err:
+            self._error("something horrible happened -> %s" % err)
+
+    def _write_file(self, File, tmp, name):
+        tmp.write(File.read())

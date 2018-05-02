@@ -4,8 +4,8 @@ endif
 
 let g:neotags#sh#f = {
             \   'group': 'shFunctionTag',
-            \   'suffix': '\(\w\|\s*()|()\)\@!'
             \ }
+            " \   'suffix': '\(\w\|\s*()|()\)\@!'
 
 let g:neotags#sh#a = {
             \   'group': 'shAliasTag',

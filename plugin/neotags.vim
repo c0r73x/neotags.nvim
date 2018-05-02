@@ -21,6 +21,13 @@ if !exists('g:neotags_settings_file')
     let g:neotags_settings_file = expand(g:neotags_directory . '/neotags.txt')
 endif
 
+if !exists('g:neotags_bin')
+    let g:neotags_bin = g:neotags_directory . '/bin/neotags'
+    if !isdirectory(g:neotags_directory . '/bin')
+        call mkdir(g:neotags_directory . '/bin')
+    endif
+endif
+
 if !exists('g:neotags_file')
     " let g:neotags_file = './tags'
     let g:neotags_file = ''
@@ -101,7 +108,7 @@ if !exists('g:neotags_find_tool')
 endif
 
 if !exists('g:neotags_ctags_timeout')
-    let g:neotags_ctags_timeout = 3
+    let g:neotags_ctags_timeout = 30
 endif
 
 if !exists('g:neotags_silent_timeout')
@@ -182,6 +189,8 @@ augroup END
 command! NeotagsToggle call NeotagsToggle()
 command! -nargs=1 NeotagsAddProject call NeotagsAddProject(<args>)
 command! -nargs=1 NeotagsRemoveProject call NeotagsRemoveProject(<args>)
+command! NeotagsBinaryToggle call Neotags_Toggle_C_Binary()
+command! NeotagsVerbosity call Neotags_Toggle_Verbosity()
 
 nnoremap <unique> <Plug>NeotagsToggle :call NeotagsToggle()<CR>
 nmap <silent> <leader>tag <Plug>NeotagsToggle

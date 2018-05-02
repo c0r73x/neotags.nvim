@@ -1,0 +1,5 @@
+#cmakedefine HAS_STRLCPY @HAVE_STRLCPY@
+#cmakedefine HAS_LIBBSD @HAVE_LIBBSD@
+#cmakedefine DEBUG @DEBUG@
+#define VERSION "1.1.0"
+#define PACKAGE_STRING "neotags 1.1.0"
