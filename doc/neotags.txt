@@ -1,0 +1,501 @@
+*neotags*  neotags.nvim
+
+===============================================================================
+Contents ~
+
+ 1. Introduction                                         |neotags-introduction|
+ 2. Description                                           |neotags-description|
+ 3. Configureation                                      |neotags-configuration|
+ 4. Requirements                                         |neotags-requirements|
+ 5. Commands                                                 |neotags-commands|
+ 6. Basic Options                                             |neotags-options|
+ 7. Highlight Group Names                       |neotags-highlight-group-names|
+  1. C/Cpp                                                      |neotags-c-cpp|
+  2. Vimscript                                              |neotags-vimscript|
+  3. Python                                                    |neotags-python|
+  4. Ruby                                                        |neotags-ruby|
+  5. Shell / Zsh                                            |neotags-shell-zsh|
+  6. Java                                                        |neotags-java|
+  7. Javascript                                            |neotags-javascript|
+  8. Perl                                                        |neotags-perl|
+  9. Php                                                          |neotags-php|
+ 8. Tips                                                         |neotags-tips|
+  1. Speed Improvements                            |neotags-speed-improvements|
+  2. Language conversion                          |neotags-language-conversion|
+  3. Custom Rules                                        |neotags-custom-rules|
+
+===============================================================================
+                                                         *neotags-introduction*
+Introduction ~
+
+A neovim plugin that generates and highlight ctags similar to easytags.
+
+I wrote this because I didn't like that my vim froze when opening large
+projects.
+
+===============================================================================
+                                                         *neotags-description*
+Description ~
+
+Much of the plugin's speed boost comes from it's ability to filter tags at
+runtime. Only tags found in opened buffers are supplied to Neovim for
+highlighting. Easytags, on the other hand, supplied all tags found recursively
+for a whole project. For very large projects with possibly tens of thousands of
+tags, this made Neovim's parser grind to a halt. With the new method, the tag
+list is far more manageable.
+
+Be warned that for such large projects it can take some time to process the
+list of tags. Fortunately, this is done asynchronously and does not slow the
+editor. Furthermore, it is only updated when either a new file is opened or the
+buffer is saved. This infrequent time cost is made in place of constantly
+forcing Neovim to do the same processing.
+
+
+===============================================================================
+                                                         *neotags-requirements*
+Requirements ~
+
+neotags requires Neovim with if_python3, and psutil for Python3. If ':echo
+has("python3")' returns '1' and 'pip3 list | grep psutil' shows the psutil
+package, then you're done; otherwise, see below.
+
+You can enable Python3 interface and psutil with pip:
+>
+  pip3 install neovim psutil
+<
+If tags processing is taking too long it may be advisable to use pypy3 in
+place of python3. This is possible by adding `let g:python3_host_prog = 'pypy3'`
+to your `.vimrc`.  Be advised that it will be necessary to have the Neovim
+python module and any modules required by any other Vim plugins installed for
+pypy3 as well (including psutil).
+
+
+===============================================================================
+                                                        *neotags-configuration*
+Configuration ~
+
+There are several configuration options to tweak the processing behavior. By
+default, to speed things up all standard autotools files (such as configure,
+Makefile.in, etc) are ignored by ctags. This behavior can be disabled with by
+setting `g:neotags_no_autoconf` to `0`. Further filenames may be ignored by
+appending `--exclude=foo` to the ctags argument list (see `man ctags` for more
+information).
+
+By default, a tags file is generated in a global directory for each directory
+in which source files appear. If you would like to reduce the number of tags
+files, and thereby conglomerate a project into one file, you may designate any
+directory as a "project" top directory using the `NeotagsAddProject` command.
+See below for details.
+
+
+===============================================================================
+                                                             *neotags-commands*
+Commands ~
+
+*:NeotagsToggle*
+*:NeotagsAddProject* <DIRECTORY>
+*:NeotagsRemoveProject* <DIRECTORY>
+
+Use *NeotagsToggle* to toggle the plugin on and off on the fly.
+*NeotagsAddProject* and *NeotagsRemoveProject* add or remove a given directory
+from the global list of "project" top directories.
+
+
+===============================================================================
+                                                              *neotags-options*
+Basic Options ~
+
+|g:neotags_enabled|                                           *g:neotags_enabled*
+  Type: |Number|
+  Default: `1`
+
+  Option to enable/disable neotags
+
+|g:neotags_directory|                                       *g:neotags_directory*
+  Type: |String|
+  Default: `'~/.vim_tags'`
+
+  Path in which to store the ctags files
+
+|g:neotags_settings_file|                               *g:neotags_settings_file*
+  Type: |String|
+  Default: `'~/.vim_tags'`
+
+  Global file in which to store all saved "project" information
+
+|g:neotags_ignored_tags|                                 *g:neotags_ignored_tags*
+  Type: |List|
+  Default: `[]`
+
+  Global list of tags to unconditionally ignore when highlighting. For
+  example, in C `NULL` is technically a pre-processor macro and may be
+  highlighted as such should neotags load enough header files. Adding it to
+  this variable will prevent the default highlighting of `NULL` from being
+  overridden.
+
+|g:neotags_no_autoconf|                                   *g:neotags_no_autoconf*
+  Type: |Number|
+  Default: `1`
+
+  See prior description.
+
+|g:neotags_events_update|                               *g:neotags_events_update*
+  Type: |List|
+  Default: `['BufWritePost']`
+
+  List of vim events when to run tag generation and update highlight.
+
+|g:neotags_events_highlight|                         *g:neotags_events_highlight*
+  Type: |List|
+  Default: `['BufReadPre', 'BufEnter']`
+
+  List of vim events when to update highlight.
+
+|g:neotags_events_rehighlight|                     *g:neotags_events_rehighlight*
+  Type: |List|
+  Default: `['FileType', 'Syntax']`
+
+  List of vim events when to clear cache and update highlight.
+
+|g:neotags_run_ctags|                                       *g:neotags_run_ctags*
+  Type: |Number|
+  Default: `1`
+
+  Option to enable/disable ctags generation from neotags.
+
+|g:neotags_highlight|                                       *g:neotags_highlight*
+  Type: |Number|
+  Default: `1`
+
+  Option to enable/disable neotags highlighting.
+
+|g:neotags_recursive|                                       *g:neotags_recursive*
+  Type: |Number|
+  Default: `1`
+
+  Option to enable/disable recursive tag generation.
+
+|g:neotags_find_tool|                                       *g:neotags_find_tool*
+  Type: |String|
+  Default: `''`
+
+  Optional external command for finding files (eg. `ag -g`).
+
+|g:neotags_appendpath|                                     *g:neotags_appendpath*
+  Type: |Number|
+  Default: `1`
+
+  Option to append current path to ctags arguments.
+
+|g:neotags_ctags_bin|                                       *g:neotags_ctags_bin*
+  Type: |String|
+  Default: `'ctags'`
+
+  Location/name of the ctags binary on your system.
+
+|g:neotags_ctags_args|                                     *g:neotags_ctags_args*
+  Type: |List|
+  Default:
+>
+    let g:neotags_ctags_args = [
+            \ '--fields=+l',
+            \ '--c-kinds=+p',
+            \ '--c++-kinds=+p',
+            \ '--sort=yes',
+            \ '--extras=+q'
+            \ ]
+<
+  Arguments to be passed directly to ctags.
+
+|g:neotags_ctags_timeout|                               *g:neotags_ctags_timeout*
+  Type: |Number|
+  Default: `3`
+
+  ctags timeout in seconds
+
+|g:neotags_silent_timeout|                             *g:neotags_silent_timeout*
+  Type: |Number|
+  Default: `0`
+
+  Hide message when ctags timeouts
+
+|g:neotags_verbose|                                           *g:neotags_verbose*
+  Type: |Number|
+  Default: `0`
+
+  Verbose output (for debug, must be set before neotags is starated)
+
+|g:neotags_ignore|                                             *g:neotags_ignore*
+  Type: |List|
+  Default:
+>
+    let g:neotags_ignore = [
+            \ 'text',
+            \ 'nofile',
+            \ 'mail',
+            \ 'qf',
+            \ ]
+<
+  List of filetypes to ignore
+
+|g:neotags_global_notin|                                 *g:neotags_global_notin*
+  Type: |List|
+  Default:
+>
+    let g:neotags_global_notin = [
+            \ '.*String.*',
+            \ '.*Comment.*',
+            \ 'cIncluded',
+            \ 'cCppOut2',
+            \ 'cCppInElse2',
+            \ 'cCppOutIf2',
+            \ 'pythonDocTest',
+            \ 'pythonDocTest2',
+            \ ]
+<
+  List of global syntax groups which should not include highlighting.
+
+
+===============================================================================
+                                                *neotags-highlight-group-names*
+Highlight Group Names ~
+
+By default group name creation is set for all the different group names of all
+the supported languages.
+
+-------------------------------------------------------------------------------
+|g:neotags#c#order|                                           *g:neotags#c#order*
+|g:neotags#cpp#order|                                       *g:neotags#cpp#order*
+                                                                *neotags-c-cpp*
+C/Cpp ~
+>
+  let g:neotags#cpp#order = 'cgstuedfpm'
+  let g:neotags#c#order = 'cgstuedfpm'
+<
+  c  -  cppTypeTag
+  g  -  cppTypeTag
+  s  -  cppTypeTag
+  t  -  cppTypeTag
+  u  -  cppTypeTag
+  e  -  cppEnumTag
+  d  -  cppPreProcTag
+  f  -  cppFunctionTag
+  p  -  cppFunctionTag
+  m  -  cppMemberTag
+
+C highlighting is identical to Cpp just remove 'pp' from the group name.
+Example, 'cTypeTag'. With the 'g:neotags#cpp#order' function you can restrict
+the highlighting to selected groups. See 'Speed Improvements' below.
+
+-------------------------------------------------------------------------------
+|g:neotags#vim#order|                                       *g:neotags#vim#order*
+                                                            *neotags-vimscript*
+Vimscript ~
+>
+  let g:neotags#vim#order = 'acfv'
+<
+  a  -  vimAutoGroupTag
+  c  -  vimCommandTag
+  f  -  vimFuncNameTag
+  v  -  vimVariableTag
+  s  -  vimScriptFuncNameTag
+
+`s` applies only to local function tags.
+
+-------------------------------------------------------------------------------
+|g:neotags#python#order|                                 *g:neotags#python#order*
+                                                               *neotags-python*
+Python ~
+>
+  let g:neotags#python#order = 'mfc'
+<
+  m  -  pythonMethodTag
+  f  -  pythonFunctionTag
+  c  -  pythonClassTag
+
+-------------------------------------------------------------------------------
+|g:neotags#ruby#order|                                     *g:neotags#ruby#order*
+                                                                 *neotags-ruby*
+Ruby ~
+>
+  let g:neotags#ruby#order = 'mfc'
+<
+  m  -  rubyModuleNameTag
+  f  -  rubyClassNameTag
+  c  -  rubyMethodNameTag
+
+-------------------------------------------------------------------------------
+|g:neotags#sh#order|                                         *g:neotags#sh#order*
+                                                            *neotags-shell-zsh*
+Shell / Zsh ~
+>
+  let g:neotags#sh#order = 'fa'
+<
+  f  -  shFunctionTag
+  a  -  shAliasTag
+
+-------------------------------------------------------------------------------
+|g:neotags#java#order|                                     *g:neotags#java#order*
+                                                                 *neotags-java*
+Java ~
+>
+  let g:neotags#java#order = 'cim'
+<
+  c  -  javaClassTag
+  i  -  javaInterfaceTag
+  m  -  javaMethodTag
+
+-------------------------------------------------------------------------------
+|g:neotags#javascript#order|                         *g:neotags#javascript#order*
+                                                           *neotags-javascript*
+Javascript ~
+>
+  let g:neotags#javascript#order = 'cCfmpo'
+<
+  c  -  javascriptClassTag
+  C  -  javascriptConstantTag
+  f  -  javascriptFunctionTag
+  m  -  javascriptMethodTag
+  p  -  javascriptPropsTag
+  o  -  javascriptObjectTag
+
+-------------------------------------------------------------------------------
+|g:neotags#perl#order|                                     *g:neotags#perl#order*
+                                                                 *neotags-perl*
+Perl ~
+>
+  let g:neotags#perl#order = 's'
+<
+  s  -  perlFunctionTag
+
+-------------------------------------------------------------------------------
+|g:neotags#php#order|                                       *g:neotags#php#order*
+                                                                  *neotags-php*
+Php ~
+>
+  let g:neotags#php#order = 'fc'
+<
+  f  -  phpFunctionsTag
+  c  -  phpClassesTag
+
+
+===============================================================================
+                                                                 *neotags-tips*
+Tips ~
+
+To use 'the_silver_searcher' or similar applications when generating tags you
+can do something like this.
+>
+  let g:neotags_appendpath = 0
+  let g:neotags_recursive = 0
+
+  let g:neotags_ctags_args = [
+              \ '-L -',
+              \ '--fields=+l',
+              \ '--c-kinds=+p',
+              \ '--c++-kinds=+p',
+              \ '--sort=no',
+              \ '--extras=+q'
+              \ ]
+
+  " Use this option for the_silver_searcher
+  let g:neotags_ctags_bin = 'ag -g "" '. getcwd() .' | ctags'
+  " Or this one for ripgrep. Not both.
+  let g:neotags_ctags_bin = 'rg --files '. getcwd() .' | ctags'
+<
+-------------------------------------------------------------------------------
+                                                   *neotags-speed-improvements*
+Speed Improvements ~
+
+Also on big projects syntax highlighting may become slow. To address this you
+can try:
+>
+  set regexpengine=1
+<
+This provides significant speed improvements. In addition you set the highlight
+options for your language not highlight everything but maybe only the tags your
+interested in the most. Example:
+>
+  let g:neotags#cpp#order = 'ced'
+<
+The above will only highlight 'cppTypeTag, cppPreProcTag, cppEnumTag'.
+
+-------------------------------------------------------------------------------
+|g:neotags_ft_conv|                                           *g:neotags_ft_conv*
+                                                  *neotags-language-conversion*
+Language conversion ~
+
+The 'neotags_ft_conv' variable is used to convert for example C++ to cpp but it
+can be used to convert custom filetypes to ctag filetypes.
+
+For example this is what i use for flow
+>
+  let g:neotags_ft_conv = {
+              \ 'C++': 'cpp',
+              \ 'C#': 'cs',
+              \ 'JavaScript': 'flow',
+              \ }
+<
+Note that you do need to copy the javascript neotags file
+'neotags.vim/plugin/neotags/javascript.vim' to 'after/plugin/neotags/flow.vim'
+and do a replace for '#javascript' to '#flow'
+
+-------------------------------------------------------------------------------
+                                                         *neotags-custom-rules*
+Custom Rules ~
+
+You can create custom rules for existing languages or new languages.
+>
+  let g:neotags#[ctags language]#order = 'string with ctags kinds'
+  let g:neotags#[ctags language]#[ctags kind] = { 'group': 'highlight' }
+<
+For more advanced rules, check the files in 'neotags.vim/plugin/neotags/*.vim'.
+
+You can get the list of kinds by running 'ctags --list-kinds=[language]'.
+
+order determents priority of the highlight by first to last (tags with the same
+name will use the one with higher priority). Note that only kinds in the order
+string will be loaded.
+
+For example, this is what I use in typescript/tsx
+
+In ~/.ctags
+>
+  --langdef=typescript
+  --langmap=typescript:.ts
+  --langmap=typescript:+.tsx
+  --regex-typescript=/^[ \t]*(export([ \t]+abstract)?([ \t]+default)?)?[ \t]*class[ \t]+([a-zA-Z0-9_]+)/\4/c,classes/
+  --regex-typescript=/^[ \t]*(declare)?[ \t]*namespace[ \t]+([a-zA-Z0-9_]+)/\2/n,modules/
+  --regex-typescript=/^[ \t]*(export)?[ \t]*module[ \t]+([a-zA-Z0-9_]+)/\2/M,modules/
+  --regex-typescript=/^[ \t]*(export)?[ \t]*function[ \t]+([a-zA-Z0-9_]+)/\2/f,functions/
+  --regex-typescript=/^[ \t]*export[ \t]+(var|let|const)[ \t]+([a-zA-Z0-9_]+)/\2/v,variables/
+  --regex-typescript=/^[ \t]*(var|let|const)[ \t]+([a-zA-Z0-9_]+)[ \t]*=[ \t]*function[ \t]*\(\)/\2/V,varlambdas/
+  --regex-typescript=/^[ \t]*(export)?[ \t]*(public|protected|private)[ \t]+(static)?[ \t]*([a-zA-Z0-9_]+)/\4/m,members/
+  --regex-typescript=/^[ \t]*(export)?[ \t]*interface[ \t]+([a-zA-Z0-9_]+)/\2/i,interfaces/
+  --regex-typescript=/^[ \t]*(export)?[ \t]*type[ \t]+([a-zA-Z0-9_]+)/\2/t,types/
+  --regex-typescript=/^[ \t]*(export)?[ \t]*enum[ \t]+([a-zA-Z0-9_]+)/\2/e,enums/
+  --regex-typescript=/^[ \t]*import[ \t]+([a-zA-Z0-9_]+)/\1/I,imports/
+  --regex-typescript=/^[ \t]*@([A-Za-z0-9._$]+)[ \t]*/\1/d,decorator/
+<
+In vimrc
+>
+  let g:neotags#typescript#order = 'cnfmoited'
+
+  let g:neotags#typescript#c = { 'group': 'javascriptClassTag' }
+  let g:neotags#typescript#C = { 'group': 'javascriptConstantTag' }
+  let g:neotags#typescript#f = { 'group': 'javascriptFunctionTag' }
+  let g:neotags#typescript#o = { 'group': 'javascriptObjectTag' }
+
+  let g:neotags#typescript#n = g:neotags#typescript#C
+  let g:neotags#typescript#f = g:neotags#typescript#f
+  let g:neotags#typescript#m = g:neotags#typescript#f
+  let g:neotags#typescript#o = g:neotags#typescript#o
+  let g:neotags#typescript#i = g:neotags#typescript#C
+  let g:neotags#typescript#t = g:neotags#typescript#C
+  let g:neotags#typescript#e = g:neotags#typescript#C
+
+  let g:neotags#typescript#d = g:neotags#typescript#c
+<
+===============================================================================
+
+vim: ft=help

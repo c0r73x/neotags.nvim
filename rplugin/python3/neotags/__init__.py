@@ -22,7 +22,11 @@ class NeotagsHandlers(object):
 
     @neovim.function('NeotagsHighlight')
     def highlight(self, args):
-        self.__vim.async_call(self.__neotags.highlight)
+        self.__vim.async_call(self.__neotags.highlight, False)
+
+    @neovim.function('NeotagsRehighlight')
+    def rehighlight(self, args):
+        self.__vim.async_call(self.__neotags.highlight, True)
 
     @neovim.function('NeotagsUpdate')
     def update(self, args):
@@ -31,3 +35,19 @@ class NeotagsHandlers(object):
     @neovim.function('NeotagsToggle')
     def toggle(self, args):
         self.__vim.async_call(self.__neotags.toggle)
+
+    @neovim.function('NeotagsAddProject')
+    def setbase(self, args):
+        self.__vim.async_call(self.__neotags.setBase, args)
+
+    @neovim.function('NeotagsRemoveProject')
+    def removebase(self, args):
+        self.__vim.async_call(self.__neotags.removeBase, args)
+
+    @neovim.function('Neotags_Toggle_C_Binary')
+    def toggle_C_bin(self, args):
+        self.__vim.async_call(self.__neotags.toggle_C_bin)
+
+    @neovim.function('Neotags_Toggle_Verbosity')
+    def toggle_verbosity(self, args):
+        self.__vim.async_call(self.__neotags.toggle_verbosity)

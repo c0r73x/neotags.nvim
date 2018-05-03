@@ -87,3 +87,10 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Misc
+core
+tags
+.tags
+compile_commands.json
+*\~*
