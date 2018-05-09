@@ -11,14 +11,17 @@
 # cygwin, which makes this plugin unusable there without this change.
 import gzip
 import hashlib
+
 # import mmap
 import os
 import re
-import subprocess
 import time
+import subprocess
+
 from sys import platform
-from neovim.api.nvim import NvimError
 from tempfile import mkstemp
+
+from neovim.api.nvim import NvimError
 
 SUFFIX = '.gz'
 
@@ -159,9 +162,11 @@ class Neotags(object):
         if (not self.__vim.vars['neotags_enabled']):
             self._debug_echo('Update called when plugin disabled...', False)
             self._clear(ft)
+            self.__vim.command('doautocmd User NeotagsPost', async=False)
             return
 
         if (ft == '' or ft in self.__ignore):
+            self.__vim.command('doautocmd User NeotagsPost', async=False)
             return
 
         if (self.__is_running):
@@ -172,6 +177,8 @@ class Neotags(object):
 
         self.__is_running = False
         self.highlight(False)
+
+        self.__vim.command('doautocmd User NeotagsPost', async=False)
 
     def highlight(self, clear):
         """Analyze the tags data and format it for nvim's regex engine."""
@@ -755,6 +762,7 @@ class Neotags(object):
 
     def _kill(self, proc_pid):
         import psutil
+
         process = psutil.Process(proc_pid)
         for proc in process.children():
             proc.kill()
