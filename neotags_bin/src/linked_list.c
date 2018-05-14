@@ -3,16 +3,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct Node * getnode_at_index(struct linked_list *list, long index);
+static struct Node * getnode_at_index(struct linked_list *list, int64_t index);
 static void remove_node(struct linked_list *list, struct Node *node);
+
+/* Note that contrary to its name, in this case `can_free_data` refers to the
+ * string component of the struct string *, not the struct itself. The struct is
+ * always free'd. The intention is to keep things adaptable. This macro could
+ * change for different datatypes, and the field itself need not be boolean. */
+
+#define FREE_DATA(LL_, NODE_)               \
+    do {                                    \
+            if ((LL_)->can_free_data)       \
+                    free((NODE_)->data->s); \
+            free((NODE_)->data);            \
+    } while (0)
 
 
 struct linked_list *
-new_list(void)
+new_list(uint8_t can_free_data)
 {
         struct linked_list *list = xmalloc(sizeof *list);
         list->head = list->tail = NULL;
         list->size = 0;
+        list->can_free_data = can_free_data;
         return list;
 }
 
@@ -30,7 +43,6 @@ ll_add(struct linked_list *list, LLTYPE data)
         node->data = data;
         node->prev = NULL;
         node->next = list->head;
-
         list->head = node;
         ++list->size;
 }
@@ -49,7 +61,6 @@ ll_append(struct linked_list *list, LLTYPE data)
         node->data = data;
         node->prev = list->tail;
         node->next = NULL;
-
         list->tail = node;
         ++list->size;
 }
@@ -70,9 +81,9 @@ _ll_popat(struct linked_list *list, long index, enum ll_pop_type type)
                 ; LLTYPE data = node->data;
                 remove_node(list, node);
                 return data;
+        default:
+                errx(1, "Unreachable!\n");
         }
-
-        return 0; /* NOTREACHED */
 }
 
 
@@ -83,7 +94,8 @@ ll_find_str(struct linked_list *list, char *str)
         bool ret = false;
 
         while (current != NULL) {
-                if (streq(str, current->data)) {
+                /* if (streq(str+1, current->data->s+1)) { */
+                if (streq(str, current->data->s)) {
                         ret = true;
                         break;
                 }
@@ -102,14 +114,14 @@ destroy_list(struct linked_list *list)
                         current = list->tail;
                 else
                         current = list->head;
-                free(current->data);
+                FREE_DATA(list, current);
                 free(current);
         } else if (list->size > 1) {
                 struct Node *current = list->head;
                 do {
                         struct Node *tmp = current;
                         current = current->next;
-                        free(tmp->data);
+                        FREE_DATA(list, tmp);
                         free(tmp);
                 } while (current != NULL);
         }
@@ -119,13 +131,13 @@ destroy_list(struct linked_list *list)
 
 
 static struct Node *
-getnode_at_index(struct linked_list *list, long index)
+getnode_at_index(struct linked_list *list, int64_t index)
 {
         assert(list->size > 0);
 
         if (index == 0)
                 return list->head;
-        else if (index == -1)
+        if (index == -1)
                 return list->tail;
 
         if (index < 0)

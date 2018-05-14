@@ -1,203 +1,147 @@
-#define PCRE2_CODE_UNIT_WIDTH 8
-
 #include "neotags.h"
-#include <pcre2.h>
+#include <assert.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-static struct linked_list * search(
-        const struct strlist *taglist, const char *lang, const char *order,
-        const char *const *ctov, const char *const *skip
+static struct linked_list *search(
+        const struct linked_list *taglist, const char *lang,
+        const char *order, const char *const *skip, const char *const *equiv
 );
-static void get_colon_delim_data(char **data, char *arg);
-static void print_data(const struct linked_list *ll, const char *vim_buf);
-static bool skip_tag(const char *const *skip, const char *find);
-static bool is_correct_lang(const char *const *ctov, const char *lang,
-                            const char *match_lang);
-static void normalize_lang(char *buf, const char *lang, const size_t max);
+
+static char **get_colon_data  (char *oarg);
+static inline void print_data (const struct linked_list *ll, const char *vim_buf);
 
 #define REQUIRED_INPUT 8
-#define PATSIZ 256
-
-#define PATTERN_PT1 "^([^\\t]+)\\t(?:[^\\t]+)\\t\\/(?:.+)\\/;\"\\t(\\w)\\tlanguage:("
-#define PATTERN_PT2 "(?:\\[a-zA-Z]+)?)"
-
-#define CCC(ARG) ((const char *const *)(ARG))
-#define _substr(INDEX, SUBJECT, OVECTOR) \
-        ((char *)((SUBJECT) + (OVECTOR)[(INDEX)*2]))
-#define _substrlen(INDEX, OVECTOR) \
-        ((int)((OVECTOR)[(2 * (INDEX)) + 1] - (OVECTOR)[2 * (INDEX)]))
-
-enum { tNAME = 1, tKIND, tLANG };
+#define CCC(ARG_) ((const char *const *)(ARG_))
 
 
 int
 main(int argc, char **argv)
 {
-        if (isatty(0))
-                xerr(1, "This program can't be run manually.\n");
-        if (argc < REQUIRED_INPUT)
-                xerr(2, "Error: Insufficient input paramaters.\n");
+        if (isatty(STDIN_FILENO))
+                errx(1, "This program can't be run manually.");
+        if (--argc != REQUIRED_INPUT)
+                errx(2, "Error: Wrong number of paramaters (%d, need %d).",
+                     argc, REQUIRED_INPUT);
 
-        program_name  = *argv++;
-        char *tagfile = *argv++;
-        char *lang    = *argv++;
-        char *order   = *argv++;
-        long nchars   = xatoi(*argv++);
-        long nskip    = xatoi(*argv++);
-        long nctov    = xatoi(*argv++);
-        char *vim_buf = xmalloc(nchars + 2);
-        char **skip   = xmalloc(sizeof *skip * (nskip + 1));
-        char **ctov   = xmalloc(sizeof *ctov * (nctov + 1));
+        program_name   = handle_progname(*argv++);
+        char **files   = get_colon_data(*argv++);
+        char *ctlang   = *argv++;
+        char *vimlang  = *argv++;
+        char *order    = *argv++;
+        bool strip_com = xatoi(*argv++);
+        int64_t nchars = xatoi(*argv++);
+        char *vim_buf  = xmalloc(nchars + 1);
+        char **skip    = get_colon_data(*argv++);
+        char **equiv   = get_colon_data(*argv++);
 
-        get_colon_delim_data(skip, *argv++);
-        get_colon_delim_data(ctov, *argv++);
-        struct strlist *taglist = get_all_lines(tagfile);
-        long i;
+        struct linked_list *taglist = new_list(false);
+        warnx("ctlang: %s, vimlang: %s\n", ctlang, vimlang);
 
-        /* Slurp the whole vim_buf from the python code */
-        for (i = 0; i < nchars;)
-                vim_buf[i++] = (char)getchar();
-        vim_buf[i] = '\0';
+        for (char **ptr = files; *ptr != NULL; ptr += 2)
+                getlines(taglist, *ptr, *(ptr + 1));
 
-        struct linked_list *ll = search(taglist, lang, order, CCC(ctov), CCC(skip));
-        print_data(ll, vim_buf);
+        fread(vim_buf, 1, nchars, stdin);
+        vim_buf[nchars] = '\0';
+
+        if (strip_com) {
+                warnx("Stripping comments...\n");
+                struct string tmp = {vim_buf, '\0', nchars + 1};
+                char *buf = strip_comments(&tmp, vimlang);
+                if (buf != NULL) {
+                        free(vim_buf);
+                        vim_buf = buf;
+                }
+        }
+
+        struct linked_list *ll = search(taglist, ctlang, order,
+                                        CCC(skip), CCC(equiv));
+        if (ll) {
+                print_data(ll, vim_buf);
+                destroy_list(ll);
+        }
 
         /* pointlessly free everything */
-        destroy_list(ll);
-        destroy_strlist(taglist);
-        char *buf, **tmp = skip;
-        while ((buf = *tmp++) != NULL)
-                free(buf);
-        tmp = ctov;
-        while ((buf = *tmp++) != NULL)
-                free(buf);
-        free(skip);
-        free(ctov);
-        free(vim_buf);
+        for (int i = 0; i < backup_iterator; ++i)
+                free(backup_pointers[i]);
+        destroy_list(taglist);
+        free_all(files, skip, equiv, vim_buf);
 
         return 0;
 }
 
 
-static struct linked_list *
-search(const struct strlist *taglist,
-       const char *lang,
-       const char *order,
-       const char *const *ctov,
-       const char *const *skip)
+static char **
+get_colon_data(char *oarg)
 {
-        struct linked_list *ll = new_list();
+        int num = 0;
+        char *arg = oarg;
 
-        char pat[PATSIZ], match_lang[PATSIZ];
-        pcre2_match_data *match_data;
-        PCRE2_SIZE erroroffset;
-        int errornumber;
-        char norm_lang[PATSIZ / 2];
-        normalize_lang(norm_lang, lang, PATSIZ);
-
-        snprintf(pat, PATSIZ, "%s%s%s", PATTERN_PT1, norm_lang, PATTERN_PT2);
-        PCRE2_SPTR pattern = (PCRE2_SPTR)pat;
-
-        pcre2_code *cre =
-            pcre2_compile(pattern, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS,
-                          &errornumber, &erroroffset, NULL);
-
-        if (cre == NULL) {
-                PCRE2_UCHAR vim_buf[BUFSIZ];
-                pcre2_get_error_message(errornumber, vim_buf, BUFSIZ);
-                xerr(1, "PCRE2 compilation failed at offset %d: %s\n",
-                     (int)erroroffset, vim_buf);
-        }
-
-        for (uint32_t iter = 0; iter < taglist->num; ++iter) {
-                if (taglist->s[iter][0] == '!' || taglist->s[iter][0] == '\0')
-                        continue;
-
-                PCRE2_SPTR subject = (PCRE2_SPTR)taglist->s[iter];
-                size_t subject_len = (size_t)(taglist->slen[iter] - 1);
-
-                match_data = pcre2_match_data_create_from_pattern(cre, NULL);
-                int rcnt   = pcre2_match(cre, subject, subject_len, 0,
-                                         PCRE2_CASELESS, match_data, NULL);
-
-                if (rcnt >= 0) {  /* match found */
-                        PCRE2_SIZE *ovector =
-                            pcre2_get_ovector_pointer(match_data);
-
-#define substr(INDEX)    _substr(INDEX, subject, ovector)
-#define substrlen(INDEX) _substrlen(INDEX, ovector)
-
-                        int len    = substrlen(tNAME) + 2;
-                        char *data = xmalloc(len);
-                        data[0]    = substr(tKIND)[0];
-
-                        strlcpy(match_lang, substr(tLANG),
-                                substrlen(tLANG) + 1);
-                        strlcpy(data + 1, substr(tNAME), len - 1);
-
-                        /*
-                         * Prune tags. Include only those that are:
-                         *    1) of a type in the `order' list,
-                         *    2) of the correct language (applies mainly to C
-                         *       and C++, generally ctags filters languages),
-                         *    3) are not included in the `skip' list, and
-                         *    4) are not duplicates.
-                         * If invalid, just free and move on.
-                         */
-                        if ( strchr(order, (int)data[0]) &&
-                             is_correct_lang(ctov, lang, match_lang) &&
-                            !skip_tag(skip, data + 1) &&
-                            !ll_find_str(ll, data))
-                        {
-                                ll_add(ll, data);
-                        } else {
-                                free(data);
+        if (*arg != '\0')
+                do {
+                        if (*arg == ':') {
+                                *arg++ = '\0';
+                                ++num;
                         }
-                }
+                } while (*arg++);
 
-                pcre2_match_data_free(match_data);
+        /* The loop above will miss the last element, so we increment num. */
+        char **data = xmalloc(sizeof(*data) * ++num);
+        arg = oarg;
+
+        for (int i = 0; i < (num - 1); ++i) {
+                while (*arg++)
+                        ;
+                data[i] = oarg;
+                oarg = arg;
         }
+        data[num - 1] = NULL;
 
-        pcre2_code_free(cre);
-        return ll;
+        return data;
 }
 
 
-static void
-get_colon_delim_data(char **data, char *arg)
+static inline void
+print_data(const struct linked_list *const ll, const char *const vim_buf)
 {
-        int ch, it = 0, dit = 0;
-        char buf[BUFSIZ];
-
-        while ((ch = *arg++) != '\0') {
-                if (ch == ':') {
-                        buf[it] = '\0';
-                        if ((data[dit++] = strdup(buf)) == NULL)
-                                xerr(1, "strdup failed!\n");
-                        it = 0;
-                } else {
-                        buf[it++] = (char)ch;
-                }
-        }
-
-        data[dit] = NULL;
+        for (struct Node *node = ll->head; node != NULL; node = node->next)
+                if (strstr(vim_buf, node->data->s) != NULL)
+                        printf("%c\n%s\n", node->data->kind, node->data->s);
 }
 
 
-static void
-print_data(const struct linked_list *ll, const char *vim_buf)
+/* ========================================================================== */
+
+
+static bool
+in_order(const char *const *equiv, const char *order, char *group)
 {
-        struct Node *current = ll->head;
-
-        /* Check whether the tag is present in the current nvim vim_buf */
-        while (current != NULL) {
-                if (strstr(vim_buf, current->data + 1) != NULL)
-                        printf("%c\n%s\n", current->data[0], current->data + 1);
-
-                current = current->next;
+        /* `group' is actually a pointer to a char, not a C string. */
+        for (; *equiv != NULL; ++equiv) {
+                if (*group == (*equiv)[0]) {
+                        *group = (*equiv)[1];
+                        break;
+                }
         }
+
+        return strchr(order, *group) != NULL;
+}
+
+
+static bool
+is_correct_lang(const char *lang, const char *match_lang)
+{
+        if (strCeq(match_lang, lang))
+                return true;
+
+        if ((strCeq(lang, "C") || strCeq(lang, "C\\+\\+")) &&
+            (strCeq(match_lang, "C++") || strCeq(match_lang, "C")))
+                return true;
+
+        return false;
 }
 
 
@@ -214,32 +158,79 @@ skip_tag(const char *const *skip, const char *find)
 }
 
 
-static bool
-is_correct_lang(const char *const *ctov,
-                const char *lang,
-                const char *match_lang)
+static struct linked_list *
+search(const struct linked_list *taglist,
+       const char *lang,
+       const char *order,
+       const char *const *skip,
+       const char *const *equiv)
 {
-        if (strCeq(match_lang, lang))
-                return true;
+#define cur_str node->data->s
+        struct linked_list *ll = new_list(false);
+        struct Node *node = taglist->tail;
+        int nfields = 0;
+        char *tok, *name, *match_lang;
+        char kind;
 
-        if ((strCeq(lang, "C") || strCeq(lang, "C\\+\\+")) &&
-            (strCeq(match_lang, "C++") || strCeq(match_lang, "C")))
-                return true;
+        /* Skip past the comments and make sure the file isn't empty. */
+        while (node != NULL && cur_str[0] == '!')
+                node = node->prev;
+        if (node == NULL) {
+                warnx("Empty file!");
+                goto error;
+        }
 
-        while (*ctov != NULL)
-                if (strCeq(match_lang, *ctov++) && strCeq(lang, *ctov++))
-                        return true;
+        /* Verify that the file has the 2 required 'extra' fields. */
+        {
+                char *tmp = strdupa(node->data->s);
+                while ((tok = strsep(&tmp, "\t")) != NULL)
+                        if ((tok[0] != '\0' && tok[1] == '\0') ||
+                            strncmp(tok, "language:", 9) == 0)
+                                ++nfields;
+                if (nfields != 2) {
+                        warnx("Invalid file! nfields is %d", nfields);
+                        goto error;
+                }
+        }
 
-        return false;
-}
+        for (; node != NULL; node = node->prev) {
+                /* The name is first, followed by two fields we don't need. */
+                name = strsep(&cur_str, "\t");
+                cur_str = strchr(cur_str, '\t');
+                cur_str = strchr(cur_str, '\t');
 
+                while ((tok = strsep(&node->data->s, "\t")) != NULL) {
+                        /* The 'kind' field is the only one that is 1 character
+                         * long, and the 'language' field is prefaced. */
+                        if (tok[0] != '\0' && tok[1] == '\0')
+                                kind = *tok;
+                        else if (strncmp(tok, "language:", 9) == 0)
+                                match_lang = tok + 9;
+                }
 
-/* C and C++ should be considered equivalent as far as tags are concerned. */
-static void
-normalize_lang(char *buf, const char *const lang, const size_t max)
-{
-        if (strCeq(lang, "C") || strCeq(lang, "C\\+\\+"))
-                strlcpy(buf, "(?:C(?:\\+\\+)?)", max);
-        else
-                strlcpy(buf, lang, max);
+                /* Prune tags. Include only those that are:
+                 *    1) of a type in the `order' list,
+                 *    2) of the correct language (applies mainly to C
+                 *       and C++, generally ctags filters languages),
+                 *    3) are not included in the `skip' list, and
+                 *    4) are not duplicates.
+                 * If invalid, just move on. */
+                if ( in_order(equiv, order, &kind) &&
+                     is_correct_lang(lang, match_lang) &&
+                    !skip_tag(skip, name) &&
+                    !ll_find_str(ll, name))
+                {
+                        struct string *tmp = xmalloc(sizeof *tmp);
+                        tmp->s    = name;
+                        tmp->kind = kind;
+                        /* tmp->len = 0; */
+                        ll_add(ll, tmp); 
+                } 
+        }
+
+        return ll;
+
+error:
+        destroy_list(ll);
+        return NULL;
 }

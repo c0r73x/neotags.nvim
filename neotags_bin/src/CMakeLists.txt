@@ -1,23 +1,42 @@
 # /src
-set (neotags_SOURCES neotags.c utility.c linked_list.c)
+set (neotags_SOURCES
+    archive_util_gzip.c
+    getlines.c
+    linked_list.c
+    neotags.c
+    strip.c
+    util.c)
 
-if (NOT "${HAS_STRLCPY}" EQUAL "1")
-    if (NOT "${HAS_LIBBSD}" EQUAL "1")
-        set (neotags_EXTRA_SOURCES bsd_funcs.c)
+if (LZMA_SUPPORT)
+    set (neotags_SOURCES ${neotags_SOURCES} archive_util_xz.c)
+endif()
+if (NOT HAVE_STRLCPY AND NOT HAVE_LIBBSD) 
+    set (neotags_SOURCES ${neotags_SOURCES} bsd_funcs.c)
+endif()
+
+add_executable(neotags ${neotags_SOURCES})
+
+if (LZMA_SUPPORT)
+    include_directories(${LIBLZMA_INCLUDE_DIRS})
+    if (BUILD_DIST OR STATIC_LIBS_ONLY)
+        add_library(neo_LZMA_STATIC STATIC IMPORTED)
+        set_property(TARGET neo_LZMA_STATIC PROPERTY IMPORTED_LOCATION /usr/lib64/liblzma.a)
+        target_link_libraries(neotags neo_LZMA_STATIC)
+    else()
+        target_link_libraries(neotags ${LIBLZMA_LIBRARIES})
     endif()
 endif()
 
-add_executable(neotags ${neotags_SOURCES} ${neotags_EXTRA_SOURCES})
-
-if (MSVC)
-    # Again, wild guesses.
-    get_filename_component(MSVC_PCRE_FULL_PATH "../" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-    find_library(MSVC_FIND_PCRE pcre2-8.dll pcre2-8.a pcre2-8.dll.a pcre2-8.lib HINTS "C:/Program Files/PCRE2/lib" "C:/Program Files/PCRE2/bin" ${MSVC_PCRE_FULL_PATH})
-    find_library(MSVC_FIND_LIBZ libz HINTS "D:/libs/lib")
-    target_link_libraries(neotags ${MSVC_FIND_PCRE})
+if (STATIC_LIBS_ONLY)
+    add_library(neo_ZLIB_STATIC STATIC IMPORTED)
+    set_property(TARGET neo_ZLIB_STATIC PROPERTY IMPORTED_LOCATION /usr/lib64/libz.a)
 else()
-    target_link_libraries(neotags -lpcre2-8 -lz)
-    if ("${HAS_LIBBSD}" EQUAL "1")
-        target_link_libraries(neotags -lbsd)
-    endif()
+    include_directories(${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(neotags ${ZLIB_LIBRARIES})
 endif()
+
+if (neotags_LIBBSD_FOUND)
+    include_directories(neotags ${neotags_LIBBSD_INCLUDE_DIRS})
+    target_link_libraries(neotags ${neotags_LIBBSD_LIBRARIES})
+endif()
+

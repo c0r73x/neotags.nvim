@@ -4,17 +4,14 @@ endif
 
 let g:neotags#python#m = {
             \   'prefix': '\(\.\|\<def\s\+\)\@<=',
-            \   'group': 'pythonMethodTag'
+            \   'group': 'MethodTag'
             \ }
 let g:neotags#python#f = {
             \   'prefix': '\%(\<def\s\+\)\@<!\<',
-            \   'group': 'pythonFunctionTag'
+            \   'group': 'FunctionTag'
             \ }
+let g:neotags#python#c = { 'group': 'ClassTag' }
 
-let g:neotags#python#c = {
-            \   'group': 'pythonClassTag'
-            \ }
-
-highlight def link PythonMethodTag Function
-highlight def link PythonFunctionTag Function
-highlight def link PythonClassTag Type
+highlight def link MethodTag	neotags_MethodTag
+highlight def link FunctionTag	neotags_FunctionTag
+highlight def link ClassTag	neotags_ClassTag
