@@ -46,6 +46,7 @@ class Neotags(object):
         self.__neotags_bin = None
         self.__slurp = None
         self.__tagfile = None
+        self.__autocmd = None
 
         self.__fsuffix = ''
         self.__globtime = time.time()
@@ -97,6 +98,7 @@ class Neotags(object):
         self._debug_echo("Using compression type %s with ext %s" %
                          (self.vv('compression_type'), self.__fsuffix), False)
 
+        self.__autocmd = "if execute('autocmd User') =~# 'NeotagsPost' | doautocmd User NeotagsPost | endif"
         self.__initialized = True
 
         if self.vv('enabled'):
@@ -119,11 +121,11 @@ class Neotags(object):
         if not self.vv('enabled'):
             self._debug_echo('Update called when plugin disabled...', False)
             self._clear(ft)
-            self.__vim.command('doautocmd User NeotagsPost', async=False)
+            self.vim.command(self.__autocmd, async=False)
             return
 
-        if (ft == '' or ft in self.__ignore):
-            self.__vim.command('doautocmd User NeotagsPost', async=False)
+        if (ft == '') or (ft in self.vv('ignore')):
+            self.vim.command(self.__autocmd, async=False)
             return
 
         if self.__is_running:
@@ -134,7 +136,7 @@ class Neotags(object):
         self.__is_running = False
         self.highlight(False)
 
-        self.__vim.command('doautocmd User NeotagsPost', async=False)
+        self.vim.command(self.__autocmd, async=False)
 
     def highlight(self, clear):
         """Analyze the tags data and format it for nvim's regex engine."""

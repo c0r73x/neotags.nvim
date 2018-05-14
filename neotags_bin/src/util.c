@@ -227,8 +227,7 @@ basename(char *path)
 #endif
 
 
-/* #ifndef HAVE_ERR */
-#if 1
+#ifndef HAVE_ERR
 void
 _warn(bool print_err, const char *const restrict fmt, ...)
 {
