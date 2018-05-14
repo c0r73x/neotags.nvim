@@ -39,7 +39,7 @@
  * Returns strlen(src); if retval >= dst_size, truncation occurred.
  */
 size_t
-strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
+neotags_strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
 {
         const char *orig_src = src;
         size_t nleft = dst_size;
@@ -91,7 +91,7 @@ strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
  * If retval >= dst_size, truncation occurred.
  */
 size_t
-strlcat(char * restrict dst, const char * restrict src, size_t dst_size)
+neotags_strlcat(char * restrict dst, const char * restrict src, size_t dst_size)
 {
         const char *orig_dst = dst;
         const char *orig_src = src;
@@ -147,7 +147,7 @@ strlcat(char * restrict dst, const char * restrict src, size_t dst_size)
 #define TOOLARGE 3
 
 long long
-strtonum(const char *numstr,
+neotags_strtonum(const char *numstr,
          long long minval,
          long long maxval,
          const char **errstrp)
@@ -186,3 +186,126 @@ strtonum(const char *numstr,
 
         return (ret);
 }
+
+
+/*============================================================================*/
+/*============================================================================*/
+/* strsep */
+
+#if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
+/*-
+* SPDX-License-Identifier: BSD-3-Clause
+*
+* Copyright (c) 1990, 1993
+*	The Regents of the University of California.  All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions
+* are met:
+* 1. Redistributions of source code must retain the above copyright
+*    notice, this list of conditions and the following disclaimer.
+* 2. Redistributions in binary form must reproduce the above copyright
+*    notice, this list of conditions and the following disclaimer in the
+*    documentation and/or other materials provided with the distribution.
+* 3. Neither the name of the University nor the names of its contributors
+*    may be used to endorse or promote products derived from this software
+*    without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+* OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+* HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+* LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+* OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+* SUCH DAMAGE.
+*/
+
+/*
+ * NOTE: Unlike GNU strsep, FreeBSD's strsep only looks for the first
+ *       character in the `delim' string.
+ */
+char *
+strsep(char **stringp, const char *delim)
+{
+        const char *delimp;
+        char *ptr, *tok;
+        char src_ch, del_ch;
+
+        if ((ptr = tok = *stringp) == NULL)
+                return (NULL);
+
+        for (;;) {
+                src_ch = *ptr++;
+                delimp = delim;
+                do {
+                        if ((del_ch = *delimp++) == src_ch) {
+                                if (src_ch == '\0')
+                                        ptr = NULL;
+                                else
+                                        ptr[-1] = '\0';
+                                *stringp = ptr;
+                                return (tok);
+                        }
+                } while (del_ch != '\0');
+        }
+        /* NOTREACHED */
+}
+#endif
+
+
+#if 0
+/*============================================================================*/
+/*============================================================================*/
+/* strsep */
+
+#include <stdio.h>
+
+
+int
+fpurge(FILE *fp)
+{
+        int retval;
+        FLOCKFILE(fp);
+        if (!fp->_flags) {
+                errno = EBADF;
+                retval = EOF;
+        }
+        else {
+                if (HASUB(fp))
+                        FREEUB(fp);
+                fp->_p = fp->_bf._base;
+                fp->_r = 0;
+                fp->_w = fp->_flags & (__SLBF | __SNBF | __SRD) ? 0 : fp->_bf._size;
+                retval = 0;
+        }
+        FUNLOCKFILE(fp);
+        return (retval);
+}
+
+void
+__fpurge(FILE *fp)
+{
+        if (fp->_mode > 0)
+        {
+                /* Wide-char stream.  */
+                if (_IO_in_backup(fp))
+                        _IO_free_wbackup_area(fp);
+
+                fp->_wide_data->_IO_read_end = fp->_wide_data->_IO_read_ptr;
+                fp->_wide_data->_IO_write_ptr = fp->_wide_data->_IO_write_base;
+        }
+        else
+        {
+                /* Byte stream.  */
+                if (_IO_in_backup(fp))
+                        _IO_free_backup_area(fp);
+
+                fp->_IO_read_end = fp->_IO_read_ptr;
+                fp->_IO_write_ptr = fp->_IO_write_base;
+        }
+}
+#endif

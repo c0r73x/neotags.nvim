@@ -1,0 +1,213 @@
+#include "archive_util.h"
+#include "neotags.h"
+#include <assert.h>
+#include <errno.h>
+#include <limits.h>
+#include <locale.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
+#define safe_stat(PATH, ST)                                     \
+     do {                                                       \
+             if ((stat((PATH), (ST)) != 0))                     \
+                     err(1, "Failed to stat file '%s", (PATH)); \
+     } while (0)
+
+
+static void ll_strsep      (struct linked_list *ll, char *buf);
+static void plain_getlines (struct linked_list *ll, const char *filename);
+static void gz_getlines    (struct linked_list *ll, const char *filename);
+static void xz_getlines    (struct linked_list *ll, const char *filename);
+
+/* ========================================================================== */
+
+
+void
+getlines(struct linked_list *ll, const char *comptype, const char *filename)
+{
+        if (backup_iterator == 19)
+                errx(1, "Too many files!");
+
+        warnx("Recieved comptype '%s'", comptype);
+        if (streq(comptype, "none"))
+                plain_getlines(ll, filename);
+        else if (streq(comptype, "gzip"))
+                gz_getlines(ll, filename);
+#ifdef LZMA_SUPPORT
+        else if (streq(comptype, "lzma"))
+                xz_getlines(ll, filename);
+#endif
+        else
+                errx(1, "Unknown compression type %s!", comptype);
+}
+
+
+static void
+ll_strsep(struct linked_list *ll, char *buf)
+{
+        char *tok;
+        /* Set this global pointer so the string can be free'd later... */
+        backup_pointers[backup_iterator++] = buf;
+
+        while ((tok = strsep(&buf, "\n")) != NULL) {
+                if (*tok == '\0')
+                        continue;
+                struct string *str = xmalloc(sizeof *str);
+                str->len = buf - tok;
+                str->s   = tok;
+
+                ll_add(ll, str);
+        }
+}
+
+
+#ifdef DEBUG
+    static inline void
+    report_size(struct archive_size *size)
+    {
+            setlocale(LC_NUMERIC, "");
+            warnx("Using a buffer of size %'zu for output; filesize is %'zu\n",
+                  size->uncompressed, size->archive);
+    }
+#else
+#   define report_size(...)
+#endif
+
+
+/* ========================================================================== */
+/* PLAIN */
+
+
+static void
+plain_getlines(struct linked_list *ll, const char *filename)
+{
+        FILE *fp = safe_fopen(filename, "rb");
+        struct stat st;
+
+        safe_stat(filename, &st);
+        char *buffer = xmalloc(st.st_size + 1L);
+
+        if (fread(buffer, 1, st.st_size, fp) != (size_t)st.st_size || ferror(fp))
+                err(1, "Error reading file %s", filename);
+
+        buffer[st.st_size] = '\0';
+
+        fclose(fp);
+        ll_strsep(ll, buffer);
+}
+
+
+/* ========================================================================== */
+/* GZIP */
+
+#include <zlib.h>
+
+
+static void
+gz_getlines(struct linked_list *ll, const char *filename)
+{
+        struct archive_size size;
+        gzip_size(&size, filename);
+        report_size(&size);
+
+        int ret;
+        uint8_t *in_buf  = xmalloc(size.archive);
+        uint8_t *out_buf = xmalloc(size.uncompressed + 1);
+        FILE *fp         = safe_fopen(filename, "rb");
+
+        /* Read the data from the file in one go. */
+        fread(in_buf, 1, size.archive, fp);
+        if (ferror(fp))
+                err(1, "%s: Error in read operation", filename);
+        fclose(fp);
+
+        /* Setup the zlib stream. */
+        z_stream strm;
+        strm.avail_in  = size.archive;
+        strm.avail_out = size.uncompressed;
+        strm.next_in   = in_buf;
+        strm.next_out  = out_buf;
+        strm.opaque    = Z_NULL;
+        strm.zalloc    = Z_NULL;
+        strm.zfree     = Z_NULL;
+
+        if ((ret = inflateInit2(&strm, 32)) != Z_OK)
+                errx(1, "Something broke during init (%d) -> %s\n",
+                     ret, strm.msg);
+
+        if ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END)
+                errx(1, "Something broke during decompression (%d) -> %s\n",
+                     ret, strm.msg);
+
+        ret = inflateEnd(&strm);
+        assert(ret == Z_OK);
+        free(in_buf);
+
+        /* Always remember to null terminate the thing. */
+        out_buf[size.uncompressed] = '\0';
+        ll_strsep(ll, (char *)out_buf);
+}
+
+
+/* ========================================================================== */
+/* XZ */
+
+#include <lzma.h>
+extern const char * message_strm(lzma_ret);
+
+
+static void
+xz_getlines(struct linked_list *ll, const char *filename)
+{
+        struct archive_size size;
+        xz_size(&size, filename);
+        report_size(&size);
+
+        uint8_t *in_buf  = xmalloc(size.archive + 1);
+        uint8_t *out_buf = xmalloc(size.uncompressed + 1);
+
+        /* Setup the stream and initialize the decoder */
+        lzma_stream strm[] = {LZMA_STREAM_INIT};
+        if ((lzma_auto_decoder(strm, UINT64_MAX, 0)) != LZMA_OK)
+                errx(1, "Unhandled internal error.");
+
+        lzma_ret ret = lzma_stream_decoder(strm, UINT64_MAX, LZMA_CONCATENATED);
+        if (ret != LZMA_OK)
+                errx(1, "%s\n", ret == LZMA_MEM_ERROR ?
+                             strerror(ENOMEM) : "Internal error (bug)");
+
+        /* avail_in is the number of bytes read from a file to the strm that
+         * have not yet been decoded. avail_out is the number of bytes remaining
+         * in the output buffer in which to place decoded bytes.*/
+        strm->next_out     = out_buf;
+        strm->next_in      = in_buf;
+        strm->avail_out    = size.uncompressed;
+        strm->avail_in     = 0;
+        lzma_action action = LZMA_RUN;
+        FILE *fp           = safe_fopen(filename, "rb");
+
+        /* We must read the size of the input buffer + 1 in order to
+         * trigger an EOF condition.*/
+        strm->avail_in = fread(in_buf, 1, size.archive + 1, fp);
+
+        if (ferror(fp))
+                err(1, "%s: Error reading input size", filename);
+        if (feof(fp))
+                action = LZMA_FINISH;
+        else
+                errx(1, "Error reading file: buffer too small.");
+
+        ret = lzma_code(strm, action);
+
+        if (ret != LZMA_STREAM_END)
+                errx(5, "Unexpected error on line %d in file %s: %d => %s",
+                     __LINE__, __FILE__, ret, message_strm(ret));
+
+        out_buf[size.uncompressed] = '\0';
+        fclose(fp);
+        lzma_end(strm);
+        free(in_buf);
+
+        ll_strsep(ll, (char *)out_buf);
+}

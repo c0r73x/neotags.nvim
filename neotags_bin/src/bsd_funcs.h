@@ -6,14 +6,24 @@
 #endif
 
 #include <string.h>
-#ifndef __GNUC__
+#ifdef _MSC_VER
 #  define restrict __restrict
 #endif
 
-size_t    strlcpy(char * restrict dst, const char * restrict src, size_t dst_size);
-size_t    strlcat(char * restrict dst, const char * restrict src, size_t dst_size);
-long long strtonum(const char *numstr, long long minval, long long maxval, const char **errstrp);
+#if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
+   char *strsep(char **stringp, const char *delim);
+#endif
 
+size_t    neotags_strlcpy(char * restrict dst, const char * restrict src, size_t dst_size);
+size_t    neotags_strlcat(char * restrict dst, const char * restrict src, size_t dst_size);
+long long neotags_strtonum(const char *numstr, long long minval, long long maxval, const char **errstrp);
+
+/* This is just to avoid symbol conflicts on systems with native versions of
+ * these functions. A binary release may compile the bundled versions regardless
+ * of whether they are needed. */
+#define strlcpy  neotags_strlcpy
+#define strlcat  neotags_strlcat
+#define strtonum neotags_strtonum
 
 #ifdef __cplusplus
    }
