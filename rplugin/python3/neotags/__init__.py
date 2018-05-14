@@ -5,6 +5,7 @@
 #              Released under the MIT license
 # ============================================================================
 import neovim
+
 from neotags.neotags import Neotags
 
 
@@ -21,16 +22,15 @@ class NeotagsHandlers(object):
 
     @neovim.function('NeotagsHighlight')
     def highlight(self, args):
-        self.__vim.async_call(self.__neotags.update, False)
+        self.__vim.async_call(self.__neotags.highlight, False)
 
     @neovim.function('NeotagsRehighlight')
     def rehighlight(self, args):
-        # self.__vim.async_call(self.__neotags.highlight, True)
-        self.__vim.async_call(self.__neotags.update, True)
+        self.__vim.async_call(self.__neotags.highlight, True)
 
     @neovim.function('NeotagsUpdate')
     def update(self, args):
-        self.__vim.async_call(self.__neotags.update, True)
+        self.__vim.async_call(self.__neotags.update)
 
     @neovim.function('NeotagsToggle')
     def toggle(self, args):

@@ -1,41 +1,43 @@
 if !exists('g:neotags#c#order')
-        let g:neotags#c#order = 'gstuedfm'
+        let g:neotags#c#order = 'cgstuedfpm'
 endif
 
-let g:neotags#c#g = { 'group': 'EnumTypeTag' }
-let g:neotags#c#s = { 'group': 'StructTag' }
-let g:neotags#c#t = { 'group': 'TypeTag' }
-let g:neotags#c#u = { 'group': 'UnionTag' }
-let g:neotags#c#e = { 'group': 'EnumTag' }
-let g:neotags#c#d = { 'group': 'PreProcTag' }
+let g:neotags#c#c = {
+            \   'group': 'cTypeTag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
+            \ }
+
 let g:neotags#c#m = {
-            \   'group': 'MemberTag',
+            \   'group': 'cMemberTag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
             \   'prefix': '\%(\%(\>\|\]\|)\)\%(\.\|->\)\)\@5<=',
             \ }
+
+let g:neotags#c#g = g:neotags#c#c
+let g:neotags#c#s = g:neotags#c#c
+let g:neotags#c#t = g:neotags#c#c
+let g:neotags#c#u = g:neotags#c#c
+
+let g:neotags#c#e = {
+            \   'group': 'cEnumTag',
+            \   'ignore': '^[_\w]+::'
+            \ }
+
+let g:neotags#c#d = {
+            \   'group': 'cPreProcTag'
+            \ }
+
 let g:neotags#c#f = {
-            \   'group': 'FunctionTag',
+            \   'group': 'cFunctionTag',
+            \   'ignore': '^(~|[_\w]+::)',
             \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
-let g:neotags#c#equivalent = { 'p': 'f' }
+let g:neotags#c#p = g:neotags#c#f
 
-" highlight def link cEnumTypeTag	Type
-" highlight def link cStructTag	Type
-" highlight def link cUnionTag	Type
-" 
-" highlight def link cEnumTag	Define
-" highlight def link cFunctionTag	Function
-" highlight def link cMemberTag	Identifier
-" highlight def link cPreProcTag	PreProc
-" highlight def link cTypeTag	Type
 
-highlight def link ClassTag	neotags_TypeTag
-highlight def link EnumTypeTag	neotags_EnumTypeTag
-highlight def link StructTag	neotags_StructTag
-highlight def link UnionTag	neotags_UnionTag
-
-highlight def link EnumTag	neotags_EnumTag
-highlight def link FunctionTag	neotags_FunctionTag
-highlight def link MemberTag	neotags_MemberTag
-highlight def link PreProcTag	neotags_PreProcTag
-highlight def link TypeTag	neotags_TypeTag
+highlight def link cEnumTag Define
+highlight def link cFunctionTag Function
+highlight def link cMemberTag Identifier
+highlight def link cPreProcTag PreProc
+highlight def link cTypeTag Type

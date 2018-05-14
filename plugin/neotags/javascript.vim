@@ -1,7 +1,7 @@
 let g:neotags#javascript#order = 'cCfmpo'
 
 let g:neotags#javascript#c = {
-            \   'group': 'ClassTag',
+            \   'group': 'javascriptClassTag',
             \   'notin': [
             \       'jsx.*',
             \       'javascriptTemplate'
@@ -9,7 +9,7 @@ let g:neotags#javascript#c = {
             \ }
 
 let g:neotags#javascript#C = {
-            \   'group': 'ConstantTag',
+            \   'group': 'javascriptConstantTag',
             \   'notin': [
             \       'jsx.*',
             \       'javascriptTemplate'
@@ -17,7 +17,7 @@ let g:neotags#javascript#C = {
             \ }
 
 let g:neotags#javascript#f = {
-            \   'group': 'FunctionTag',
+            \   'group': 'javascriptFunctionTag',
             \   'notin': [
             \       'jsx.*',
             \       'javascriptTemplate',
@@ -27,7 +27,7 @@ let g:neotags#javascript#f = {
             \ }
 
 let g:neotags#javascript#m = {
-            \   'group': 'MethodTag',
+            \   'group': 'javascriptMethodTag',
             \   'notin': [
             \       'jsx.*',
             \       'javascriptTemplate',
@@ -37,7 +37,7 @@ let g:neotags#javascript#m = {
             \ }
 
 let g:neotags#javascript#o = {
-            \   'group': 'ObjectTag',
+            \   'group': 'javascriptObjectTag',
             \   'notin': [
             \       'jsx.*',
             \       'javascriptTemplate',
@@ -47,7 +47,7 @@ let g:neotags#javascript#o = {
             \ }
 
 let g:neotags#javascript#p = {
-            \   'group': 'PropTag',
+            \   'group': 'javascriptPropTag',
             \   'notin': [
             \       'jsx.*',
             \       'javascriptTemplate',
@@ -56,9 +56,9 @@ let g:neotags#javascript#p = {
             \   ]
             \ }
 
-highlight def link ClassTag	neotags_ClassTag
-highlight def link ConstantTag	neotags_ConstantTag
-highlight def link FunctionTag	neotags_FunctionTag
-highlight def link MethodTag	neotags_MethodTag
-highlight def link ObjectTag	neotags_ObjectTag
-highlight def link PropTag	neotags_PreProcTag
+highlight def link javascriptFunctionTag Function
+highlight def link javascriptMethodTag Function
+highlight def link javascriptObjectTag Identifier
+highlight def link javascriptConstantTag PreProc
+highlight def link javascriptPropTag PreProc
+highlight def link javascriptClassTag Type

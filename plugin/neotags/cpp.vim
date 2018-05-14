@@ -1,32 +1,43 @@
 if !exists('g:neotags#cpp#order')
-        let g:neotags#cpp#order = 'cgstuedfm'
+        let g:neotags#cpp#order = 'cgstuedfpm'
 endif
 
-let g:neotags#cpp#c = { 'group': 'ClassTag' }
-let g:neotags#cpp#g = { 'group': 'EnumTypeTag' }
-let g:neotags#cpp#s = { 'group': 'StructTag' }
-let g:neotags#cpp#t = { 'group': 'TypeTag' }
-let g:neotags#cpp#u = { 'group': 'UnionTag' }
-let g:neotags#cpp#e = { 'group': 'EnumTag' }
-let g:neotags#cpp#d = { 'group': 'PreProcTag' }
-let g:neotags#cpp#m = {
-            \   'group': 'MemberTag',
+let g:neotags#cpp#c = {
+            \   'group': 'cppTypeTag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)'
+            \ }
+
+let g:neotags#c#m = {
+            \   'group': 'cppmembertag',
+            \   'ignore': '(__anon[0-9a-f]+|[_\w]+::)',
             \   'prefix': '\%(\%(\>\|\]\|)\)\%(\.\|->\)\)\@5<=',
             \ }
+
+let g:neotags#cpp#g = g:neotags#cpp#c
+let g:neotags#cpp#s = g:neotags#cpp#c
+let g:neotags#cpp#t = g:neotags#cpp#c
+let g:neotags#cpp#u = g:neotags#cpp#c
+
+let g:neotags#cpp#e = {
+            \   'group': 'cppEnumTag',
+            \   'ignore': '^[_\w]+::'
+            \ }
+
+let g:neotags#cpp#d = {
+            \   'group': 'cppPreProcTag'
+            \ }
+
 let g:neotags#cpp#f = {
-            \   'group': 'FunctionTag',
+            \   'group': 'cppFunctionTag',
+            \   'ignore': '^(~|[_\w]+::|operator)',
             \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
-let g:neotags#c#equivalent = { 'p': 'f' }
+let g:neotags#cpp#p = g:neotags#cpp#f
 
-highlight def link ClassTag	neotags_TypeTag
-highlight def link EnumTypeTag	neotags_EnumTypeTag
-highlight def link StructTag	neotags_StructTag
-highlight def link UnionTag	neotags_UnionTag
 
-highlight def link EnumTag	neotags_EnumTag
-highlight def link FunctionTag	neotags_FunctionTag
-highlight def link MemberTag	neotags_MemberTag
-highlight def link PreProcTag	neotags_PreProcTag
-highlight def link TypeTag	neotags_TypeTag
+highlight def link cppEnumTag Define
+highlight def link cppFunctionTag Function
+highlight def link cppMemberTag Identifier
+highlight def link cppPreProcTag PreProc
+highlight def link cppTypeTag Type
