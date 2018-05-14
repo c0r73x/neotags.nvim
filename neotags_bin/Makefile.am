@@ -1,3 +1,0 @@
-# How sparse.
-
-SUBDIRS = src

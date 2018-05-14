@@ -2,23 +2,17 @@ if !exists('g:neotags#vim#order')
 	let g:neotags#vim#order = 'acfv'
 endif
 
-let g:neotags#vim#v = {
-            \   'group': 'vimVariableTag'
-            \ }
-
-let g:neotags#vim#a = {
-            \   'group': 'vimAutoGroupTag'
-            \ }
-
+let g:neotags#vim#v = { 'group': 'VariableTag' }
+let g:neotags#vim#a = { 'group': 'AutoGroupTag' }
 let g:neotags#vim#c = {
-            \   'group': 'vimCommandTag',
+            \   'group': 'CommandTag',
             \   'prefix': '\(\(^\|\s\):\?\)\@<=',
             \   'suffix': '\(!\?\(\s\|$\)\)\@='
             \ }
 
 " Use :set iskeyword+=: for vim to make s:/<sid> functions to show correctly
 let g:neotags#vim#f = {
-            \   'group': 'vimFuncNameTag',
+            \   'group': 'FuncNameTag',
             \   'prefix': '\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
             \   'filter': {
             \       'pattern': '(?i)(<sid>|\bs:)',
@@ -27,8 +21,9 @@ let g:neotags#vim#f = {
             \   }
             \ }
 
-highlight def link vimFuncNameTag Function
-highlight def link vimScriptFuncNameTag Function
-highlight def link vimCommandTag PreProc
-highlight def link vimAutoGroupTag Define
-highlight def link vimVariableTag Identifier
+
+highlight def link FuncNameTag		neotags_FunctionTag
+highlight def link ScriptFuncNameTag	neotags_FunctionTag
+highlight def link CommandTag		neotags_PreProcTag
+highlight def link AutoGroupTag		neotags_PreProcTag
+highlight def link VariableTag		neotags_VariableTag
