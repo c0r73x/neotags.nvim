@@ -21,13 +21,13 @@ static inline void print_data (const struct linked_list *ll, const char *vim_buf
 int
 main(int argc, char **argv)
 {
-        if (isatty(STDIN_FILENO))
+        program_name = handle_progname(*argv++);
+        if (isatty(0))
                 errx(1, "This program can't be run manually.");
         if (--argc != REQUIRED_INPUT)
                 errx(2, "Error: Wrong number of paramaters (%d, need %d).",
                      argc, REQUIRED_INPUT);
 
-        program_name   = handle_progname(*argv++);
         char **files   = get_colon_data(*argv++);
         char *ctlang   = *argv++;
         char *vimlang  = *argv++;
@@ -182,11 +182,18 @@ search(const struct linked_list *taglist,
 
         /* Verify that the file has the 2 required 'extra' fields. */
         {
+#ifdef _MSC_VER
+                char *tmp = strdup(node->data->s);
+#else
                 char *tmp = strdupa(node->data->s);
+#endif
                 while ((tok = strsep(&tmp, "\t")) != NULL)
                         if ((tok[0] != '\0' && tok[1] == '\0') ||
                             strncmp(tok, "language:", 9) == 0)
                                 ++nfields;
+#ifdef _MSC_VER
+                free(tmp);
+#endif
                 if (nfields != 2) {
                         warnx("Invalid file! nfields is %d", nfields);
                         goto error;

@@ -235,11 +235,33 @@ _warn(bool print_err, const char *const restrict fmt, ...)
         char *buf;
         va_start(ap, fmt);
 
+#ifdef _MSC_VER
+        size_t size;
+        //char *progname;
+        //if (program_name)
+        //        progname = program_name;
+        //else {
+        //        progname = strdup()
+
+        if (print_err) {
+                char tmp[BUFSIZ];
+                /* strerror() is guarenteed to be less than 8192, strcpy is fine. */
+                strcpy(tmp, strerror(errno));
+                size = strlen(fmt) + strlen(program_name) + strlen(tmp) + 6;
+                buf = xmalloc(size);
+                snprintf(buf, size, "%s: %s: %s\n", program_name, fmt, tmp);
+        } else {
+                size = strlen(fmt) + strlen(program_name) + 4;
+                buf = xmalloc(size);
+                snprintf(buf, size, "%s: %s\n", program_name, fmt);
+        }
+#else
         if (print_err)
                 asprintf(&buf, "%s: %s: %s\n", program_name, fmt,
                          strerror(errno));
         else
                 asprintf(&buf, "%s: %s\n", program_name, fmt);
+#endif
 
         if (buf == NULL) {
                 /* Allocation failed: print the original format and a \n. */
