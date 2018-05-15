@@ -22,6 +22,7 @@ from neovim.api.nvim import NvimError
 
 clib = None
 
+
 class Neotags(object):
     def __init__(self, vim):
         self.__prefix = '\C\<'
@@ -575,8 +576,8 @@ class Neotags(object):
             try:
                 if ((order.find(grp) == (-1))
                         or (key_lang != match_lang
-                            and  key_lang   not in ('c', 'cpp')
-                            and  match_lang not in ('c', 'cpp'))
+                            and key_lang   not in ('c', 'cpp')
+                            and match_lang not in ('c', 'cpp'))
                         or (match['name'] in ignored_tags)
                         or (match['name'] in groups[key])):  # <- duplicates
                     continue
@@ -857,7 +858,7 @@ class Neotags(object):
             binary = None
             if loud:
                 self._inform_echo("Binary '%s' doesn't exist. Cannot enable." %
-                                  self.__neotags_bin, False)
+                                  self.__neotags_bin)
             else:
                 self._debug_echo(
                     "Binary '%s' doesn't exist." % self.__neotags_bin, False)
