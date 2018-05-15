@@ -10,9 +10,9 @@ let g:neotags#java#g = { 'group': 'javaEnumTypeTag' }
 let g:neotags#java#f = { 'group': 'javaFieldTag' }
 
 
-highlight def link ClassTag	neotags_TypeTag
-highlight def link EnumTag	neotags_EnumTag
-highlight def link EnumTypeTag	neotags_EnumTypeTag
-highlight def link FieldTag	neotags_FieldTag
-highlight def link InterfaceTag	neotags_InterfaceTag
-highlight def link MethodTag	neotags_MethodTag
+highlight def link javaClassTag	neotags_TypeTag
+highlight def link javaEnumTag	neotags_EnumTag
+highlight def link javaEnumTypeTag	neotags_EnumTypeTag
+highlight def link javaFieldTag	neotags_FieldTag
+highlight def link javaInterfaceTag	neotags_InterfaceTag
+highlight def link javaMethodTag	neotags_MethodTag
