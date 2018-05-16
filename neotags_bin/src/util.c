@@ -219,7 +219,7 @@ basename(char *path)
         assert(path != NULL && *path != '\0');
         size_t len = strlen(path);
         char *ptr = path + len;
-        while ((*ptr != '/' && *ptr != '\\') && ptr != path)
+        while (*ptr != '/' && *ptr != '\\' && ptr != path)
                 --ptr;
         
         return (*ptr == '/' || *ptr == '\\') ? ptr + 1 : ptr;
@@ -237,12 +237,6 @@ _warn(bool print_err, const char *const restrict fmt, ...)
 
 #ifdef _MSC_VER
         size_t size;
-        //char *progname;
-        //if (program_name)
-        //        progname = program_name;
-        //else {
-        //        progname = strdup()
-
         if (print_err) {
                 char tmp[BUFSIZ];
                 /* strerror() is guarenteed to be less than 8192, strcpy is fine. */

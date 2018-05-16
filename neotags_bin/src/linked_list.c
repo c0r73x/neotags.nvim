@@ -11,11 +11,12 @@ static void remove_node(struct linked_list *list, struct Node *node);
  * always free'd. The intention is to keep things adaptable. This macro could
  * change for different datatypes, and the field itself need not be boolean. */
 
-#define FREE_DATA(LL_, NODE_)               \
-    do {                                    \
-            if ((LL_)->can_free_data)       \
-                    free((NODE_)->data->s); \
-            free((NODE_)->data);            \
+#define CSS(NODE_) ((struct string *)(NODE_))
+#define FREE_DATA(LL_, NODE_)                    \
+    do {                                         \
+            if ((LL_)->can_free_data)            \
+                    free(CSS((NODE_)->data)->s); \
+            free((NODE_)->data);                 \
     } while (0)
 
 
@@ -31,7 +32,7 @@ new_list(uint8_t can_free_data)
 
 
 void
-ll_add(struct linked_list *list, LLTYPE data)
+ll_add(struct linked_list *list, void *data)
 {
         struct Node *node = xmalloc(sizeof *node);
 
@@ -49,7 +50,7 @@ ll_add(struct linked_list *list, LLTYPE data)
 
 
 void
-ll_append(struct linked_list *list, LLTYPE data)
+ll_append(struct linked_list *list, void *data)
 {
         struct Node *node = xmalloc(sizeof *node);
 
@@ -66,7 +67,7 @@ ll_append(struct linked_list *list, LLTYPE data)
 }
 
 
-LLTYPE
+void *
 _ll_popat(struct linked_list *list, long index, enum ll_pop_type type)
 {
         struct Node *node = getnode_at_index(list, index);
@@ -78,30 +79,12 @@ _ll_popat(struct linked_list *list, long index, enum ll_pop_type type)
         case RET_ONLY:
                 return node->data;
         case BOTH:
-                ; LLTYPE data = node->data;
+                ; void *data = node->data;
                 remove_node(list, node);
                 return data;
         default:
                 errx(1, "Unreachable!\n");
         }
-}
-
-
-bool
-ll_find_str(struct linked_list *list, char *str)
-{
-        struct Node *current = list->head;
-        bool ret = false;
-
-        while (current != NULL) {
-                /* if (streq(str+1, current->data->s+1)) { */
-                if (streq(str, current->data->s)) {
-                        ret = true;
-                        break;
-                }
-                current = current->next;
-        }
-        return ret;
 }
 
 
@@ -184,4 +167,21 @@ remove_node(struct linked_list *list, struct Node *node)
         }
         --list->size;
         free(node);
+}
+
+
+/*============================================================================*/
+
+#define CSS(NODE_) ((struct string *)(NODE_))
+
+
+bool
+ll_find_s_string(const struct linked_list *const list,
+                 const char kind, const char *const name)
+{
+        for (struct Node *node = list->head; node != NULL; node = node->next)
+                if (kind == CSS(node->data)->kind &&
+                    streq(name, CSS(node->data)->s))
+                        return true;
+        return false;
 }

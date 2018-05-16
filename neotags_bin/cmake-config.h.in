@@ -1,4 +1,6 @@
 #cmakedefine HAVE_STRLCPY
+#cmakedefine HAVE_STRDUPA
+#cmakedefine HAVE_STRSEP
 #cmakedefine HAVE_LIBBSD
 #cmakedefine HAVE_ERR
 #cmakedefine LZMA_SUPPORT

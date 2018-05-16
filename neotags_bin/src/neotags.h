@@ -27,6 +27,7 @@
 #ifdef _MSC_VER
 #   define _CRT_SECURE_NO_WARNINGS
 #   define _CRT_NONSTDC_NO_WARNINGS
+#   define __attribute__(...)
 #endif
 /*===========================================================================*/
 
@@ -36,7 +37,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define LLTYPE struct string *
+/* #define LLTYPE struct string * */
 #define NUM_POINTERS 20
 
 /*===========================================================================*/
@@ -55,7 +56,7 @@ struct linked_list {
 };
 
 struct Node {
-        LLTYPE data;
+        void *data;
         struct Node *prev;
         struct Node *next;
 };
@@ -74,14 +75,13 @@ int backup_iterator;
 
 #if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
 #   include <io.h>
-#   define __attribute__(...)
 #   define strcasecmp  _stricmp
 #   define strncasecmp _strnicmp
 #   define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
 #   undef BUFSIZ
 #   define BUFSIZ 8192
-    char * basename(char *path);
+    extern char * basename(char *path);
 #else
 #   include <unistd.h>
 #endif
@@ -101,22 +101,13 @@ int backup_iterator;
 #else
     void _warn(bool print_err, const char *fmt, ...);
 #   define handle_progname(VAR_) basename(VAR_)
-/* #   ifdef DEBUG */
 #      define warn(...)    _warn(true, __VA_ARGS__)
 #      define warnx(...)   _warn(false, __VA_ARGS__)
-/* #   endif */
 #   define err(EVAL, ...)  _warn(true, __VA_ARGS__), exit(EVAL)
 #   define errx(EVAL, ...) _warn(false, __VA_ARGS__), exit(EVAL)
 #endif
-/* #ifdef DEBUG */
-#   define eputs(STR_)    fputs((STR_), stderr)
-#   define eprintf(...)   fprintf(stderr, __VA_ARGS__)
-/* #else
-#   define warn(...)    ;
-#   define warnx(...)   ;
-#   define eputs(...)   ;
-#   define eprintf(...) ;
-#endif */
+#define eputs(STR_)  fputs((STR_), stderr)
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
 
 /*===========================================================================*/
@@ -132,20 +123,20 @@ int backup_iterator;
 #define free_all(...)   __free_all(__VA_ARGS__, NULL)
 #define dumpstr(STR_, FNAME_, FP_) __dump_string((STR_), (FNAME_), (FP_), (#STR_))
 
-int64_t __xatoi      (char *str, bool strict);
-size_t  my_fgetline  (char **ptr, void *fp);
-int     my_fgetc     (void *fp);
-void *  xmalloc      (const size_t size)                __attribute__((malloc));
-void *  xcalloc      (const int num, const size_t size) __attribute__((malloc));
-void *  xrealloc     (void *ptr, const size_t size)     __attribute__((malloc));
-FILE *  safe_fopen   (const char * const restrict filename, const char * const restrict mode);
-bool    file_is_reg  (const char *filename);
-void  __dump_list    (char **list, FILE *fp, const char *varname);
-void  __dump_string  (char *str, const char *filename, FILE *fp, const char *varname);
-void  __free_all     (void *ptr, ...);
+extern int64_t __xatoi      (char *str, bool strict);
+extern size_t  my_fgetline  (char **ptr, void *fp);
+extern int     my_fgetc     (void *fp);
+extern void *  xmalloc      (const size_t size)                __attribute__((malloc));
+extern void *  xcalloc      (const int num, const size_t size) __attribute__((malloc));
+extern void *  xrealloc     (void *ptr, const size_t size)     __attribute__((malloc));
+extern FILE *  safe_fopen   (const char * const restrict filename, const char * const restrict mode);
+extern bool    file_is_reg  (const char *filename);
+extern void  __dump_list    (char **list, FILE *fp, const char *varname);
+extern void  __dump_string  (char *str, const char *filename, FILE *fp, const char *varname);
+extern void  __free_all     (void *ptr, ...);
 
-struct linked_list * get_all_lines(const char *filename);
-struct linked_list * llstrsep(struct string *buffer);
+extern struct linked_list * get_all_lines(const char *filename);
+extern struct linked_list * llstrsep(struct string *buffer);
 
 
 /*
@@ -156,18 +147,21 @@ struct linked_list * llstrsep(struct string *buffer);
 #define ll_pop_at(LIST,IND) _ll_popat((LIST), (IND), BOTH)
 #define ll_get(LIST,IND)    _ll_popat((LIST), (IND), RET_ONLY)
 #define ll_remove(LIST,IND) _ll_popat((LIST), (IND), DEL_ONLY)
+extern struct linked_list * new_list(uint8_t can_free_data);
+extern void   ll_add(struct linked_list *list, void *data);
+extern void   ll_append(struct linked_list *list, void *data);
+extern void * _ll_popat(struct linked_list *list, long index, enum ll_pop_type type);
+extern void   destroy_list(struct linked_list *list);
 
-struct linked_list * new_list(uint8_t can_free_data);
-
-void   ll_add(struct linked_list *list, LLTYPE data);
-void   ll_append(struct linked_list *list, LLTYPE data);
-LLTYPE _ll_popat(struct linked_list *list, long index, enum ll_pop_type type);
-bool   ll_find_str(struct linked_list *list, char *str);
-void   destroy_list(struct linked_list *list);
+extern bool   ll_find_s_string(const struct linked_list *list, const char kind, const char *name);
 
 
-void getlines(struct linked_list *ll, const char *comptype, const char *filename);
-char * strip_comments(struct string *buffer, const char *lang);
+/* 
+ * Else
+ */
+extern void getlines(struct linked_list *ll, const char *comptype, const char *filename);
+extern char * strip_comments(struct string *buffer, const char *lang);
+void quick_sort(struct string **data, uint32_t size);
 
 
 #ifdef __cplusplus

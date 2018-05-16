@@ -43,10 +43,9 @@ static char *handle_python(const struct string *const vim_buf, const char delim)
 char *
 strip_comments(struct string *buffer, const char *lang)
 {
-        size_t i, size = ARRSIZ(languages);
-        warnx("Size is %zu, it should be %zu", size, 6L);
+        size_t i, size;
 
-        for (i = 0; i < size; ++i)
+        for (i = 0, size = ARRSIZ(languages); i < size; ++i)
                 if (streq(lang, languages[i].lang))
                         break;
 
@@ -246,11 +245,6 @@ struct py_quote {
 #define FIELDG "%s: \033[%um\033[32m%d\033[0m, "
 
 
-/* static void _check_docstring_(
-        struct quote_s *A, struct quote_s *B, enum docstring_e *in_docstring,
-        bool *transition, const char *const pos, const bool escape, const bool comment); */
-
-
 static char *
 handle_python(const struct string *const vim_buf, const char delim)
 {
@@ -272,7 +266,6 @@ handle_python(const struct string *const vim_buf, const char delim)
         do {
                 if (!comment && !QUOTE && !escape && *pos == delim) {
                         comment = true;
-                        escape  = false;
                         space   = 0;
                         continue;
                 }

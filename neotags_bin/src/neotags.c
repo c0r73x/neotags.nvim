@@ -14,8 +14,14 @@ static struct linked_list *search(
 static char **get_colon_data  (char *oarg);
 static inline void print_data (const struct linked_list *ll, const char *vim_buf);
 
+#ifdef HAVE_STRDUPA
+#   define STRDUP strdupa
+#else
+#   define STRDUP strdup
+#endif
 #define REQUIRED_INPUT 8
 #define CCC(ARG_) ((const char *const *)(ARG_))
+#define CSS(NODE_) ((struct string *)(NODE_))
 
 
 int
@@ -40,6 +46,8 @@ main(int argc, char **argv)
 
         struct linked_list *taglist = new_list(false);
         warnx("ctlang: %s, vimlang: %s\n", ctlang, vimlang);
+        dump_list(files);
+        dump_list(equiv);
 
         for (char **ptr = files; *ptr != NULL; ptr += 2)
                 getlines(taglist, *ptr, *(ptr + 1));
@@ -51,7 +59,7 @@ main(int argc, char **argv)
                 warnx("Stripping comments...\n");
                 struct string tmp = {vim_buf, '\0', nchars + 1};
                 char *buf = strip_comments(&tmp, vimlang);
-                if (buf != NULL) {
+                if (buf) {
                         free(vim_buf);
                         vim_buf = buf;
                 }
@@ -74,6 +82,11 @@ main(int argc, char **argv)
 }
 
 
+#if (defined(_WIN32) || defined(_WIN64)) && !defined(__CYGWIN__)
+#   define SEPCHAR ';'
+#else
+#   define SEPCHAR ':'
+#endif
 static char **
 get_colon_data(char *oarg)
 {
@@ -81,11 +94,9 @@ get_colon_data(char *oarg)
         char *arg = oarg;
 
         if (*arg != '\0')
-                do {
-                        if (*arg == ':') {
-                                *arg++ = '\0';
-                                ++num;
-                        }
+                do if (*arg == SEPCHAR) {
+                        *arg++ = '\0';
+                        ++num;
                 } while (*arg++);
 
         /* The loop above will miss the last element, so we increment num. */
@@ -108,8 +119,8 @@ static inline void
 print_data(const struct linked_list *const ll, const char *const vim_buf)
 {
         for (struct Node *node = ll->head; node != NULL; node = node->next)
-                if (strstr(vim_buf, node->data->s) != NULL)
-                        printf("%c\n%s\n", node->data->kind, node->data->s);
+                if (strstr(vim_buf, CSS(node->data)->s) != NULL)
+                        printf("%c\n%s\n", CSS(node->data)->kind, CSS(node->data)->s);
 }
 
 
@@ -122,6 +133,7 @@ in_order(const char *const *equiv, const char *order, char *group)
         /* `group' is actually a pointer to a char, not a C string. */
         for (; *equiv != NULL; ++equiv) {
                 if (*group == (*equiv)[0]) {
+                        /* eprintf("Group %c is the same as %c\n", *group, (*equiv)[1]); */
                         *group = (*equiv)[1];
                         break;
                 }
@@ -165,7 +177,7 @@ search(const struct linked_list *taglist,
        const char *const *skip,
        const char *const *equiv)
 {
-#define cur_str node->data->s
+#define cur_str CSS(node->data)->s
         struct linked_list *ll = new_list(false);
         struct Node *node = taglist->tail;
         int nfields = 0;
@@ -181,32 +193,26 @@ search(const struct linked_list *taglist,
         }
 
         /* Verify that the file has the 2 required 'extra' fields. */
-        {
-#ifdef _MSC_VER
-                char *tmp = strdup(node->data->s);
-#else
-                char *tmp = strdupa(node->data->s);
+        char *tmp = STRDUP(cur_str);
+        while ((tok = strsep(&tmp, "\t")) != NULL)
+                if ((tok[0] != '\0' && tok[1] == '\0') ||
+                    strncmp(tok, "language:", 9) == 0)
+                        ++nfields;
+#ifndef HAVE_STRDUPA
+        free(tmp);
 #endif
-                while ((tok = strsep(&tmp, "\t")) != NULL)
-                        if ((tok[0] != '\0' && tok[1] == '\0') ||
-                            strncmp(tok, "language:", 9) == 0)
-                                ++nfields;
-#ifdef _MSC_VER
-                free(tmp);
-#endif
-                if (nfields != 2) {
-                        warnx("Invalid file! nfields is %d", nfields);
-                        goto error;
-                }
+        if (nfields != 2) {
+                warnx("Invalid file! nfields is %d", nfields);
+                goto error;
         }
 
         for (; node != NULL; node = node->prev) {
                 /* The name is first, followed by two fields we don't need. */
-                name = strsep(&cur_str, "\t");
+                name    = strsep(&cur_str, "\t");
                 cur_str = strchr(cur_str, '\t');
                 cur_str = strchr(cur_str, '\t');
 
-                while ((tok = strsep(&node->data->s, "\t")) != NULL) {
+                while ((tok = strsep(&cur_str, "\t")) != NULL) {
                         /* The 'kind' field is the only one that is 1 character
                          * long, and the 'language' field is prefaced. */
                         if (tok[0] != '\0' && tok[1] == '\0')
@@ -225,7 +231,7 @@ search(const struct linked_list *taglist,
                 if ( in_order(equiv, order, &kind) &&
                      is_correct_lang(lang, match_lang) &&
                     !skip_tag(skip, name) &&
-                    !ll_find_str(ll, name))
+                    !ll_find_s_string(ll, kind, name))
                 {
                         struct string *tmp = xmalloc(sizeof *tmp);
                         tmp->s    = name;

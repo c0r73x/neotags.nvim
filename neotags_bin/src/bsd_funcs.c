@@ -46,7 +46,7 @@ neotags_strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
 
         /* Copy as many bytes as will fit */
         if (nleft != 0)
-                while (--nleft != 0)  /* Break when nleft is 1 -> room for null */
+                while (--nleft != 0)  /* Break when nleft is 1 */
                         if ((*dst++ = *src++) == '\0')
                                 break;
 
@@ -192,7 +192,7 @@ neotags_strtonum(const char *numstr,
 /*============================================================================*/
 /* strsep */
 
-#if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
+#ifndef HAVE_STRSEP
 /*-
 * SPDX-License-Identifier: BSD-3-Clause
 *
@@ -253,59 +253,5 @@ strsep(char **stringp, const char *delim)
                 } while (del_ch != '\0');
         }
         /* NOTREACHED */
-}
-#endif
-
-
-#if 0
-/*============================================================================*/
-/*============================================================================*/
-/* strsep */
-
-#include <stdio.h>
-
-
-int
-fpurge(FILE *fp)
-{
-        int retval;
-        FLOCKFILE(fp);
-        if (!fp->_flags) {
-                errno = EBADF;
-                retval = EOF;
-        }
-        else {
-                if (HASUB(fp))
-                        FREEUB(fp);
-                fp->_p = fp->_bf._base;
-                fp->_r = 0;
-                fp->_w = fp->_flags & (__SLBF | __SNBF | __SRD) ? 0 : fp->_bf._size;
-                retval = 0;
-        }
-        FUNLOCKFILE(fp);
-        return (retval);
-}
-
-void
-__fpurge(FILE *fp)
-{
-        if (fp->_mode > 0)
-        {
-                /* Wide-char stream.  */
-                if (_IO_in_backup(fp))
-                        _IO_free_wbackup_area(fp);
-
-                fp->_wide_data->_IO_read_end = fp->_wide_data->_IO_read_ptr;
-                fp->_wide_data->_IO_write_ptr = fp->_wide_data->_IO_write_base;
-        }
-        else
-        {
-                /* Byte stream.  */
-                if (_IO_in_backup(fp))
-                        _IO_free_backup_area(fp);
-
-                fp->_IO_read_end = fp->_IO_read_ptr;
-                fp->_IO_write_ptr = fp->_IO_write_base;
-        }
 }
 #endif

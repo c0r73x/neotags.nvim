@@ -8,8 +8,7 @@ include (CheckSymbolExists)
 if (MSVC OR MINGW)
     message(FATAL_ERROR "\
 Native Microsoft Windows is not supported through cmake. Please use the included \
-Visual Studio project solution and libraries. Believe me, this is saving you \
-hours of effort.")
+Visual Studio project solution and libraries")
 endif()
 
 set (REQUIRED_LZMA_VERSION 5.3.1)
@@ -24,9 +23,14 @@ option(STATIC_LIBS_ONLY "Build with only static libraries.")
 
 find_package (ZLIB REQUIRED)
 find_package (LibLZMA)
+
+set (CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE -DHAVE_CONFIG_H)
+
 # pkg_check_modules (neotags_PCRE-8 libpcre2-8 REQUIRED)
-CHECK_FUNCTION_EXISTS (strlcpy HAVE_STRLCPY)
-CHECK_SYMBOL_EXISTS   (err "err.h" HAVE_ERR)
+CHECK_SYMBOL_EXISTS (strlcpy "string.h" HAVE_STRLCPY)
+CHECK_SYMBOL_EXISTS (strdupa "string.h" HAVE_STRDUPA)
+CHECK_SYMBOL_EXISTS (strsep  "string.h" HAVE_STRSEP)
+CHECK_SYMBOL_EXISTS (err     "err.h"    HAVE_ERR)
 
 if (LIBLZMA_FOUND)
     if (${LIBLZMA_VERSION_STRING} STRLESS ${REQUIRED_LZMA_VERSION})
@@ -59,7 +63,8 @@ endif()
 if (NOT BUILD_DIST) 
     set (MARCH_SETTING "-march=native")
 endif()
-set (WARNS "-fdiagnostics-color=always -Wall -Wno-macro-redefined")
+
+set (WARNS "-fdiagnostics-color=always -Wall")
 
 set (CMAKE_C_FLAGS_DEBUG         "${MARCH_SETTING} ${WARNS} -Og -g -Wextra -Wpedantic -Wformat")
 set (CMAKE_C_FLAGS_MINSIZEREL    "${MARCH_SETTING} ${WARNS} -Os")

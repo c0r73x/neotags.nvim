@@ -175,7 +175,7 @@ xz_getlines(struct linked_list *ll, const char *filename)
         lzma_ret ret = lzma_stream_decoder(strm, UINT64_MAX, LZMA_CONCATENATED);
         if (ret != LZMA_OK)
                 errx(1, "%s\n", ret == LZMA_MEM_ERROR ?
-                             strerror(ENOMEM) : "Internal error (bug)");
+                     strerror(ENOMEM) : "Internal error (bug)");
 
         /* avail_in is the number of bytes read from a file to the strm that
          * have not yet been decoded. avail_out is the number of bytes remaining
