@@ -9,17 +9,18 @@
 # run without the module (and therefore essentially without the kill function;
 # beggers can't be choosers). Psutil is not and will never be available on
 # Cygwin, which makes this plugin unusable there without this change.
-
-import hashlib
-import inspect
 import os
 import re
-import subprocess
 import time
+import hashlib
+import inspect
+import subprocess
+
 from sys import platform
-from tempfile import NamedTemporaryFile
-from neovim.api.nvim import NvimError
 from copy import deepcopy
+from tempfile import NamedTemporaryFile
+
+from neovim.api.nvim import NvimError
 
 CLIB = None
 if platform == 'win32':
@@ -98,16 +99,21 @@ class Neotags(object):
 
             if ctype in ('gz', 'gzip'):
                 import gzip as CLIB
+
                 self.vv('compression_type', SET='gzip')
                 self.__fsuffix = '.gz'
             elif ctype in ('xz', 'lzma'):
                 import lzma as CLIB
+
                 self.vv('compression_type', SET='lzma')
                 self.__fsuffix = '.xz'
             else:
                 self._error("Neotags: Unrecognized compression type.")
                 self.vv('compression_type', SET=None)
                 self.vv('use_compression', SET=0)
+        else:
+            self.vv('compression_type', SET=None)
+            self.vv('use_compression', SET=0)
 
         self._debug_echo("Using compression type %s with ext %s" %
                          (self.vv('compression_type'), self.__fsuffix), pop=False)
@@ -634,13 +640,15 @@ class Neotags(object):
             cmpt = self.vv('compression_type')
             try:
                 self._debug_start()
-                with open(self.__tagfile, 'rb') as src:
-                    with self._open(self.__gzfile, 'wb', cmpt, level=9) as dst:
-                        dst.write(src.read())
-                    src.seek(0)
-                    self._update_vim_tagfile(self.__gzfile, src)
+                if cmpt in ('gzip', 'lzma'):
+                    with open(self.__tagfile, 'rb') as src:
+                        with self._open(self.__gzfile, 'wb', cmpt, level=9) as dst:
+                            dst.write(src.read())
 
-                os.unlink(self.__tagfile)
+                        src.seek(0)
+                        self._update_vim_tagfile(self.__gzfile, src)
+
+                    os.unlink(self.__tagfile)
 
             except IOError as err:
                 self._error("Unexpected IO Error -> '%s'" % err)
@@ -908,7 +916,7 @@ class Neotags(object):
             self._error("Unexpected io error: %s" % err)
 
     def _open(self, filename, mode, comp_type, level=None, **kwargs):
-        if comp_type is None:
+        if comp_type not in ('gzip', 'lzma'):
             string = 'open(filename, mode, **kwargs)'
 
         elif comp_type == 'gzip':
