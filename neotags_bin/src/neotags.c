@@ -304,8 +304,9 @@ search(struct linked_list *taglist,
 
 
         for (int T = 0; T < num_threads; ++T) {
-                int end = cross_arr_duplicate() ? out[T]->num - 1
-                                                : out[T]->num;
+                /* int end = cross_arr_duplicate() ? out[T]->num - 1
+                                                : out[T]->num; */
+                int end = out[T]->num;
 
                 for (int i = 0; i < end; ++i) {
                         printf("%c\n%s\n",

@@ -480,7 +480,7 @@ class Neotags(object):
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            )
+        )
         out, err = proc.communicate(input=self.__slurp.encode('utf-8', errors='replace'))
         # splitchar = '\r\n' if platform == 'win32' else '\n'
         out = out.decode(errors='replace').rstrip().split('\n')
@@ -559,7 +559,8 @@ class Neotags(object):
                 data = fp.read()
                 match_list = pattern.finditer(data)
 
-            self.parse(ft, match_list, groups, languages, ignored_tags, equivalent, order)
+            self.parse(ft, match_list, groups, languages, ignored_tags,
+                       equivalent, order)
             comp_type = None
 
         # with open(os.env['HOME']+'/python.log', 'w') as fp:
