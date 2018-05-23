@@ -18,28 +18,32 @@
 static void ll_strsep      (struct linked_list *ll, char *buf);
 static void plain_getlines (struct linked_list *ll, const char *filename);
 static void gz_getlines    (struct linked_list *ll, const char *filename);
+#ifdef LZMA_SUPPORT
 static void xz_getlines    (struct linked_list *ll, const char *filename);
+#endif
 
 /* ========================================================================== */
 
 
-void
+int
 getlines(struct linked_list *ll, const char *comptype, const char *filename)
 {
-        if (backup_iterator == 19)
+        if (backup_iterator == NUM_BACKUPS)
                 errx(1, "Too many files!");
 
-        warnx("Recieved comptype '%s'", comptype);
-        if (streq(comptype, "none"))
+        if (streq(comptype, "none")) {
                 plain_getlines(ll, filename);
-        else if (streq(comptype, "gzip"))
+        } else if (streq(comptype, "gzip")) {
                 gz_getlines(ll, filename);
 #ifdef LZMA_SUPPORT
-        else if (streq(comptype, "lzma"))
+        } else if (streq(comptype, "lzma")) {
                 xz_getlines(ll, filename);
 #endif
-        else
-                errx(1, "Unknown compression type %s!", comptype);
+        } else {
+                warnx("Unknown compression type %s!", comptype);
+                return 0;
+        }
+        return 1; /* 1 indicates success here... */
 }
 
 
@@ -86,7 +90,7 @@ plain_getlines(struct linked_list *ll, const char *filename)
         struct stat st;
 
         safe_stat(filename, &st);
-        char *buffer = xmalloc(st.st_size + 1L);
+        char *buffer = xmalloc(st.st_size + 1LL);
 
         if (fread(buffer, 1, st.st_size, fp) != (size_t)st.st_size || ferror(fp))
                 err(1, "Error reading file %s", filename);
@@ -153,7 +157,8 @@ gz_getlines(struct linked_list *ll, const char *filename)
 /* ========================================================================== */
 /* XZ */
 
-#include <lzma.h>
+#ifdef LZMA_SUPPORT
+#   include <lzma.h>
 extern const char * message_strm(lzma_ret);
 
 
@@ -211,3 +216,4 @@ xz_getlines(struct linked_list *ll, const char *filename)
 
         ll_strsep(ll, (char *)out_buf);
 }
+#endif

@@ -57,7 +57,7 @@ struct linked_list *
 get_all_lines(const char *filename)
 {
         FILE *fp = safe_fopen(filename, "rb");
-        struct linked_list *ll = new_list(true);
+        struct linked_list *ll = new_list(ST_STRING_FREE);
         struct string *str;
 
         for (;;) {
@@ -81,7 +81,7 @@ struct linked_list *
 llstrsep(struct string *buffer)
 {
         char *tok, *buf;
-        struct linked_list *ll = new_list(false);
+        struct linked_list *ll = new_list(ST_STRING_NOFREE);
 
         /* Set this global pointer so it can be free'd later... */
         evil_global_backup_pointer = buf = buffer->s;
@@ -102,8 +102,8 @@ llstrsep(struct string *buffer)
 
 
 FILE *
-safe_fopen(const char * const restrict filename,
-           const char * const restrict mode)
+safe_fopen(const char * const __restrict filename,
+           const char * const __restrict mode)
 {
         FILE *fp = fopen(filename, mode);
         if (!fp)
@@ -212,7 +212,7 @@ __free_all(void *ptr, ...)
 }
 
 
-#if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
+#ifdef DOSISH
 char *
 basename(char *path)
 {
@@ -229,13 +229,19 @@ basename(char *path)
 
 #ifndef HAVE_ERR
 void
-_warn(bool print_err, const char *const restrict fmt, ...)
+_warn(bool print_err, const char *const __restrict fmt, ...)
 {
         va_list ap;
         char *buf;
         va_start(ap, fmt);
 
-#ifdef _MSC_VER
+#ifdef HAVE_ASPRINTF
+        if (print_err)
+                asprintf(&buf, "%s: %s: %s\n", program_name, fmt,
+                         strerror(errno));
+        else
+                asprintf(&buf, "%s: %s\n", program_name, fmt);
+#else
         size_t size;
         if (print_err) {
                 char tmp[BUFSIZ];
@@ -249,12 +255,6 @@ _warn(bool print_err, const char *const restrict fmt, ...)
                 buf = xmalloc(size);
                 snprintf(buf, size, "%s: %s\n", program_name, fmt);
         }
-#else
-        if (print_err)
-                asprintf(&buf, "%s: %s: %s\n", program_name, fmt,
-                         strerror(errno));
-        else
-                asprintf(&buf, "%s: %s\n", program_name, fmt);
 #endif
 
         if (buf == NULL) {
@@ -269,3 +269,29 @@ _warn(bool print_err, const char *const restrict fmt, ...)
         va_end(ap);
 }
 #endif
+
+
+int
+find_num_cpus(void)
+{
+#ifdef _WIN32
+#   ifndef _SC_NPROCESSORS_ONLN
+        SYSTEM_INFO info;
+        GetSystemInfo(&info);
+#      define sysconf(a) info.dwNumberOfProcessors
+#      define _SC_NPROCESSORS_ONLN
+#   endif
+#endif
+#ifdef _SC_NPROCESSORS_ONLN
+        long nprocs, nprocs_max;
+        if ((nprocs = sysconf(_SC_NPROCESSORS_ONLN)) < 1)
+                warn("Could not determine number of CPUs online");
+        if ((nprocs_max = sysconf(_SC_NPROCESSORS_CONF)) < 1)
+                warn("Could not determine number of CPUs configured");
+
+        return nprocs;
+#else
+        warn("Could not determine number of CPUs");
+        return 0;
+#endif
+}

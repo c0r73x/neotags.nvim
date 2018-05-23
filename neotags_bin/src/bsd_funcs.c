@@ -39,7 +39,7 @@
  * Returns strlen(src); if retval >= dst_size, truncation occurred.
  */
 size_t
-neotags_strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
+neotags_strlcpy(char * __restrict dst, const char * __restrict src, size_t dst_size)
 {
         const char *orig_src = src;
         size_t nleft = dst_size;
@@ -91,7 +91,7 @@ neotags_strlcpy(char * restrict dst, const char * restrict src, size_t dst_size)
  * If retval >= dst_size, truncation occurred.
  */
 size_t
-neotags_strlcat(char * restrict dst, const char * restrict src, size_t dst_size)
+neotags_strlcat(char * __restrict dst, const char * __restrict src, size_t dst_size)
 {
         const char *orig_dst = dst;
         const char *orig_src = src;
@@ -188,11 +188,11 @@ neotags_strtonum(const char *numstr,
 }
 
 
+#ifndef HAVE_STRSEP
 /*============================================================================*/
 /*============================================================================*/
 /* strsep */
 
-#ifndef HAVE_STRSEP
 /*-
 * SPDX-License-Identifier: BSD-3-Clause
 *

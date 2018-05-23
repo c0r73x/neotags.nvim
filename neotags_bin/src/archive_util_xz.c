@@ -18,7 +18,7 @@
 #   define IO_BUFFER_SIZE (BUFSIZ & ~7U)
 #endif
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
+#ifdef DOSISH
 #   include <windows.h>
 #else
 #   include <unistd.h>

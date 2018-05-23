@@ -135,7 +135,6 @@ endif
 
 " }}}
 
-" runtime! plugin/neotags/*.vim
 runtime! plugin/neotags/*.vim
 
 let g:neotags_loaded = 1
@@ -148,8 +147,24 @@ else
     augroup END
 endif
 
-command! -nargs=1 NeotagsAddProject call NeotagsAddProject("'".<args>."'")
-command! -nargs=1 NeotagsRemoveProject call NeotagsRemoveProject("'".<args>."'")
+function! s:Add_Remove_Project(operation, ...)
+    if exists('a:1')
+        let l:path = a:1
+    else
+        let l:path = getcwd()
+    endif
+    if a:operation ==# 0
+        call NeotagsRemoveProject(l:path)
+    elseif a:operation ==# 1
+        call NeotagsAddProject(l:path)
+    endif
+endfunction
+
+" command! -nargs=1 -complete=file NeotagsAddProject call NeotagsAddProject(<f-args>)
+" command! -nargs=1 -complete=file NeotagsRemoveProject call NeotagsRemoveProject(<f-args>)
+command! -nargs=? -complete=file NeotagsToggleProject call s:Add_remove_Project(2, <q-args>)
+command! -nargs=? -complete=file NeotagsAddProject call s:Add_Remove_Project(1, <q-args>)
+command! -nargs=? -complete=file NeotagsRemoveProject call s:Add_Remove_Project(0, <q-args>)
 command! NeotagsToggle call NeotagsToggle()
 command! NeotagsVerbosity call Neotags_Toggle_Verbosity()
 command! NeotagsBinaryToggle call Neotags_Toggle_C_Binary()
@@ -161,23 +176,23 @@ nmap <silent> <leader>tag <Plug>NeotagsToggle
 "============================================================================= 
 
 
-highlight def link neotags_ClassTag	neotags_TypeTag
-highlight def link neotags_EnumTypeTag	neotags_TypeTag
-highlight def link neotags_StructTag	neotags_TypeTag
-highlight def link neotags_UnionTag	neotags_TypeTag
-highlight def link neotags_MethodTag	neotags_FunctionTag
-highlight def link neotags_VariableTag	neotags_ObjectTag
-highlight def link neotags_FieldTag	neotags_MemberTag
+highlight def link neotags_ClassTag		neotags_TypeTag
+highlight def link neotags_EnumTypeTag		neotags_TypeTag
+highlight def link neotags_StructTag		neotags_TypeTag
+highlight def link neotags_UnionTag		neotags_TypeTag
+highlight def link neotags_MethodTag		neotags_FunctionTag
+highlight def link neotags_VariableTag		neotags_ObjectTag
+highlight def link neotags_FieldTag		neotags_MemberTag
 
-highlight def link neotags_ConstantTag	Constant
-highlight def link neotags_EnumTag	Define
-highlight def link neotags_FunctionTag	Function
-highlight def link neotags_InterfaceTag	Identifier
-highlight def link neotags_MemberTag	Identifier
-highlight def link neotags_ObjectTag	Identifier
-highlight def link neotags_ModuleTag	PreProc
-highlight def link neotags_PreProcTag	PreProc
-highlight def link neotags_TypeTag	Type
+highlight def link neotags_ConstantTag		Constant
+highlight def link neotags_EnumTag		Define
+highlight def link neotags_FunctionTag		Function
+highlight def link neotags_InterfaceTag		Identifier
+highlight def link neotags_MemberTag		Identifier
+highlight def link neotags_ObjectTag		Identifier
+highlight def link neotags_ModuleTag		PreProc
+highlight def link neotags_PreProcTag		PreProc
+highlight def link neotags_TypeTag		Type
 
 
 " vim:fdm=marker

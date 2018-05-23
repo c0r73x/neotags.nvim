@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import time
+import atexit
 from sys import platform
 from tempfile import NamedTemporaryFile
 from neovim.api.nvim import NvimError
@@ -24,8 +25,10 @@ from copy import deepcopy
 CLIB = None
 if platform == 'win32':
     SEPCHAR = ';'
+    DELETE = False
 else:
     SEPCHAR = ':'
+    DELETE = True
 
 
 class Neotags(object):
@@ -67,6 +70,9 @@ class Neotags(object):
         self.__hlbuf = 1
 
         self.vim = vim
+        
+        #if platform == 'win32':
+        #    atexit.register(cleanup_tmpfiles, self.__tmp_cache)
 
     def __void(self, *_, **__):
         return
@@ -447,15 +453,16 @@ class Neotags(object):
         # precise order. Since its only use is as a filter to this script, this
         # just seemed easier than something more robust. For reference, the
         # arguments it needs are:
-        #    1) Compression type of the tags file (none, gzip, or lzma)
-        #    2) The tags filename
-        #    3) The language of the current buffer in ctags' format
-        #    4) The same in vim's format
-        #    5) The `order' string
-        #    6) Whether to strip out comments (0 or 1)
-        #    7) The length in bytes of the current vim buffer
-        #    8) The `ignored' tags list, separated and terminated by semicolons
-        #    9) The list of groups considered equivalent (semicolon separated)
+        #    1) List of tags files, with the compression type of the file (none,
+        #       gzip, or lzma), a colon, the filename, and a terminating colon,
+        #       followed by any further files.
+        #    2) The language of the current buffer in ctags' format
+        #    3) The same in vim's format
+        #    4) The `order' string
+        #    5) Whether to strip out comments (0 or 1)
+        #    6) The length in bytes of the current vim buffer
+        #    7) The `ignored' tags list, separated and terminated by semicolons
+        #    8) The list of groups considered equivalent (semicolon separated)
         # All numbers must be converted to strings for the subprocess interface.
         proc = subprocess.Popen(
             (
@@ -472,10 +479,9 @@ class Neotags(object):
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            # universal_newlines=True,
-            # encoding='ascii', errors='replace')
             )
         out, err = proc.communicate(input=self.__slurp.encode('utf-8', errors='replace'))
+        # splitchar = '\r\n' if platform == 'win32' else '\n'
         out = out.decode(errors='replace').rstrip().split('\n')
         err = err.decode(errors='replace').rstrip().split('\n')
 
@@ -769,6 +775,7 @@ class Neotags(object):
                 'echom "%s (%.2fs) -" "%s"' %
                 (self.__to_escape.sub(r'\\\g<0>', message).replace('"', r'\"'),
                  elapsed, self.__start_time))
+            # self.vim.out_write('%s (%.2fs) - %s' % (message, elapsed, self.__start_time))
         elif err:
             self._error(message)
         else:
@@ -782,6 +789,7 @@ class Neotags(object):
     def _inform_echo(self, message):
         self.vim.command('echom "%s"' % self.__to_escape.sub(
                          r'\\\g<0>', message).replace('"', r'\"'))
+        # self.vim.out_write(message)
 
     def _error(self, message):
         if message:
@@ -789,6 +797,7 @@ class Neotags(object):
             message = message.replace('\\', '\\\\').replace('"', '\\"')
             self.vim.command('echohl ErrorMsg | echom "%s" | echohl None' %
                              message)
+            # self.vim.err_write(message)
 
     def _kill(self, proc_pid):
         import psutil
@@ -887,22 +896,30 @@ class Neotags(object):
     def _update_vim_tagfile(self, tagfile, open_file):
         try:
             if tagfile not in self.__tmp_cache:
-                tmpfile = NamedTemporaryFile(prefix="neotags", delete=True)
-                self.__tmp_cache[tagfile] = {}
-                self.__tmp_cache[tagfile]['fp'] = tmpfile
-                self.__tmp_cache[tagfile]['name'] = name = tmpfile.name
-                tmpfile.write(open_file.read())
-                self.vim.command('set tags+=%s' % name, async=True)
+                if platform == 'win32':
+                    tmpfile = open(self.vim.call('tempname'), 'wb')
+                else:
+                    tmpfile = NamedTemporaryFile(prefix="neotags", delete=DELETE)
 
+                self.__tmp_cache[tagfile] = {
+                    'fp': tmpfile,
+                    'name': tmpfile.name
+                }
+                tmpfile.write(open_file.read())
+                self.vim.command('set tags+=%s' % tmpfile.name, async=True)
             else:
-                tmpfile = self.__tmp_cache[tagfile]['fp']
-                name = self.__tmp_cache[tagfile]['name']
+                if platform == 'win32':
+                    tmpfile = open(self.__tmp_cache[tagfile]['name'], 'wb')
+                else:
+                    tmpfile = self.__tmp_cache[tagfile]['fp']
                 tmpfile.seek(0)
                 tmpfile.truncate(0)
                 tmpfile.flush()
                 tmpfile.write(open_file.read())
 
             tmpfile.flush()
+            if platform == 'win32':
+                tmpfile.close()
 
         except IOError as err:
             self._error("Unexpected io error: %s" % err)
@@ -932,7 +949,7 @@ class Neotags(object):
                 self.vim.vars["neotags_" + varname] = SET
                 return SET
 
-        except (NvimError, IndexError) as err:
+        except (NvimError, KeyError) as err:
             self._error("ERROR: varname %s doesn't exist." % varname)
             raise err
 
@@ -975,6 +992,7 @@ class Neotags(object):
             self._inform_echo('Switching off verbose output.')
             self._debug_start = self._debug_echo = self._debug_end = self.__void
             self.vv('verbose', SET=0)
+
 
 
 class HighlightGroup:

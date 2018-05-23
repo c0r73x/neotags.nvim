@@ -1,32 +1,76 @@
 #include "neotags.h"
-#include <assert.h>
+#include <locale.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static struct linked_list *search(
+#include <sys/time.h>
+
+#ifdef DOSISH
+#  define __CONST__
+#else
+#  define __CONST__ const
+#endif
+
+struct pdata {
+        int threadnum;
+        const char *vim_buf;
+        const char *lang;
+        const char *order;
+        const char *const *skip;
+        const char *const *equiv;
+        struct string **lst;
+        int num;
+};
+
+struct strlist {
+        struct string **data;
+        int64_t num;
+};
+
+#ifdef USE_PTHREADS
+static void search(
+        struct linked_list *taglist, const char *lang, const char *order,
+        const char *vim_buf, const char *const *skip, const char *const *equiv
+);
+static void *do_search(void *vdata);
+#else
+static struct linked_list *no_thread_search(
         const struct linked_list *taglist, const char *lang,
         const char *order, const char *const *skip, const char *const *equiv
 );
+static inline void print_data(const struct linked_list *ll, const char *vim_buf);
+#endif
 
-static char **get_colon_data  (char *oarg);
-static inline void print_data (const struct linked_list *ll, const char *vim_buf);
+static char **get_colon_data(char *oarg);
 
 #ifdef HAVE_STRDUPA
-#   define STRDUP strdupa
+#  define STRDUP strdupa
 #else
-#   define STRDUP strdup
+#  define STRDUP strdup
 #endif
 #define REQUIRED_INPUT 8
 #define CCC(ARG_) ((const char *const *)(ARG_))
 #define CSS(NODE_) ((struct string *)(NODE_))
 
+struct timeval tv1, tv2;
+#define STARTCOUNT() gettimeofday(&tv1, NULL)
+#define ENDCOUNT(STR_)                                                    \
+        do {                                                              \
+                gettimeofday(&tv2, NULL);                                 \
+                eprintf("%s: Total time = %f seconds\n", (STR_),          \
+                        ((double)(tv2.tv_usec - tv1.tv_usec) / 1000000) + \
+                         (double)(tv2.tv_sec - tv1.tv_sec));              \
+        } while (0)
 
 int
-main(int argc, char **argv)
+main(int argc, char *argv[])
 {
+        setlocale(LC_NUMERIC, "");
+        int reads    = 0;
         program_name = handle_progname(*argv++);
         if (isatty(0))
                 errx(1, "This program can't be run manually.");
@@ -44,17 +88,23 @@ main(int argc, char **argv)
         char **skip    = get_colon_data(*argv++);
         char **equiv   = get_colon_data(*argv++);
 
-        struct linked_list *taglist = new_list(false);
+        struct linked_list *taglist = new_list(ST_STRING_NOFREE);
         warnx("ctlang: %s, vimlang: %s\n", ctlang, vimlang);
         dump_list(files);
         dump_list(equiv);
 
+        STARTCOUNT();
         for (char **ptr = files; *ptr != NULL; ptr += 2)
-                getlines(taglist, *ptr, *(ptr + 1));
+                reads += getlines(taglist, *ptr, *(ptr + 1));
+
+        if (reads == 0)
+                errx(1, "Error: no files were successfully read.");
 
         fread(vim_buf, 1, nchars, stdin);
         vim_buf[nchars] = '\0';
+        ENDCOUNT("Raading tag files");
 
+        STARTCOUNT();
         if (strip_com) {
                 warnx("Stripping comments...\n");
                 struct string tmp = {vim_buf, '\0', nchars + 1};
@@ -64,13 +114,20 @@ main(int argc, char **argv)
                         vim_buf = buf;
                 }
         }
+        ENDCOUNT("Stripping comments");
 
-        struct linked_list *ll = search(taglist, ctlang, order,
-                                        CCC(skip), CCC(equiv));
+        STARTCOUNT();
+#ifdef USE_PTHREADS
+        search(taglist, ctlang, order, vim_buf, CCC(skip), CCC(equiv));
+#else
+        struct linked_list *ll =
+            no_thread_search(taglist, ctlang, order, CCC(skip), CCC(equiv));
         if (ll) {
                 print_data(ll, vim_buf);
                 destroy_list(ll);
         }
+#endif
+        ENDCOUNT("Doing search");
 
         /* pointlessly free everything */
         for (int i = 0; i < backup_iterator; ++i)
@@ -82,11 +139,12 @@ main(int argc, char **argv)
 }
 
 
-#if (defined(_WIN32) || defined(_WIN64)) && !defined(__CYGWIN__)
-#   define SEPCHAR ';'
+#ifdef DOSISH
+#  define SEPCHAR ';'
 #else
-#   define SEPCHAR ':'
+#  define SEPCHAR ':'
 #endif
+
 static char **
 get_colon_data(char *oarg)
 {
@@ -115,15 +173,6 @@ get_colon_data(char *oarg)
 }
 
 
-static inline void
-print_data(const struct linked_list *const ll, const char *const vim_buf)
-{
-        for (struct Node *node = ll->head; node != NULL; node = node->next)
-                if (strstr(vim_buf, CSS(node->data)->s) != NULL)
-                        printf("%c\n%s\n", CSS(node->data)->kind, CSS(node->data)->s);
-}
-
-
 /* ========================================================================== */
 
 
@@ -133,7 +182,6 @@ in_order(const char *const *equiv, const char *order, char *group)
         /* `group' is actually a pointer to a char, not a C string. */
         for (; *equiv != NULL; ++equiv) {
                 if (*group == (*equiv)[0]) {
-                        /* eprintf("Group %c is the same as %c\n", *group, (*equiv)[1]); */
                         *group = (*equiv)[1];
                         break;
                 }
@@ -144,8 +192,15 @@ in_order(const char *const *equiv, const char *order, char *group)
 
 
 static bool
-is_correct_lang(const char *lang, const char *match_lang)
+is_correct_lang(const char *lang, __CONST__ char *match_lang)
 {
+#ifdef DOSISH
+        /* It's a little disgusting to have to strlen every single string in
+         * Windows just to get ride of some '\r's, but it must be done. */
+        size_t size = strlen(match_lang);
+        if (match_lang[size - 1] == '\r')
+                match_lang[size - 1] = '\0';
+#endif
         if (strCeq(match_lang, lang))
                 return true;
 
@@ -170,15 +225,182 @@ skip_tag(const char *const *skip, const char *find)
 }
 
 
-static struct linked_list *
-search(const struct linked_list *taglist,
+/*============================================================================*/
+#ifdef USE_PTHREADS
+
+static void
+search(struct linked_list *taglist,
        const char *lang,
        const char *order,
+       const char *vim_buf,
        const char *const *skip,
        const char *const *equiv)
 {
-#define cur_str CSS(node->data)->s
-        struct linked_list *ll = new_list(false);
+        /* Skip past the comments and make sure the file isn't empty. */
+        struct Node *node = taglist->tail;
+        while (node != NULL && CSS(node->data)->s[0] == '!') {
+                node = node->prev;
+                ll_remove(taglist, -1);
+        }
+        if (node == NULL) {
+                warnx("Empty file!");
+                return;
+        }
+        
+        struct strlist *tags = xmalloc(sizeof *tags);
+        *tags = (struct strlist){
+                .data = xmalloc(sizeof(struct string *) * taglist->size),
+                .num  = taglist->size
+        };
+
+        node = taglist->tail;
+        for (int i = 0; node != NULL; node = node->prev, ++i)
+                tags->data[i] = node->data;
+
+        int num_threads = find_num_cpus();
+        if (num_threads == 0)
+                num_threads = 4;
+        warnx("Using %d cpus.", num_threads);
+        pthread_t tid[num_threads];
+
+        for (int i = 0; i < num_threads; ++i) {
+                struct pdata *tmp = xmalloc(sizeof *tmp);
+                int div = (taglist->size / (num_threads));
+
+                int num = (i == num_threads - 1)
+                              ? (int)(taglist->size - ((num_threads - 1) * div))
+                              : div;
+
+                *tmp = (struct pdata){
+                        .threadnum = i,
+                        .vim_buf   = vim_buf,
+                        .lang  = lang,
+                        .order = order,
+                        .skip  = skip,
+                        .equiv = equiv,
+                        .lst   = tags->data + (i * div),
+                        .num   = num
+                };
+
+                errno = 0;
+                int pt = pthread_create(tid + i, 0, do_search, tmp);
+                if (pt != 0 || errno)
+                        err(1, "pthread_create failed");
+        }
+
+        struct strlist **out = xmalloc(sizeof(*out) * num_threads);
+
+        for (int th = 0; th < num_threads ; ++th) {
+                void *tmp;
+                pthread_join(tid[th], &tmp);
+                out[th] = tmp;
+        }
+
+#  define last out[T]->num - 1
+#  define cross_arr_duplicate()                                    \
+        (T < num_threads - 1 &&                                    \
+         (out[T]->data[last]->kind == out[T + 1]->data[0]->kind && \
+          streq(out[T]->data[last]->s, out[T + 1]->data[0]->s)))
+
+
+        for (int T = 0; T < num_threads; ++T) {
+                int end = cross_arr_duplicate() ? out[T]->num - 1
+                                                : out[T]->num;
+
+                for (int i = 0; i < end; ++i) {
+                        printf("%c\n%s\n",
+                               out[T]->data[i]->kind,
+                               out[T]->data[i]->s);
+                        free(out[T]->data[i]);
+                }
+
+                free_all(out[T]->data, out[T]);
+        }
+
+        free_all(tags->data, tags, out);
+}
+
+
+static void *
+do_search(void *vdata)
+{
+        struct pdata *data = vdata;
+        char *tok, *name, *match_lang;
+        char kind;
+
+        struct strlist *ret = xmalloc(sizeof *ret);
+        *ret = (struct strlist){
+                .data = xmalloc(sizeof(struct string *) * data->num),
+                .num  = 0
+        };
+
+#  define cur_str  (data->lst[i]->s)
+#  define is_dup(KIND, NAME, PREV) \
+        ((KIND) == (PREV)->kind && streq((NAME), (PREV)->s))
+
+
+        for (int i = 0; i < data->num; ++i) {
+                /* The name is first, followed by two fields we don't need. */
+                name    = strsep(&cur_str, "\t");
+                cur_str = strchr(cur_str, '\t');
+                cur_str = strchr(cur_str, '\t');
+
+                match_lang = NULL;
+                kind = '\0';
+
+                while ((tok = strsep(&cur_str, "\t")) != NULL) {
+                        /* The 'kind' field is the only one that is 1 character
+                         * long, and the 'language' field is prefaced. */
+                        if (tok[0] != '\0' && tok[1] == '\0')
+                                kind = *tok;
+                        else if (strncmp(tok, "language:", 9) == 0)
+                                match_lang = tok + 9;
+                }
+                if (!match_lang || !kind)
+                        continue;
+
+                /* Prune tags. Include only those that are:
+                 *    1) of a type in the `order' list,
+                 *    2) of the correct language (applies mainly to C
+                 *       and C++, generally ctags filters languages),
+                 *    3) are not included in the `skip' list, and
+                 *    4) are not duplicates, and
+                 *    5) are present in the current vim buffer
+                 * If invalid, just move on. */
+                if ( in_order(data->equiv, data->order, &kind) &&
+                     is_correct_lang(data->lang, match_lang) &&
+                    !skip_tag(data->skip, name) &&
+                     (ret->num == 0 || !is_dup(kind, name,
+                                               ret->data[ret->num - 1])) &&
+                     strstr(data->vim_buf, name) != NULL)
+                {
+                        struct string *tmp = xmalloc(sizeof *tmp);
+                        tmp->s    = name;
+                        tmp->kind = kind;
+                        ret->data[ret->num++] = tmp;
+                } else {
+                        free(data->lst[i]->s);
+                }
+        }
+
+        free(vdata);
+        pthread_exit(ret);
+}
+
+
+/*============================================================================*/
+#else /* USE_PTHREADS */
+
+
+static struct linked_list *
+no_thread_search(const struct linked_list *taglist,
+                 const char *lang,
+                 const char *order,
+                 const char *const *skip,
+                 const char *const *equiv)
+{
+#  define cur_str CSS(node->data)->s
+        struct linked_list *ll = new_list(ST_STRING_NOFREE);
         struct Node *node = taglist->tail;
         int nfields = 0;
         char *tok, *name, *match_lang;
@@ -198,9 +420,9 @@ search(const struct linked_list *taglist,
                 if ((tok[0] != '\0' && tok[1] == '\0') ||
                     strncmp(tok, "language:", 9) == 0)
                         ++nfields;
-#ifndef HAVE_STRDUPA
+#  ifndef HAVE_STRDUPA
         free(tmp);
-#endif
+#  endif
         if (nfields != 2) {
                 warnx("Invalid file! nfields is %d", nfields);
                 goto error;
@@ -236,7 +458,6 @@ search(const struct linked_list *taglist,
                         struct string *tmp = xmalloc(sizeof *tmp);
                         tmp->s    = name;
                         tmp->kind = kind;
-                        /* tmp->len = 0; */
                         ll_add(ll, tmp); 
                 } 
         }
@@ -247,3 +468,14 @@ error:
         destroy_list(ll);
         return NULL;
 }
+
+
+static inline void
+print_data(const struct linked_list *const ll, const char *const vim_buf)
+{
+        for (struct Node *node = ll->head; node != NULL; node = node->next)
+                if (strstr(vim_buf, CSS(node->data)->s) != NULL)
+                        printf("%c\n%s\n", CSS(node->data)->kind, CSS(node->data)->s);
+}
+
+#endif /* USE_PTHREADS */
