@@ -2,7 +2,6 @@
 set (neotags_SOURCES
     archive_util_gzip.c
     getlines.c
-    linked_list.c
     neotags.c
     strip.c
     util.c)

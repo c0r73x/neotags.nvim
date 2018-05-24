@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#define CC(VAR_)     ((const struct string *const)(VAR_))
+#define CC(VAR_)     ((const struct lldata *const)(VAR_))
 #define ARRSIZ(ARR_) (sizeof(ARR_) / sizeof(*(ARR_)))
 
 enum lang_e {
@@ -36,12 +36,12 @@ static const struct comment_s {
 } comments[] = {{0, '\0'}, {1, '#'}, {2, ';'}, {3, '"'}};
 
 
-static char *handle_cstyle(const struct string *const vim_buf);
-static char *handle_python(const struct string *const vim_buf, const char delim);
+static char *handle_cstyle(const struct lldata *const vim_buf);
+static char *handle_python(const struct lldata *const vim_buf, const char delim);
 
 
 char *
-strip_comments(struct string *buffer, const char *lang)
+strip_comments(struct lldata *buffer, const char *lang)
 {
         size_t i, size;
 
@@ -96,7 +96,7 @@ enum c_com_type {
 
 
 static char *
-handle_cstyle(const struct string *const vim_buf)
+handle_cstyle(const struct lldata *const vim_buf)
 {
         enum c_com_type comment = NONE;
         bool double_q, single_q, slash, escape, transition;
@@ -246,7 +246,7 @@ struct py_quote {
 
 
 static char *
-handle_python(const struct string *const vim_buf, const char delim)
+handle_python(const struct lldata *const vim_buf, const char delim)
 {
         enum docstring_e in_docstring = NO_DOCSTRING;
         struct py_quote Single = { false, 0, '\'', SINGLE_DOCSTRING };

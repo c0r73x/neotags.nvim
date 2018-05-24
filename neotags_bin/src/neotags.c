@@ -6,66 +6,45 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef USE_PTHREADS
+#  include <pthread.h>
+   static void *do_search(void *vdata);
+
+   struct pdata {
+           int threadnum;
+           const char *vim_buf;
+           const char *lang;
+           const char *order;
+           const char *const *skip;
+           const char *const *equiv;
+           struct lldata **lst;
+           int num;
+   };
+#endif
+
+static void search(
+        struct datalist *taglist, const char *vim_buf, const char *lang,
+        const char *order, const char *const *skip, const char *const *equiv
+);
+static char **get_colon_data(char *oarg);
 
 #ifdef DOSISH
 #  define __CONST__
-#  define STARTCOUNT()
-#  define ENDCOUNT(STR_)
+#  define SEPCHAR ';'
 #else
-#  include <sys/time.h>
 #  define __CONST__ const
-#  define STARTCOUNT() gettimeofday(&tv1, NULL)
-#  define ENDCOUNT(STR_)                                                    \
-        do {                                                              \
-                gettimeofday(&tv2, NULL);                                 \
-                eprintf("%s: Total time = %f seconds\n", (STR_),          \
-                        ((double)(tv2.tv_usec - tv1.tv_usec) / 1000000) + \
-                         (double)(tv2.tv_sec - tv1.tv_sec));              \
-        } while (0)
-struct timeval tv1, tv2;
+#  define SEPCHAR ':'
 #endif
-
-struct pdata {
-        int threadnum;
-        const char *vim_buf;
-        const char *lang;
-        const char *order;
-        const char *const *skip;
-        const char *const *equiv;
-        struct string **lst;
-        int num;
-};
-
-struct strlist {
-        struct string **data;
-        int64_t num;
-};
-
-#ifdef USE_PTHREADS
-#include <pthread.h>
-static void search(
-        struct linked_list *taglist, const char *lang, const char *order,
-        const char *vim_buf, const char *const *skip, const char *const *equiv
-);
-static void *do_search(void *vdata);
-#else
-static struct linked_list *no_thread_search(
-        const struct linked_list *taglist, const char *lang,
-        const char *order, const char *const *skip, const char *const *equiv
-);
-static inline void print_data(const struct linked_list *ll, const char *vim_buf);
-#endif
-
-static char **get_colon_data(char *oarg);
 
 #ifdef HAVE_STRDUPA
 #  define STRDUP strdupa
 #else
 #  define STRDUP strdup
 #endif
+
 #define REQUIRED_INPUT 8
-#define CCC(ARG_) ((const char *const *)(ARG_))
-#define CSS(NODE_) ((struct string *)(NODE_))
+#define CCC(ARG_)  ((const char *const *)(ARG_))
+#define DATA(NODE_) ((struct lldata *)(NODE_))
 
 
 int
@@ -90,12 +69,16 @@ main(int argc, char *argv[])
         char **skip    = get_colon_data(*argv++);
         char **equiv   = get_colon_data(*argv++);
 
-        struct linked_list *taglist = new_list(ST_STRING_NOFREE);
+        /* struct linked_list *taglist = new_list(ST_STRING_NOFREE); */
+        struct datalist *taglist = xmalloc(sizeof(*taglist));
+        taglist->data = xmalloc(sizeof(*taglist->data) * INIT_TAGS);
+        taglist->num = 0;
+        taglist->max = INIT_TAGS;
+
         warnx("ctlang: %s, vimlang: %s\n", ctlang, vimlang);
         dump_list(files);
         dump_list(equiv);
 
-        STARTCOUNT();
         for (char **ptr = files; *ptr != NULL; ptr += 2)
                 reads += getlines(taglist, *ptr, *(ptr + 1));
 
@@ -104,48 +87,31 @@ main(int argc, char *argv[])
 
         fread(vim_buf, 1, nchars, stdin);
         vim_buf[nchars] = '\0';
-        ENDCOUNT("Raading tag files");
 
-        STARTCOUNT();
         if (strip_com) {
                 warnx("Stripping comments...\n");
-                struct string tmp = {vim_buf, '\0', nchars + 1};
+                struct lldata tmp = {vim_buf, '\0', nchars + 1};
                 char *buf = strip_comments(&tmp, vimlang);
                 if (buf) {
                         free(vim_buf);
                         vim_buf = buf;
                 }
         }
-        ENDCOUNT("Stripping comments");
 
-        STARTCOUNT();
-#ifdef USE_PTHREADS
-        search(taglist, ctlang, order, vim_buf, CCC(skip), CCC(equiv));
-#else
-        struct linked_list *ll =
-            no_thread_search(taglist, ctlang, order, CCC(skip), CCC(equiv));
-        if (ll) {
-                print_data(ll, vim_buf);
-                destroy_list(ll);
-        }
-#endif
-        ENDCOUNT("Doing search");
+        struct lldata **backup_data = taglist->data;
+
+        search(taglist, vim_buf, ctlang, order, CCC(skip), CCC(equiv));
 
         /* pointlessly free everything */
         for (int i = 0; i < backup_iterator; ++i)
                 free(backup_pointers[i]);
-        destroy_list(taglist);
-        free_all(files, skip, equiv, vim_buf);
+        for (int i = 0; i < taglist->num; ++i)
+                free(taglist->data[i]);
+        free_all(backup_data, equiv, files, skip, taglist, vim_buf);
 
         return 0;
 }
 
-
-#ifdef DOSISH
-#  define SEPCHAR ';'
-#else
-#  define SEPCHAR ':'
-#endif
 
 static char **
 get_colon_data(char *oarg)
@@ -153,11 +119,12 @@ get_colon_data(char *oarg)
         int num = 0;
         char *arg = oarg;
 
-        if (*arg != '\0')
+        if (*arg != '\0') {
                 do if (*arg == SEPCHAR) {
                         *arg++ = '\0';
                         ++num;
                 } while (*arg++);
+        }
 
         /* The loop above will miss the last element, so we increment num. */
         char **data = xmalloc(sizeof(*data) * ++num);
@@ -231,46 +198,39 @@ skip_tag(const char *const *skip, const char *find)
 #ifdef USE_PTHREADS
 
 static void
-search(struct linked_list *taglist,
+search(struct datalist *taglist,
+       const char *vim_buf,
        const char *lang,
        const char *order,
-       const char *vim_buf,
        const char *const *skip,
        const char *const *equiv)
 {
         /* Skip past the comments and make sure the file isn't empty. */
-        struct Node *node = taglist->tail;
-        while (node != NULL && CSS(node->data)->s[0] == '!') {
-                node = node->prev;
-                ll_remove(taglist, -1);
-        }
-        if (node == NULL) {
-                warnx("Empty file!");
+        int ia;
+        for (ia = 0; ia < taglist->num && taglist->data[ia]->s[0] == '!'; ++ia)
+                free(taglist->data[ia]);
+
+        taglist->data += ia;
+        taglist->num  -= ia;
+
+        if (taglist->num == 0) {
+                warnx("No tags found!");
                 return;
         }
         
-        struct strlist *tags = xmalloc(sizeof *tags);
-        *tags = (struct strlist){
-                .data = xmalloc(sizeof(struct string *) * taglist->size),
-                .num  = taglist->size
-        };
-
-        node = taglist->tail;
-        for (int i = 0; node != NULL; node = node->prev, ++i)
-                tags->data[i] = node->data;
-
         int num_threads = find_num_cpus();
         if (num_threads == 0)
                 num_threads = 4;
         warnx("Using %d cpus.", num_threads);
+
         pthread_t tid[num_threads];
 
         for (int i = 0; i < num_threads; ++i) {
                 struct pdata *tmp = xmalloc(sizeof *tmp);
-                int div = (taglist->size / (num_threads));
+                int div = (taglist->num / num_threads);
 
                 int num = (i == num_threads - 1)
-                              ? (int)(taglist->size - ((num_threads - 1) * div))
+                              ? (int)(taglist->num - ((num_threads - 1) * div))
                               : div;
 
                 *tmp = (struct pdata){
@@ -280,7 +240,7 @@ search(struct linked_list *taglist,
                         .order = order,
                         .skip  = skip,
                         .equiv = equiv,
-                        .lst   = tags->data + (i * div),
+                        .lst   = taglist->data + (i * div),
                         .num   = num
                 };
 
@@ -290,7 +250,7 @@ search(struct linked_list *taglist,
                         err(1, "pthread_create failed");
         }
 
-        struct strlist **out = xmalloc(sizeof(*out) * num_threads);
+        struct datalist **out = xmalloc(sizeof(*out) * num_threads);
 
         for (int th = 0; th < num_threads ; ++th) {
                 void *tmp;
@@ -298,29 +258,19 @@ search(struct linked_list *taglist,
                 out[th] = tmp;
         }
 
-#  define last out[T]->num - 1
-#  define cross_arr_duplicate()                                    \
-        (T < num_threads - 1 &&                                    \
-         (out[T]->data[last]->kind == out[T + 1]->data[0]->kind && \
-          streq(out[T]->data[last]->s, out[T + 1]->data[0]->s)))
-
-
         for (int T = 0; T < num_threads; ++T) {
-                /* int end = cross_arr_duplicate() ? out[T]->num - 1
-                                                : out[T]->num; */
-                int end = out[T]->num;
-
-                for (int i = 0; i < end; ++i) {
+                for (int i = 0; i < out[T]->num; ++i) {
                         printf("%c\n%s\n",
                                out[T]->data[i]->kind,
                                out[T]->data[i]->s);
                         free(out[T]->data[i]);
                 }
 
-                free_all(out[T]->data, out[T]);
+                free(out[T]->data);
+                free(out[T]);
         }
 
-        free_all(tags->data, tags, out);
+        free(out);
 }
 
 
@@ -331,13 +281,13 @@ do_search(void *vdata)
         char *tok, *name, *match_lang;
         char kind;
 
-        struct strlist *ret = xmalloc(sizeof *ret);
-        *ret = (struct strlist){
-                .data = xmalloc(sizeof(struct string *) * data->num),
+        struct datalist *ret = xmalloc(sizeof *ret);
+        *ret = (struct datalist){
+                .data = xmalloc(sizeof(struct lldata *) * data->num),
                 .num  = 0
         };
 
-#  define cur_str  (data->lst[i]->s)
+#  define cur_str (data->lst[i]->s)
 #  define is_dup(KIND, NAME, PREV) \
         ((KIND) == (PREV)->kind && streq((NAME), (PREV)->s))
 
@@ -377,7 +327,7 @@ do_search(void *vdata)
                                                ret->data[ret->num - 1])) &&
                      strstr(data->vim_buf, name) != NULL)
                 {
-                        struct string *tmp = xmalloc(sizeof *tmp);
+                        struct lldata *tmp = xmalloc(sizeof *tmp);
                         tmp->s    = name;
                         tmp->kind = kind;
                         ret->data[ret->num++] = tmp;
@@ -395,30 +345,35 @@ do_search(void *vdata)
 #else /* USE_PTHREADS */
 
 
-static struct linked_list *
-no_thread_search(const struct linked_list *taglist,
-                 const char *lang,
-                 const char *order,
-                 const char *const *skip,
-                 const char *const *equiv)
+static void
+search(struct datalist *taglist,
+       const char *vim_buf,
+       const char *lang,
+       const char *order,
+       const char *const *skip,
+       const char *const *equiv)
 {
-#  define cur_str CSS(node->data)->s
-        struct linked_list *ll = new_list(ST_STRING_NOFREE);
-        struct Node *node = taglist->tail;
+#  define cur_str (taglist->data[i]->s)
+        /* struct linked_list *ll = new_list(ST_STRING_NOFREE); */
         int nfields = 0;
         char *tok, *name, *match_lang;
         char kind;
 
         /* Skip past the comments and make sure the file isn't empty. */
-        while (node != NULL && cur_str[0] == '!')
-                node = node->prev;
-        if (node == NULL) {
-                warnx("Empty file!");
-                goto error;
+        int ia;
+        for (ia = 0; ia < taglist->num && taglist->data[ia]->s[0] == '!'; ++ia)
+                free(taglist->data[ia]);
+
+        taglist->data += ia;
+        taglist->num  -= ia;
+
+        if (taglist->num == 0) {
+                warnx("No tags found!");
+                return;
         }
 
         /* Verify that the file has the 2 required 'extra' fields. */
-        char *tmp = STRDUP(cur_str);
+        char *tmp = STRDUP(taglist->data[0]->s);
         while ((tok = strsep(&tmp, "\t")) != NULL)
                 if ((tok[0] != '\0' && tok[1] == '\0') ||
                     strncmp(tok, "language:", 9) == 0)
@@ -428,10 +383,13 @@ no_thread_search(const struct linked_list *taglist,
 #  endif
         if (nfields != 2) {
                 warnx("Invalid file! nfields is %d", nfields);
-                goto error;
+                return;
         }
 
-        for (; node != NULL; node = node->prev) {
+        struct lldata prev = { .s = NULL };
+
+        /* for (; node != NULL; node = node->prev) { */
+        for (int i = 0; i < taglist->num; ++i) {
                 /* The name is first, followed by two fields we don't need. */
                 name    = strsep(&cur_str, "\t");
                 cur_str = strchr(cur_str, '\t');
@@ -446,6 +404,9 @@ no_thread_search(const struct linked_list *taglist,
                                 match_lang = tok + 9;
                 }
 
+#  define is_dup(KIND, NAME, PREV) \
+        ((KIND) == (PREV).kind && streq((NAME), (PREV).s))
+
                 /* Prune tags. Include only those that are:
                  *    1) of a type in the `order' list,
                  *    2) of the correct language (applies mainly to C
@@ -456,29 +417,14 @@ no_thread_search(const struct linked_list *taglist,
                 if ( in_order(equiv, order, &kind) &&
                      is_correct_lang(lang, match_lang) &&
                     !skip_tag(skip, name) &&
-                    !ll_find_s_string(ll, kind, name))
+                     (!prev.s || !is_dup(kind, name, prev)) &&
+                     strstr(vim_buf, name) != NULL)
                 {
-                        struct string *tmp = xmalloc(sizeof *tmp);
-                        tmp->s    = name;
-                        tmp->kind = kind;
-                        ll_add(ll, tmp); 
-                } 
+                        prev.s    = name;
+                        prev.kind = kind;
+                        printf("%c\n%s\n", kind, name);
+                }
         }
-
-        return ll;
-
-error:
-        destroy_list(ll);
-        return NULL;
-}
-
-
-static inline void
-print_data(const struct linked_list *const ll, const char *const vim_buf)
-{
-        for (struct Node *node = ll->head; node != NULL; node = node->next)
-                if (strstr(vim_buf, CSS(node->data)->s) != NULL)
-                        printf("%c\n%s\n", CSS(node->data)->kind, CSS(node->data)->s);
 }
 
 #endif /* USE_PTHREADS */

@@ -15,29 +15,29 @@
      } while (0)
 
 
-static void ll_strsep      (struct linked_list *ll, char *buf);
-static void plain_getlines (struct linked_list *ll, const char *filename);
-static void gz_getlines    (struct linked_list *ll, const char *filename);
+static void ll_strsep      (struct datalist *tags, char *buf);
+static void plain_getlines (struct datalist *tags, const char *filename);
+static void gz_getlines    (struct datalist *tags, const char *filename);
 #ifdef LZMA_SUPPORT
-static void xz_getlines    (struct linked_list *ll, const char *filename);
+static void xz_getlines    (struct datalist *tags, const char *filename);
 #endif
 
 /* ========================================================================== */
 
 
 int
-getlines(struct linked_list *ll, const char *comptype, const char *filename)
+getlines(struct datalist *tags, const char *comptype, const char *filename)
 {
         if (backup_iterator == NUM_BACKUPS)
                 errx(1, "Too many files!");
 
         if (streq(comptype, "none")) {
-                plain_getlines(ll, filename);
+                plain_getlines(tags, filename);
         } else if (streq(comptype, "gzip")) {
-                gz_getlines(ll, filename);
+                gz_getlines(tags, filename);
 #ifdef LZMA_SUPPORT
         } else if (streq(comptype, "lzma")) {
-                xz_getlines(ll, filename);
+                xz_getlines(tags, filename);
 #endif
         } else {
                 warnx("Unknown compression type %s!", comptype);
@@ -48,20 +48,28 @@ getlines(struct linked_list *ll, const char *comptype, const char *filename)
 
 
 static void
-ll_strsep(struct linked_list *ll, char *buf)
+ll_strsep(struct datalist *tags, char *buf)
 {
         char *tok;
         /* Set this global pointer so the string can be free'd later... */
         backup_pointers[backup_iterator++] = buf;
 
+        /* tok = buf;
+        int numlines = 0;
+        while ((tok = strchr(tok, '\n')))
+                ++tok, ++numlines; */
+
         while ((tok = strsep(&buf, "\n")) != NULL) {
                 if (*tok == '\0')
                         continue;
-                struct string *str = xmalloc(sizeof *str);
+                struct lldata *str = xmalloc(sizeof *str);
                 str->len = buf - tok;
                 str->s   = tok;
 
-                ll_add(ll, str);
+                if (tags->num == tags->max)
+                        tags->data = xrealloc(tags->data,
+                             (tags->max += TAGS_INC) * sizeof(*tags->data));
+                tags->data[tags->num++] = str;
         }
 }
 
@@ -84,7 +92,7 @@ ll_strsep(struct linked_list *ll, char *buf)
 
 
 static void
-plain_getlines(struct linked_list *ll, const char *filename)
+plain_getlines(struct datalist *tags, const char *filename)
 {
         FILE *fp = safe_fopen(filename, "rb");
         struct stat st;
@@ -98,7 +106,7 @@ plain_getlines(struct linked_list *ll, const char *filename)
         buffer[st.st_size] = '\0';
 
         fclose(fp);
-        ll_strsep(ll, buffer);
+        ll_strsep(tags, buffer);
 }
 
 
@@ -109,7 +117,7 @@ plain_getlines(struct linked_list *ll, const char *filename)
 
 
 static void
-gz_getlines(struct linked_list *ll, const char *filename)
+gz_getlines(struct datalist *tags, const char *filename)
 {
         struct archive_size size;
         gzip_size(&size, filename);
@@ -150,7 +158,7 @@ gz_getlines(struct linked_list *ll, const char *filename)
 
         /* Always remember to null terminate the thing. */
         out_buf[size.uncompressed] = '\0';
-        ll_strsep(ll, (char *)out_buf);
+        ll_strsep(tags, (char *)out_buf);
 }
 
 
@@ -163,7 +171,7 @@ extern const char * message_strm(lzma_ret);
 
 
 static void
-xz_getlines(struct linked_list *ll, const char *filename)
+xz_getlines(struct datalist *tags, const char *filename)
 {
         struct archive_size size;
         xz_size(&size, filename);
@@ -214,6 +222,6 @@ xz_getlines(struct linked_list *ll, const char *filename)
         lzma_end(strm);
         free(in_buf);
 
-        ll_strsep(ll, (char *)out_buf);
+        ll_strsep(tags, (char *)out_buf);
 }
 #endif

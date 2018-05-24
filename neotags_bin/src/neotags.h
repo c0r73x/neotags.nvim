@@ -40,16 +40,25 @@
 #include <stdio.h>
 
 #define NUM_BACKUPS 256
+#define INIT_TAGS 1024
+#define TAGS_INC  512
 
 /*===========================================================================*/
 
 
-struct string {
+struct lldata {
         char *s;
         char kind;
         size_t len;
 };
 
+struct datalist {
+        struct lldata **data;
+        int64_t num;
+        int64_t max;
+};
+
+#if 0
 struct linked_list {
         struct Node *head;
         struct Node *tail;
@@ -62,6 +71,7 @@ struct linked_list {
                 ST_STRING_FREE,
         } dt;
 };
+#endif
 
 struct Node {
         void *data;
@@ -147,9 +157,11 @@ extern bool    file_is_reg  (const char *filename);
 extern void  __dump_list    (char **list, FILE *fp, const char *varname);
 extern void  __dump_string  (char *str, const char *filename, FILE *fp, const char *varname);
 extern void  __free_all     (void *ptr, ...);
+extern int   find_num_cpus  (void);
 
+#if 0
 extern struct linked_list * get_all_lines(const char *filename);
-extern struct linked_list * llstrsep(struct string *buffer);
+extern struct linked_list * llstrsep(struct lldata *buffer);
 
 
 /*
@@ -166,19 +178,18 @@ extern void   ll_add(struct linked_list *list, void *data);
 extern void   ll_append(struct linked_list *list, void *data);
 extern void * _ll_popat(struct linked_list *list, long index, enum ll_pop_type type);
 extern void   destroy_list(struct linked_list *list);
-extern int    find_num_cpus(void);
 
 extern bool   ll_find_s_string(const struct linked_list *list, const char kind, const char *name);
 extern bool   ll_find_string(const struct linked_list *const list, const char *const find);
+#endif
 
 
 /* 
  * Else
  */
-extern int getlines(struct linked_list *ll, const char *comptype, const char *filename);
-extern char * strip_comments(struct string *buffer, const char *lang);
-extern void check_includes(struct linked_list *ll, const char *vim_buf);
-extern void quick_sort(struct string **data, uint32_t size);
+extern int getlines(struct datalist *tags, const char *comptype, const char *filename);
+extern char * strip_comments(struct lldata *buffer, const char *lang);
+/* extern void check_includes(struct linked_list *ll, const char *vim_buf); */
 
 
 #ifdef __cplusplus
