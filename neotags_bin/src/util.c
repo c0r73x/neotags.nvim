@@ -274,24 +274,25 @@ _warn(bool print_err, const char *const __restrict fmt, ...)
 int
 find_num_cpus(void)
 {
-#ifdef _WIN32
-#   ifndef _SC_NPROCESSORS_ONLN
-        SYSTEM_INFO info;
-        GetSystemInfo(&info);
-#      define sysconf(a) info.dwNumberOfProcessors
-#      define _SC_NPROCESSORS_ONLN
-#   endif
-#endif
-#ifdef _SC_NPROCESSORS_ONLN
-        long nprocs, nprocs_max;
-        if ((nprocs = sysconf(_SC_NPROCESSORS_ONLN)) < 1)
-                warn("Could not determine number of CPUs online");
-        if ((nprocs_max = sysconf(_SC_NPROCESSORS_CONF)) < 1)
-                warn("Could not determine number of CPUs configured");
+#ifdef WIN32
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        return sysinfo.dwNumberOfProcessors;
+#elif MACOS
+        int nm[2];
+        size_t len = 4;
+        uint32_t count;
 
-        return nprocs;
+        nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
+        sysctl(nm, 2, &count, &len, NULL, 0);
+
+        if (count < 1) {
+                nm[1] = HW_NCPU;
+                sysctl(nm, 2, &count, &len, NULL, 0);
+                if (count < 1) { count = 1; }
+        }
+        return count;
 #else
-        warn("Could not determine number of CPUs");
-        return 0;
+        return sysconf(_SC_NPROCESSORS_ONLN);
 #endif
 }

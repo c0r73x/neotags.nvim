@@ -85,6 +85,7 @@ int backup_iterator;
 #if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
 #   define DOSISH
 #   include <io.h>
+#   include <Windows.h>
 #   define strcasecmp  _stricmp
 #   define strncasecmp _strnicmp
 #   define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)

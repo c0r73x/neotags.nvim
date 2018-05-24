@@ -1,18 +1,28 @@
 #include "neotags.h"
 #include <locale.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/time.h>
 
 #ifdef DOSISH
 #  define __CONST__
+#  define STARTCOUNT()
+#  define ENDCOUNT(STR_)
 #else
+#  include <sys/time.h>
 #  define __CONST__ const
+#  define STARTCOUNT() gettimeofday(&tv1, NULL)
+#  define ENDCOUNT(STR_)                                                    \
+        do {                                                              \
+                gettimeofday(&tv2, NULL);                                 \
+                eprintf("%s: Total time = %f seconds\n", (STR_),          \
+                        ((double)(tv2.tv_usec - tv1.tv_usec) / 1000000) + \
+                         (double)(tv2.tv_sec - tv1.tv_sec));              \
+        } while (0)
+struct timeval tv1, tv2;
 #endif
 
 struct pdata {
@@ -32,6 +42,7 @@ struct strlist {
 };
 
 #ifdef USE_PTHREADS
+#include <pthread.h>
 static void search(
         struct linked_list *taglist, const char *lang, const char *order,
         const char *vim_buf, const char *const *skip, const char *const *equiv
@@ -56,15 +67,6 @@ static char **get_colon_data(char *oarg);
 #define CCC(ARG_) ((const char *const *)(ARG_))
 #define CSS(NODE_) ((struct string *)(NODE_))
 
-struct timeval tv1, tv2;
-#define STARTCOUNT() gettimeofday(&tv1, NULL)
-#define ENDCOUNT(STR_)                                                    \
-        do {                                                              \
-                gettimeofday(&tv2, NULL);                                 \
-                eprintf("%s: Total time = %f seconds\n", (STR_),          \
-                        ((double)(tv2.tv_usec - tv1.tv_usec) / 1000000) + \
-                         (double)(tv2.tv_sec - tv1.tv_sec));              \
-        } while (0)
 
 int
 main(int argc, char *argv[])
