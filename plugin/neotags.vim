@@ -23,7 +23,7 @@ call InitVar('ignored_tags', [])
 call InitVar('ignored_dirs', [])
 
 call InitVar('directory',     expand('~/.vim_tags'))
-call InitVar('bin',           g:neotags_directory . '/bin/neotags')
+call InitVar('bin',           expand(g:neotags_directory . '/bin/neotags'))
 call InitVar('settings_file', expand(g:neotags_directory . '/neotags.txt'))
 
 call InitVar('use_compression',   1)
@@ -71,7 +71,11 @@ call InitVar('events_rehighlight', [
                 \   'Syntax',
                 \ ])
 
-call InitVar('ctags_args', [
+let s:found_ctags = 0
+if g:neotags_run_ctags
+    if (executable('ctags') && system('ctags --version') =~# 'Universal') || 
+      \(executable('uctags') && system('ctags --version') =~# 'Universal')
+        call InitVar('ctags_args', [
                 \   '--fields=+l',
                 \   '--c-kinds=+p',
                 \   '--c++-kinds=+p',
@@ -79,8 +83,15 @@ call InitVar('ctags_args', [
                 \   '--extras=+q',
                 \   "--exclude='.mypy_cache'",
                 \ ])
+    else
+        echohl ErrorMsg
+        echom 'Neotags: Universal Ctags not found, cannot run ctags.'
+        echohl None
+        let g:neotags_run_ctags = 0
+    endif
+endif
 
-if g:neotags_no_autoconf == 1
+if g:neotags_run_ctags && g:neotags_no_autoconf == 1
     call extend(g:neotags_ctags_args, [
                 \   "--exclude='*Makefile'",
                 \   "--exclude='*Makefile.in'",

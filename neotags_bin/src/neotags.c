@@ -1,7 +1,5 @@
 #include "neotags.h"
 #include <locale.h>
-#include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +21,7 @@
 #endif
 
 static void search(
-        struct datalist *taglist, const char *vim_buf, const char *lang,
+        struct datalist *tags, const char *vim_buf, const char *lang,
         const char *order, const char *const *skip, const char *const *equiv
 );
 static char **get_colon_data(char *oarg);
@@ -43,8 +41,7 @@ static char **get_colon_data(char *oarg);
 #endif
 
 #define REQUIRED_INPUT 8
-#define CCC(ARG_)  ((const char *const *)(ARG_))
-#define DATA(NODE_) ((struct lldata *)(NODE_))
+#define CCC(ARG_) ((const char *const *)(ARG_))
 
 
 int
@@ -58,6 +55,7 @@ main(int argc, char *argv[])
         if (--argc != REQUIRED_INPUT)
                 errx(2, "Error: Wrong number of paramaters (%d, need %d).",
                      argc, REQUIRED_INPUT);
+        eputs("Program ID: " PROG_ID "\n");
 
         char **files   = get_colon_data(*argv++);
         char *ctlang   = *argv++;
@@ -69,18 +67,13 @@ main(int argc, char *argv[])
         char **skip    = get_colon_data(*argv++);
         char **equiv   = get_colon_data(*argv++);
 
-        /* struct linked_list *taglist = new_list(ST_STRING_NOFREE); */
-        struct datalist *taglist = xmalloc(sizeof(*taglist));
-        taglist->data = xmalloc(sizeof(*taglist->data) * INIT_TAGS);
-        taglist->num = 0;
-        taglist->max = INIT_TAGS;
-
-        warnx("ctlang: %s, vimlang: %s\n", ctlang, vimlang);
-        dump_list(files);
-        dump_list(equiv);
+        struct datalist *tags = xmalloc(sizeof(*tags));
+        tags->data = xmalloc(sizeof(*tags->data) * INIT_TAGS);
+        tags->num  = 0;
+        tags->max  = INIT_TAGS;
 
         for (char **ptr = files; *ptr != NULL; ptr += 2)
-                reads += getlines(taglist, *ptr, *(ptr + 1));
+                reads += getlines(tags, *ptr, *(ptr + 1));
 
         if (reads == 0)
                 errx(1, "Error: no files were successfully read.");
@@ -98,16 +91,16 @@ main(int argc, char *argv[])
                 }
         }
 
-        struct lldata **backup_data = taglist->data;
+        struct lldata **backup_data = tags->data;
 
-        search(taglist, vim_buf, ctlang, order, CCC(skip), CCC(equiv));
+        search(tags, vim_buf, ctlang, order, CCC(skip), CCC(equiv));
 
         /* pointlessly free everything */
         for (int i = 0; i < backup_iterator; ++i)
                 free(backup_pointers[i]);
-        for (int i = 0; i < taglist->num; ++i)
-                free(taglist->data[i]);
-        free_all(backup_data, equiv, files, skip, taglist, vim_buf);
+        for (int i = 0; i < tags->num; ++i)
+                free(tags->data[i]);
+        free_all(backup_data, equiv, files, skip, tags, vim_buf);
 
         return 0;
 }
@@ -198,7 +191,7 @@ skip_tag(const char *const *skip, const char *find)
 #ifdef USE_PTHREADS
 
 static void
-search(struct datalist *taglist,
+search(struct datalist *tags,
        const char *vim_buf,
        const char *lang,
        const char *order,
@@ -206,14 +199,14 @@ search(struct datalist *taglist,
        const char *const *equiv)
 {
         /* Skip past the comments and make sure the file isn't empty. */
-        int ia;
-        for (ia = 0; ia < taglist->num && taglist->data[ia]->s[0] == '!'; ++ia)
-                free(taglist->data[ia]);
+        int ia = 0;
+        while ((ia < tags->num) && (tags->data[ia]->s[0] == '!'))
+                free(tags->data[ia++]);
 
-        taglist->data += ia;
-        taglist->num  -= ia;
+        tags->data += ia;
+        tags->num  -= ia;
 
-        if (taglist->num == 0) {
+        if (tags->num == 0) {
                 warnx("No tags found!");
                 return;
         }
@@ -227,10 +220,10 @@ search(struct datalist *taglist,
 
         for (int i = 0; i < num_threads; ++i) {
                 struct pdata *tmp = xmalloc(sizeof *tmp);
-                int div = (taglist->num / num_threads);
+                int div = (tags->num / num_threads);
 
                 int num = (i == num_threads - 1)
-                              ? (int)(taglist->num - ((num_threads - 1) * div))
+                              ? (int)(tags->num - ((num_threads - 1) * div))
                               : div;
 
                 *tmp = (struct pdata){
@@ -240,7 +233,7 @@ search(struct datalist *taglist,
                         .order = order,
                         .skip  = skip,
                         .equiv = equiv,
-                        .lst   = taglist->data + (i * div),
+                        .lst   = tags->data + (i * div),
                         .num   = num
                 };
 
@@ -277,10 +270,7 @@ search(struct datalist *taglist,
 static void *
 do_search(void *vdata)
 {
-        struct pdata *data = vdata;
-        char *tok, *name, *match_lang;
-        char kind;
-
+        struct pdata *data   = vdata;
         struct datalist *ret = xmalloc(sizeof *ret);
         *ret = (struct datalist){
                 .data = xmalloc(sizeof(struct lldata *) * data->num),
@@ -291,15 +281,15 @@ do_search(void *vdata)
 #  define is_dup(KIND, NAME, PREV) \
         ((KIND) == (PREV)->kind && streq((NAME), (PREV)->s))
 
-
         for (int i = 0; i < data->num; ++i) {
                 /* The name is first, followed by two fields we don't need. */
-                name    = strsep(&cur_str, "\t");
-                cur_str = strchr(cur_str, '\t');
-                cur_str = strchr(cur_str, '\t');
+                char *name = strsep(&cur_str, "\t");
+                cur_str    = strchr(cur_str, '\t');
+                cur_str    = strchr(cur_str, '\t');
 
-                match_lang = NULL;
-                kind = '\0';
+                char *tok;
+                char *match_lang = NULL;
+                char kind = '\0';
 
                 while ((tok = strsep(&cur_str, "\t")) != NULL) {
                         /* The 'kind' field is the only one that is 1 character
@@ -346,34 +336,32 @@ do_search(void *vdata)
 
 
 static void
-search(struct datalist *taglist,
+search(struct datalist *tags,
        const char *vim_buf,
        const char *lang,
        const char *order,
        const char *const *skip,
        const char *const *equiv)
 {
-#  define cur_str (taglist->data[i]->s)
-        /* struct linked_list *ll = new_list(ST_STRING_NOFREE); */
+#  define cur_str (tags->data[i]->s)
         int nfields = 0;
         char *tok, *name, *match_lang;
         char kind;
 
-        /* Skip past the comments and make sure the file isn't empty. */
-        int ia;
-        for (ia = 0; ia < taglist->num && taglist->data[ia]->s[0] == '!'; ++ia)
-                free(taglist->data[ia]);
+        int ia = 0;
+        while ((ia < tags->num) && (tags->data[ia]->s[0] == '!'))
+                free(tags->data[ia++]);
 
-        taglist->data += ia;
-        taglist->num  -= ia;
+        tags->data += ia;
+        tags->num  -= ia;
 
-        if (taglist->num == 0) {
+        if (tags->num == 0) {
                 warnx("No tags found!");
                 return;
         }
 
         /* Verify that the file has the 2 required 'extra' fields. */
-        char *tmp = STRDUP(taglist->data[0]->s);
+        char *tmp = STRDUP(tags->data[0]->s);
         while ((tok = strsep(&tmp, "\t")) != NULL)
                 if ((tok[0] != '\0' && tok[1] == '\0') ||
                     strncmp(tok, "language:", 9) == 0)
@@ -388,16 +376,12 @@ search(struct datalist *taglist,
 
         struct lldata prev = { .s = NULL };
 
-        /* for (; node != NULL; node = node->prev) { */
-        for (int i = 0; i < taglist->num; ++i) {
-                /* The name is first, followed by two fields we don't need. */
+        for (int i = 0; i < tags->num; ++i) {
                 name    = strsep(&cur_str, "\t");
                 cur_str = strchr(cur_str, '\t');
                 cur_str = strchr(cur_str, '\t');
 
                 while ((tok = strsep(&cur_str, "\t")) != NULL) {
-                        /* The 'kind' field is the only one that is 1 character
-                         * long, and the 'language' field is prefaced. */
                         if (tok[0] != '\0' && tok[1] == '\0')
                                 kind = *tok;
                         else if (strncmp(tok, "language:", 9) == 0)
@@ -407,13 +391,6 @@ search(struct datalist *taglist,
 #  define is_dup(KIND, NAME, PREV) \
         ((KIND) == (PREV).kind && streq((NAME), (PREV).s))
 
-                /* Prune tags. Include only those that are:
-                 *    1) of a type in the `order' list,
-                 *    2) of the correct language (applies mainly to C
-                 *       and C++, generally ctags filters languages),
-                 *    3) are not included in the `skip' list, and
-                 *    4) are not duplicates.
-                 * If invalid, just move on. */
                 if ( in_order(equiv, order, &kind) &&
                      is_correct_lang(lang, match_lang) &&
                     !skip_tag(skip, name) &&

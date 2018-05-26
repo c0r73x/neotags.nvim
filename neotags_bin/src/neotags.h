@@ -22,7 +22,7 @@
 #   define _GNU_SOURCE
 #endif
 #ifndef HAVE_STRLCPY
-#   if defined(HAVE_LIBBSD) && defined(HAVE_BSD_BSD_H)
+#   if defined(HAVE_LIBBSD) && defined(HAVE_BSD_BSD_H) && 0
 #      include <bsd/bsd.h>
 #   else
 #      include "bsd_funcs.h"
@@ -39,6 +39,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define PROG_ID "C"
 #define NUM_BACKUPS 256
 #define INIT_TAGS 1024
 #define TAGS_INC  512
@@ -71,7 +72,6 @@ struct linked_list {
                 ST_STRING_FREE,
         } dt;
 };
-#endif
 
 struct Node {
         void *data;
@@ -84,6 +84,7 @@ enum ll_pop_type {
         RET_ONLY,
         BOTH
 };
+#endif
 
 
 char *program_name;
@@ -124,8 +125,8 @@ int backup_iterator;
 #else
     void _warn(bool print_err, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 #   define handle_progname(VAR_) basename(VAR_)
-#      define warn(...)    _warn(true, __VA_ARGS__)
-#      define warnx(...)   _warn(false, __VA_ARGS__)
+#   define warn(...)       _warn(true, __VA_ARGS__)
+#   define warnx(...)      _warn(false, __VA_ARGS__)
 #   define err(EVAL, ...)  _warn(true, __VA_ARGS__), exit(EVAL)
 #   define errx(EVAL, ...) _warn(false, __VA_ARGS__), exit(EVAL)
 #endif
@@ -189,6 +190,7 @@ extern bool   ll_find_string(const struct linked_list *const list, const char *c
  */
 extern int getlines(struct datalist *tags, const char *comptype, const char *filename);
 extern char * strip_comments(struct lldata *buffer, const char *lang);
+/* extern void quick_sort(struct lldata **data, uint32_t size); */
 /* extern void check_includes(struct linked_list *ll, const char *vim_buf); */
 
 

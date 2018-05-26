@@ -18,15 +18,15 @@ let g:neotags#cpp#f = {
             \   'suffix': '\>\%(\s*(\)\@='
             \ }
 
-let g:neotags#c#equivalent = { 'p': 'f' }
+let g:neotags#cpp#equivalent = { 'p': 'f' }
 
-highlight def link cppClassTag	neotags_TypeTag
+highlight def link cppClassTag		neotags_TypeTag
 highlight def link cppEnumTypeTag	neotags_EnumTypeTag
-highlight def link cppStructTag	neotags_StructTag
-highlight def link cppUnionTag	neotags_UnionTag
+highlight def link cppStructTag		neotags_StructTag
+highlight def link cppUnionTag		neotags_UnionTag
 
-highlight def link cppEnumTag	neotags_EnumTag
+highlight def link cppEnumTag		neotags_EnumTag
 highlight def link cppFunctionTag	neotags_FunctionTag
-highlight def link cppMemberTag	neotags_MemberTag
+highlight def link cppMemberTag		neotags_MemberTag
 highlight def link cppPreProcTag	neotags_PreProcTag
-highlight def link cppTypeTag	neotags_TypeTag
+highlight def link cppTypeTag		neotags_TypeTag

@@ -487,10 +487,10 @@ class Neotags(object):
         err = err.decode(errors='replace').rstrip().split('\n')
 
         self._debug_echo("Returned %d items" % (len(out) / 2))
-        # for i in range(0, len(out)-1, 2):
-        #     line1, line2 = out[i], out[i+1]
-        #     if line1 and line2:
-        #         self._debug_echo("OUT: %s - %s" % (line1, line2), pop=False)
+        for i in range(0, len(out)-1, 2):
+            line1, line2 = out[i], out[i + 1]
+            if line1 and line2:
+                self._debug_echo("OUT: %s - %s" % (line1, line2), pop=False)
         for line in err:
             if line:
                 self._debug_echo("ERR: %s" % line, pop=False)
@@ -555,9 +555,17 @@ class Neotags(object):
             + bytes(lang, 'utf8') + b')', re.IGNORECASE)
 
         for File in files:
-            with self._open(File, 'rb', comp_type) as fp:
-                data = fp.read()
-                match_list = pattern.finditer(data)
+            try:
+                with self._open(File, 'rb', comp_type) as fp:
+                    data = fp.read()
+                    match_list = pattern.finditer(data)
+            except FileNotFoundError:
+                if File == self.__gzfile:
+                    self._error(
+                        "No tags file found. Make sure Universal Ctags is "
+                        "installed and in your $PATH."
+                    )
+                continue
 
             self.parse(ft, match_list, groups, languages, ignored_tags,
                        equivalent, order)

@@ -3,7 +3,10 @@ if !exists('g:neotags#c#order')
 endif
 
 let g:neotags#c#g = { 'group': 'cEnumTypeTag' }
-let g:neotags#c#s = { 'group': 'cStructTag' }
+let g:neotags#c#s = {
+            \   'group': 'cStructTag',
+            \   'prefix': '\%(struct\s\+\)\zs'
+            \ }
 let g:neotags#c#t = { 'group': 'cTypeTag' }
 let g:neotags#c#u = { 'group': 'cUnionTag' }
 let g:neotags#c#e = { 'group': 'cEnumTag' }

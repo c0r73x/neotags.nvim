@@ -52,12 +52,9 @@ ll_strsep(struct datalist *tags, char *buf)
 {
         char *tok;
         /* Set this global pointer so the string can be free'd later... */
+        if (backup_iterator == NUM_BACKUPS)
+                errx(5, "Too many files!");
         backup_pointers[backup_iterator++] = buf;
-
-        /* tok = buf;
-        int numlines = 0;
-        while ((tok = strchr(tok, '\n')))
-                ++tok, ++numlines; */
 
         while ((tok = strsep(&buf, "\n")) != NULL) {
                 if (*tok == '\0')
