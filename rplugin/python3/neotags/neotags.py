@@ -496,7 +496,8 @@ class Neotags(object):
                 self._debug_echo("ERR: %s" % line, pop=False)
 
         if proc.returncode:
-            self.__start_time.pop()
+            if self.vv('verbose'):
+                self.__start_time.pop()
             raise CBinError(proc.returncode, err[-1])
 
         for i in range(0, len(out) - 1, 2):
