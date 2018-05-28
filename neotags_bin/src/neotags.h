@@ -189,9 +189,8 @@ extern bool   ll_find_string(const struct linked_list *const list, const char *c
  * Else
  */
 extern int getlines(struct datalist *tags, const char *comptype, const char *filename);
-extern char * strip_comments(struct lldata *buffer, const char *lang);
-/* extern void quick_sort(struct lldata **data, uint32_t size); */
-/* extern void check_includes(struct linked_list *ll, const char *vim_buf); */
+extern struct lldata * strip_comments(struct lldata *buffer, const char *lang);
+/* extern void my_quick_sort(struct lldata **data, uint32_t size); */
 
 
 #ifdef __cplusplus

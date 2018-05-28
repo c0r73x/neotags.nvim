@@ -36,11 +36,11 @@ static const struct comment_s {
 } comments[] = {{0, '\0'}, {1, '#'}, {2, ';'}, {3, '"'}};
 
 
-static char *handle_cstyle(const struct lldata *const vim_buf);
-static char *handle_python(const struct lldata *const vim_buf, const char delim);
+static struct lldata *handle_cstyle(const struct lldata *const vim_buf);
+static struct lldata *handle_python(const struct lldata *const vim_buf, const char delim);
 
 
-char *
+struct lldata *
 strip_comments(struct lldata *buffer, const char *lang)
 {
         size_t i, size;
@@ -55,7 +55,7 @@ strip_comments(struct lldata *buffer, const char *lang)
         }
 
         const struct comment_s com = comments[languages[i].type];
-        char *ret;
+        struct lldata *ret = NULL;
 
         if (com.type == C_LIKE)
                 ret = handle_cstyle(CC(buffer));
@@ -95,7 +95,7 @@ enum c_com_type {
 };
 
 
-static char *
+static struct lldata *
 handle_cstyle(const struct lldata *const vim_buf)
 {
         enum c_com_type comment = NONE;
@@ -167,9 +167,11 @@ handle_cstyle(const struct lldata *const vim_buf)
         } while (*pos++);
 
         *buf++ = '\0';
-        buf    = xrealloc(buf_orig, buf - buf_orig);
+        struct lldata *ret = xmalloc(buf - buf_orig);
+        *ret = (struct lldata){ xrealloc(buf_orig, buf - buf_orig), '\0',
+                                buf - buf_orig };
 
-        return buf;
+        return ret;
 }
 
 #undef QUOTE
@@ -245,7 +247,7 @@ struct py_quote {
 #define FIELDG "%s: \033[%um\033[32m%d\033[0m, "
 
 
-static char *
+static struct lldata *
 handle_python(const struct lldata *const vim_buf, const char delim)
 {
         enum docstring_e in_docstring = NO_DOCSTRING;
@@ -336,7 +338,9 @@ cont:
         } while (*pos++);
 
         *buf++ = '\0';
-        buf    = xrealloc(buf_orig, buf - buf_orig);
+        struct lldata *ret = xmalloc(buf - buf_orig);
+        *ret = (struct lldata){ xrealloc(buf_orig, buf - buf_orig), '\0',
+                                buf - buf_orig };
 
-        return buf;
+        return ret;
 }

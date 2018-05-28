@@ -36,17 +36,12 @@ else()
         endif()
     endif()
 
-    if (STATIC_LIBS_ONLY)
-        add_library(neo_ZLIB_STATIC STATIC IMPORTED)
-        set_property(TARGET neo_ZLIB_STATIC PROPERTY IMPORTED_LOCATION /usr/lib64/libz.a)
-    else()
-        include_directories(${ZLIB_INCLUDE_DIRS})
-        target_link_libraries(neotags ${ZLIB_LIBRARIES})
-    endif()
-
     if(THREADS_HAVE_PTHREAD_ARG)
         target_link_libraries(neotags -pthread)
     endif()
+
+    include_directories(${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(neotags ${ZLIB_LIBRARIES})
 endif()
 
 if (neotags_LIBBSD_FOUND)

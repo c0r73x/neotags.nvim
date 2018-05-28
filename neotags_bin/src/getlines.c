@@ -31,15 +31,15 @@ getlines(struct datalist *tags, const char *comptype, const char *filename)
         if (backup_iterator == NUM_BACKUPS)
                 errx(1, "Too many files!");
 
-        if (streq(comptype, "none")) {
+        if (streq(comptype, "none"))
                 plain_getlines(tags, filename);
-        } else if (streq(comptype, "gzip")) {
+        else if (streq(comptype, "gzip"))
                 gz_getlines(tags, filename);
 #ifdef LZMA_SUPPORT
-        } else if (streq(comptype, "lzma")) {
+        else if (streq(comptype, "lzma"))
                 xz_getlines(tags, filename);
 #endif
-        } else {
+        else {
                 warnx("Unknown compression type %s!", comptype);
                 return 0;
         }
@@ -212,7 +212,7 @@ xz_getlines(struct datalist *tags, const char *filename)
 
         if (ret != LZMA_STREAM_END)
                 errx(5, "Unexpected error on line %d in file %s: %d => %s",
-                     __LINE__, __FILE__, ret, message_strm(ret));
+                        __LINE__, __FILE__, ret, message_strm(ret));
 
         out_buf[size.uncompressed] = '\0';
         fclose(fp);

@@ -136,61 +136,66 @@ class Neotags(object):
             if self.vv('loaded'):
                 self.update(False)
 
-    def update(self, force=False):
+    def update(self, force):
         """Update tags file, tags cache, and highlighting."""
         ft = self.vim.api.eval('&ft')
+
         if not self.vv('enabled'):
-            self._debug_echo('Update called when plugin disabled...', pop=False)
             self._clear(ft)
             self.vim.command(self.__autocmd, async=False)
             return
-
-        if (ft == '') or (ft in self.vv('ignore')):
+        if ft == '' or ft in self.vv('ignore'):
             self.vim.command(self.__autocmd, async=False)
             return
-
         if self.__is_running:
+            # XXX: This should be more robust
             return
-        self.__is_running = True
-
-        self._update(ft, force)
-        self.__is_running = False
-        self.highlight(False)
-
-        self.vim.command(self.__autocmd, async=False)
-
-    def highlight(self, clear):
-        """Analyze the tags data and format it for nvim's regex engine."""
-        self.__globtime = time.time()
-        self.__exists_buffer = {}
-        hl = HighlightGroup()
-        hl.ft = self.vim.api.eval('&ft')
-        force = clear
-
-        if clear:
-            self._clear(hl.ft)
-        if not self.vv('enabled') or not self.vv('highlight'):
-            self._clear(hl.ft)
-            return
-        elif hl.ft == '' or hl.ft in self.vv('ignore') or self.__is_running:
-            return
-        else:
-            self.__is_running = True
 
         self._debug_start()
+        self.__is_running = True
+
+        self.__globtime = time.time()
+        self.__exists_buffer = {}
+
+        hl = HighlightGroup()
+        hl.ft = ft
         hl.file = self.vim.api.eval("expand('%:p:p')")
-        order = self._tags_order(hl.ft)
+        hl.highlights, hl.number = self._getbufferhl()
+
+        if hl.number in self.__md5_cache:
+            hl.highlights = self.__md5_cache[hl.number]
+        else:
+            self.__md5_cache[hl.number] = hl.highlights = {}
+
+        if force:
+            if self.vv('run_ctags'):
+                self._run_ctags(True)
+            self.__groups[ft] = self._parseTags(ft)
+
+        elif hl.number not in self.__seen:
+            self.__seen.append(self.vim.current.buffer.number)
+            self.__groups[ft] = self._parseTags(ft)
+
+        elif hl.number not in self.__cmd_cache:
+            self.__groups[ft] = self._parseTags(ft)
+
+        self.highlight(force, hl)
+
+        self.__is_running = False
+        self.vim.command(self.__autocmd, async=False)
+
+    def highlight(self, force, hl):
+        """Analyze the tags data and format it for nvim's regex engine."""
         groups = self.__groups[hl.ft]
+        order = self._tags_order(hl.ft)
 
         if groups is None:
             self.__is_running = False
             self._debug_end('Skipping file')
             return
-
         if not order:
             order = groups.keys()
 
-        # self._debug_echo("order: %s, groups:%s" % (order, groups))
         for hl.key in order:
             hl.group = self._exists(hl.key, '.group', None)
             fgroup = self._exists(hl.key, '.filter.group', None)
@@ -202,6 +207,8 @@ class Neotags(object):
 
                 if not self._highlight(hl, groups[hl.key], force):
                     break
+            else:
+                self._debug_echo("Somethin ain't right here.")
 
             fkey = hl.key + '_filter'
             if fgroup is not None and fkey in groups:
@@ -221,7 +228,6 @@ class Neotags(object):
             self._error("Extra value in self.__start_time...")
 
         self.__hlbuf = self.vim.current.buffer.number
-        self.__is_running = False
 
 ##############################################################################
 # Projects
@@ -229,7 +235,7 @@ class Neotags(object):
     def setBase(self, args):
         try:
             with open(self.vv('settings_file'), 'r') as fp:
-                projects = [i.rstrip for i in fp]
+                projects = [i.rstrip() for i in fp]
         except FileNotFoundError:
             projects = []
 
@@ -242,11 +248,10 @@ class Neotags(object):
                         self._inform_echo("Saved directory '%s' as a project"
                                           " base." % path)
                     else:
-                        self._inform_echo("Error: directory '%s' does not"
-                                          " exist." % path)
+                        self._inform_echo("Error: directory '%s' is already "
+                                          "saved as a project base." % path)
                 else:
-                    self._inform_echo("Error: directory '%s' is already saved"
-                                      " as a project base." % path)
+                    self._inform_echo("Error: directory '%s' does not exist." % path)
 
     def removeBase(self, args):
         try:
@@ -270,16 +275,9 @@ class Neotags(object):
 ##############################################################################
 # Private
 
-    def _update(self, ft, force=False):
-        if self.vim.current.buffer.number not in self.__seen:
-            self.__seen.append(self.vim.current.buffer.number)
-        if self.vv('run_ctags'):
-            self._run_ctags(force)
-        self.__groups[ft] = self._parseTags(ft)
-
     def _highlight(self, hl, group, force):
         self._debug_start()
-        highlights, number = self._getbufferhl()
+        highlights, number = hl.highlights, hl.number
 
         self._debug_echo("Highlighting for buffer %s" % number)
         if number in self.__md5_cache:
@@ -307,7 +305,7 @@ class Neotags(object):
                 cmds = self.__cmd_cache[number][hl.key]
             except KeyError:
                 self._error('Key error in _highlight()!')
-                self.__start_time.pop()
+                self._debug_end('')
                 return True
             self._debug_echo("Updating from cache" % cmds)
 
@@ -487,17 +485,16 @@ class Neotags(object):
         err = err.decode(errors='replace').rstrip().split('\n')
 
         self._debug_echo("Returned %d items" % (len(out) / 2))
-        for i in range(0, len(out)-1, 2):
-            line1, line2 = out[i], out[i + 1]
-            if line1 and line2:
-                self._debug_echo("OUT: %s - %s" % (line1, line2), pop=False)
+        # for i in range(0, len(out)-1, 2):
+        #     line1, line2 = out[i], out[i + 1]
+        #     if line1 and line2:
+        #         self._debug_echo("OUT: %s - %s" % (line1, line2), pop=False)
         for line in err:
             if line:
                 self._debug_echo("ERR: %s" % line, pop=False)
 
         if proc.returncode:
-            if self.vv('verbose'):
-                self.__start_time.pop()
+            self._debug_end('')
             raise CBinError(proc.returncode, err[-1])
 
         for i in range(0, len(out) - 1, 2):
@@ -524,6 +521,8 @@ class Neotags(object):
         languages = ft.lower().split('.')
         groups = {}
         ignored_tags = self.vv('ignored_tags')
+        self._debug_echo(
+            "=============== Executing Python code ===============", pop=False)
 
         try:
             order = self.vim.api.eval('neotags#%s#order' % ft)
@@ -537,7 +536,7 @@ class Neotags(object):
         stime = time.time()
 
         groups = {
-            "%s#%s" % (ft, kind): []
+            "%s#%s" % (ft, kind): set()
             for kind in [chr(i) for i in order.encode('ascii')]
         }
 
@@ -568,8 +567,8 @@ class Neotags(object):
                     )
                 continue
 
-            self.parse(ft, match_list, groups, languages, ignored_tags,
-                       equivalent, order)
+            self._parse(ft, match_list, groups, languages, ignored_tags,
+                        equivalent, order)
             comp_type = None
 
         # with open(os.env['HOME']+'/python.log', 'w') as fp:
@@ -578,12 +577,20 @@ class Neotags(object):
 
         self._debug_echo("Elapsed time for reading file: %fs" %
                          (float(time.time()) - stime), err=True)
+
+        # for grp in groups.keys():
+        #     groups[grp] = list(set(groups[grp]))
+
+        self._debug_echo("Finished finding tags, found %d items."
+                         % sum(map(len, groups.values())))
+
+        for grp in groups.keys():
+            groups[grp] = list(groups[grp])
         return groups
 
-    def parse(self, ft, match_list, groups, languages, ignored_tags,
+    def _parse(self, ft, match_list, groups, languages, ignored_tags,
               equivalent, order):
         self._debug_start()
-        self._debug_echo("=============== Executing Python code ===============")
         key_lang = languages[0]
 
         self._debug_echo("equivalent: %s" % equivalent)
@@ -604,7 +611,6 @@ class Neotags(object):
             #     1) Of a type not present in the 'order' string
             #     2) The wrong language (C and C++ are considered equivalent)
             #     3) In the user specified ignore list
-            #     4) Duplicates
             #     5) Not present in the current vim buffer.
             # Sometimes 'key' is not yet set in the 'groups' dict, leading to
             # an IndexError. It is cheaper to cheaper to wrap this in a try
@@ -614,17 +620,17 @@ class Neotags(object):
                         or (key_lang != match_lang
                             and key_lang   not in ('c', 'cpp')
                             and match_lang not in ('c', 'cpp'))
-                        or (match['name'] in ignored_tags)
-                        or (match['name'] in groups[key])):  # <- duplicates
+                        or (match['name'] in ignored_tags)):
                     continue
             except IndexError:
                 pass
             if self.__slurp.find(match['name']) == (-1):
                 continue
 
-            groups[key].append(match['name'])
+            groups[key].add(match['name'])
 
-        self._debug_end("Finished parse, found %d items." % sum(map(len, groups.values())))
+        self._debug_end("Finished _parse, found %d items."
+                        % sum(map(len, groups.values())))
 
 # =============================================================================
 
@@ -1018,6 +1024,8 @@ class HighlightGroup:
         self.notin = None
         self.prefix = None
         self.suffix = None
+        self.highlights = None
+        self.number = None
 
 
 class CBinError(Exception):

@@ -5,7 +5,7 @@ endif
 let g:neotags#c#g = { 'group': 'cEnumTypeTag' }
 let g:neotags#c#s = {
             \   'group': 'cStructTag',
-            \   'prefix': '\%(struct\s\+\)\zs'
+            \   'prefix': '\%(struct\s\+\)\@7<='
             \ }
 let g:neotags#c#t = { 'group': 'cTypeTag' }
 let g:neotags#c#u = { 'group': 'cUnionTag' }
