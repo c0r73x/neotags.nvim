@@ -120,51 +120,16 @@ gz_getlines(struct datalist *tags, const char *filename)
         gzip_size(&size, filename);
         report_size(&size);
 
-        int ret;
-        uint8_t *in_buf  = xmalloc(size.archive);
+        gzFile gfp = gzopen(filename, "rb");
+        if (!gfp)
+                err(1, "Failed to open file");
+
+        /* Magic macros to the rescue. */
         uint8_t *out_buf = xmalloc(size.uncompressed + 1);
-        FILE *fp         = safe_fopen(filename, "rb");
+        int64_t numread  = gzread(gfp, out_buf, size.uncompressed);
 
-        /* Read the data from the file in one go. */
-        fread(in_buf, 1, size.archive, fp);
-        if (ferror(fp))
-                err(1, "%s: Error in read operation", filename);
-        fclose(fp);
-
-        /* Setup the zlib stream. */
-        z_stream strm;
-        strm.avail_in  = size.archive;
-        strm.avail_out = size.uncompressed;
-        strm.next_in   = in_buf;
-        strm.next_out  = out_buf;
-        strm.opaque    = Z_NULL;
-        strm.zalloc    = Z_NULL;
-        strm.zfree     = Z_NULL;
-
-        if ((ret = inflateInit2(&strm, 32)) == Z_OK) {
-                if ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END)
-                        errx(1, "Something broke during decompression (%d) -> %s\n",
-                             ret, strm.msg);
-
-                ret = inflateEnd(&strm);
-                assert(ret == Z_OK);
-        } else {
-                /* XXX For some reason on OpenBSD the above code always breaks.
-                 * If I didn't know better I'd say there might be a bug...
-                 */
-                warnx("Something broke during init (%d) -> %s\n"
-                      "Trying backup plan.", ret, strm.msg);
-
-                gzFile gfp = gzopen(filename, "rb");
-                if (!gfp)
-                        err(1, "Failed to open file");
-
-                int64_t numread = gzread(gfp, out_buf, size.uncompressed);
-                assert (numread == 0 || numread == (int64_t)size.uncompressed);
-                gzclose(gfp);
-        }
-
-        free(in_buf);
+        assert (numread == 0 || numread == (int64_t)size.uncompressed);
+        gzclose(gfp);
 
         /* Always remember to null terminate the thing. */
         out_buf[size.uncompressed] = '\0';
@@ -180,6 +145,7 @@ gz_getlines(struct datalist *tags, const char *filename)
 extern const char * message_strm(lzma_ret);
 
 
+/* It would be nice if there were some magic macros to read an xz file too. */
 static void
 xz_getlines(struct datalist *tags, const char *filename)
 {

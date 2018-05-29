@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define CC(VAR_)     ((const struct lldata *const)(VAR_))
 #define ARRSIZ(ARR_) (sizeof(ARR_) / sizeof(*(ARR_)))

@@ -71,10 +71,20 @@ call InitVar('events_rehighlight', [
                 \   'Syntax',
                 \ ])
 
-let s:found_ctags = 0
 if g:neotags_run_ctags
-    if (executable('ctags') && system('ctags --version') =~# 'Universal') || 
-      \(executable('uctags') && system('ctags --version') =~# 'Universal')
+    let s:found = 0
+
+    if executable(g:neotags_ctags_bin) && system(g:neotags_ctags_bin . ' --version') =~# 'Universal'
+        let s:found = 1
+    elseif executable('ctags') && system('ctags --version') =~# 'Universal'
+        let g:neotags_ctags_bin = 'ctags'
+        let s:found = 1
+    elseif executable('uctags') && system('uctags --version') =~# 'Universal'
+        let g:neotags_ctags_bin = 'uctags'
+        let s:found = 1
+    endif
+
+    if s:found
         call InitVar('ctags_args', [
                 \   '--fields=+l',
                 \   '--c-kinds=+p',
