@@ -1,5 +1,4 @@
 #include "neotags.h"
-#include <alloca.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,12 +36,6 @@ static char **get_colon_data(char *oarg);
 #else
 #  define __CONST__ const
 #  define SEPCHAR ':'
-#endif
-
-#ifdef HAVE_STRDUPA
-#  define STRDUP strdupa
-#else
-#  define STRDUP strdup
 #endif
 
 #define REQUIRED_INPUT 8
@@ -288,7 +281,7 @@ search(struct datalist *tags,
         struct lldata **alldata = xmalloc(total * sizeof(*alldata));
 
         for (int T = 0; T < num_threads; ++T) {
-                if (out[T]-> num > 0) {
+                if (out[T]->num > 0) {
                         memcpy(alldata + offset, out[T]->data,
                                out[T]->num * sizeof(*out));
                         offset += out[T]->num;
@@ -315,6 +308,9 @@ search(struct datalist *tags,
         START();
         qsort(alldata, total, sizeof(*alldata), &ll_cmp);
         END("Finished sorting with qsort");
+
+        /* Always display the first item. */
+        printf("%c\n%s\n", alldata[0]->kind, alldata[0]->s);
 
         for (uint32_t i = 1; i < total; ++i)
                 if (alldata[i]->len != alldata[i - 1]->len

@@ -141,16 +141,29 @@ gz_getlines(struct datalist *tags, const char *filename)
         strm.zalloc    = Z_NULL;
         strm.zfree     = Z_NULL;
 
-        if ((ret = inflateInit2(&strm, 32)) != Z_OK)
-                errx(1, "Something broke during init (%d) -> %s\n",
-                     ret, strm.msg);
+        if ((ret = inflateInit2(&strm, 32)) == Z_OK) {
+                if ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END)
+                        errx(1, "Something broke during decompression (%d) -> %s\n",
+                             ret, strm.msg);
 
-        if ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END)
-                errx(1, "Something broke during decompression (%d) -> %s\n",
-                     ret, strm.msg);
+                ret = inflateEnd(&strm);
+                assert(ret == Z_OK);
+        } else {
+                /* XXX For some reason on OpenBSD the above code always breaks.
+                 * If I didn't know better I'd say there might be a bug...
+                 */
+                warnx("Something broke during init (%d) -> %s\n"
+                      "Trying backup plan.", ret, strm.msg);
 
-        ret = inflateEnd(&strm);
-        assert(ret == Z_OK);
+                gzFile gfp = gzopen(filename, "rb");
+                if (!gfp)
+                        err(1, "Failed to open file");
+
+                int64_t numread = gzread(gfp, out_buf, size.uncompressed);
+                assert (numread == 0 || numread == (int64_t)size.uncompressed);
+                gzclose(gfp);
+        }
+
         free(in_buf);
 
         /* Always remember to null terminate the thing. */
