@@ -59,33 +59,6 @@ struct datalist {
         int64_t max;
 };
 
-#if 0
-struct linked_list {
-        struct Node *head;
-        struct Node *tail;
-        uint32_t size;
-        enum ll_datatypes {
-                SIMPLE,
-                SIMPLE_NOFREE,
-                ST_STRING_NOFREE_NOFREE,
-                ST_STRING_NOFREE,
-                ST_STRING_FREE,
-        } dt;
-};
-
-struct Node {
-        void *data;
-        struct Node *prev;
-        struct Node *next;
-};
-
-enum ll_pop_type {
-        DEL_ONLY,
-        RET_ONLY,
-        BOTH
-};
-#endif
-
 
 char *program_name;
 char *backup_pointers[NUM_BACKUPS];
@@ -123,7 +96,7 @@ int backup_iterator;
 #   include <err.h>
 #   define handle_progname(VAR_) VAR_
 #else
-    void _warn(bool print_err, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+    void _warn(bool print_err, const char *fmt, ...) __attribute__((__format__(printf, 2, 3)));
 #   define handle_progname(VAR_) basename(VAR_)
 #   define warn(...)       _warn(true, __VA_ARGS__)
 #   define warnx(...)      _warn(false, __VA_ARGS__)
@@ -150,9 +123,9 @@ int backup_iterator;
 extern int64_t __xatoi      (char *str, bool strict);
 extern size_t  my_fgetline  (char **ptr, void *fp);
 extern int     my_fgetc     (void *fp);
-extern void *  xmalloc      (const size_t size)                __attribute__((malloc));
-extern void *  xcalloc      (const int num, const size_t size) __attribute__((malloc));
-extern void *  xrealloc     (void *ptr, const size_t size)     __attribute__((malloc));
+extern void *  xmalloc      (const size_t size)                __attribute__((__warn_unused_result__)) __attribute__((__malloc__));
+extern void *  xcalloc      (const int num, const size_t size) __attribute__((__warn_unused_result__)) __attribute__((__malloc__));
+extern void *  xrealloc     (void *ptr, const size_t size)     __attribute__((__warn_unused_result__));
 extern FILE *  safe_fopen   (const char * const __restrict filename, const char * const __restrict mode);
 extern bool    file_is_reg  (const char *filename);
 extern void  __dump_list    (char **list, FILE *fp, const char *varname);
@@ -160,37 +133,12 @@ extern void  __dump_string  (char *str, const char *filename, FILE *fp, const ch
 extern void  __free_all     (void *ptr, ...);
 extern int   find_num_cpus  (void);
 
-#if 0
-extern struct linked_list * get_all_lines(const char *filename);
-extern struct linked_list * llstrsep(struct lldata *buffer);
-
-
-/*
- * linked_list.c
- */
-#define ll_pop(LIST)        _ll_popat((LIST), (-1), BOTH)
-#define ll_dequeue(LIST)    _ll_popat((LIST), 0, BOTH)
-#define ll_pop_at(LIST,IND) _ll_popat((LIST), (IND), BOTH)
-#define ll_get(LIST,IND)    _ll_popat((LIST), (IND), RET_ONLY)
-#define ll_remove(LIST,IND) _ll_popat((LIST), (IND), DEL_ONLY)
-extern struct linked_list * new_list(enum ll_datatypes dt);
-extern struct Node        * ll_getnode_at_index(struct linked_list *list, int64_t index);
-extern void   ll_add(struct linked_list *list, void *data);
-extern void   ll_append(struct linked_list *list, void *data);
-extern void * _ll_popat(struct linked_list *list, long index, enum ll_pop_type type);
-extern void   destroy_list(struct linked_list *list);
-
-extern bool   ll_find_s_string(const struct linked_list *list, const char kind, const char *name);
-extern bool   ll_find_string(const struct linked_list *const list, const char *const find);
-#endif
-
 
 /* 
  * Else
  */
-extern int getlines(struct datalist *tags, const char *comptype, const char *filename);
-extern struct lldata * strip_comments(struct lldata *buffer, const char *lang);
-/* extern void my_quick_sort(struct lldata **data, uint32_t size); */
+extern int  getlines(struct datalist *tags, const char *comptype, const char *filename);
+extern void strip_comments(struct lldata *buffer, const char *lang);
 
 
 #ifdef __cplusplus

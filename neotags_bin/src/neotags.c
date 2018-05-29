@@ -78,43 +78,40 @@ main(int argc, char *argv[])
         char **equiv   = get_colon_data(*argv++);
 
         START();
-        struct datalist *tags = xmalloc(sizeof(*tags));
-        tags->data = xmalloc(sizeof(*tags->data) * INIT_TAGS);
-        tags->num  = 0;
-        tags->max  = INIT_TAGS;
+        struct datalist tags = {
+                .data = xmalloc(sizeof(*tags.data) * INIT_TAGS),
+                .num  = 0,
+                .max  = INIT_TAGS
+        };
 
         for (char **ptr = files; *ptr != NULL; ptr += 2)
-                files_read += getlines(tags, *ptr, *(ptr + 1));
+                files_read += getlines(&tags, *ptr, *(ptr + 1));
         if (files_read == 0)
                 errx(1, "Error: no files were successfully read.");
 
-        struct lldata *vim_buf = xmalloc(sizeof *vim_buf);
-        *vim_buf = (struct lldata){
-            .s = xmalloc(nchars + 1), .kind = '\0', .len = nchars + 1};
+        struct lldata vim_buf = {
+            .s    = xmalloc(nchars + 1),
+            .len  = nchars + 1
+        };
 
-        fread(vim_buf->s, 1, nchars, stdin);
-        vim_buf->s[nchars] = '\0';
+        fread(vim_buf.s, 1, nchars, stdin);
+        vim_buf.s[nchars] = '\0';
 
         if (strip_com) {
                 warnx("Stripping comments...\n");
-                struct lldata *tmp = strip_comments(vim_buf, vimlang);
-                if (tmp) {
-                        free(vim_buf->s);
-                        free(vim_buf);
-                        vim_buf = tmp;
-                }
+                strip_comments(&vim_buf, vimlang);
         }
         END("Finished reading files & stripping comments");
 
-        search(tags, vim_buf, ctlang, order, CCC(skip), CCC(equiv));
+        search(&tags, &vim_buf, ctlang, order, CCC(skip), CCC(equiv));
 
         /* pointlessly free everything */
         for (int i = 0; i < backup_iterator; ++i)
                 free(backup_pointers[i]);
-        for (int i = 0; i < tags->num; ++i)
-                free(tags->data[i]);
+        for (int i = 0; i < tags.num; ++i)
+                free(tags.data[i]);
 
-        free_all(equiv, files, skip, tags->data, tags, vim_buf->s, vim_buf);
+        free_all(equiv, files, skip, tags.data, vim_buf.s);
 
         tv1 = tv3;
         END("Done");
@@ -251,20 +248,21 @@ search(struct datalist *tags,
 
         for (int i = 0; i < num_threads; ++i) {
                 struct pdata *tmp = xmalloc(sizeof *tmp);
-                int div = (tags->num / num_threads);
-
-                int num = (i == num_threads - 1)
-                              ? (int)(tags->num - ((num_threads - 1) * div))
-                              : div;
+                int quot = (int)tags->num / num_threads;
+                int num  = (i == num_threads - 1)
+                              ? (int)(tags->num - ((num_threads - 1) * quot))
+                              : quot;
 
                 *tmp = (struct pdata){i, vim_buf, lang, order, skip, equiv,
-                                      tags->data + (i * div), num};
+                                      tags->data + (i * quot), num};
+
                 errno = 0;
                 if (pthread_create(tid + i, 0, do_search, tmp) != 0)
                         err(1, "pthread_create failed");
         }
 
-        struct datalist **out = xmalloc(num_threads * sizeof(*out));
+        /* struct datalist **out = xmalloc(num_threads * sizeof(*out)); */
+        struct datalist *out[num_threads];
         for (int th = 0; th < num_threads ; ++th) {
                 void *tmp;
                 pthread_join(tid[th], &tmp);
@@ -273,11 +271,10 @@ search(struct datalist *tags,
 
         END("All threads returned");
 
-        uint32_t total = 0;
+        uint32_t total = 0, offset = 0;
         for (int T = 0; T < num_threads; ++T)
                 total += out[T]->num;
 
-        size_t offset = 0;
         struct lldata **alldata = xmalloc(total * sizeof(*alldata));
 
         for (int T = 0; T < num_threads; ++T) {
@@ -289,21 +286,23 @@ search(struct datalist *tags,
                 free(out[T]->data);
                 free(out[T]);
         }
-        free(out);
+        /* free(out); */
 
 #else /* USE_PTHREADS */
 
         warnx("Using 1 cpu (no threading available).");
 
-        struct pdata *all_pdata = xmalloc(sizeof *all_pdata);
-        *all_pdata = (struct pdata){ 0, vim_buf, lang, order, skip, equiv,
+        struct pdata *Pdata = xmalloc(sizeof *Pdata);
+        *Pdata = (struct pdata){ 0, vim_buf, lang, order, skip, equiv,
                                      tags->data, tags->num };
 
-        void *tmp = do_search(all_pdata);
+        void *tmp = do_search(Pdata);
 
         struct lldata **alldata = ((struct datalist *)(tmp))->data;
         uint32_t total = ((struct datalist *)(tmp))->num;
 #endif
+        if (total == 0)
+                goto cleanup;
 
         START();
         qsort(alldata, total, sizeof(*alldata), &ll_cmp);
@@ -321,6 +320,7 @@ search(struct datalist *tags,
 
         END("Finished displaying stuff.");
 
+cleanup:
         for (uint32_t i = 0; i < total; ++i)
                 free(alldata[i]);
         free(alldata);

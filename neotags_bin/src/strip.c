@@ -7,15 +7,7 @@
 #define CC(VAR_)     ((const struct lldata *const)(VAR_))
 #define ARRSIZ(ARR_) (sizeof(ARR_) / sizeof(*(ARR_)))
 
-enum lang_e {
-        _C_,
-        _CPP_,
-        _CSHARP_,
-        _GO_,
-        _JAVA_,
-        _PYTHON_,
-};
-
+enum lang_e      { _C_, _CPP_, _CSHARP_, _GO_, _JAVA_, _PYTHON_, };
 enum basic_types { C_LIKE, PYTHON };
 
 static const struct lang_s {
@@ -37,11 +29,11 @@ static const struct comment_s {
 } comments[] = {{0, '\0'}, {1, '#'}, {2, ';'}, {3, '"'}};
 
 
-static struct lldata *handle_cstyle(const struct lldata *const vim_buf);
-static struct lldata *handle_python(const struct lldata *const vim_buf, const char delim);
+static void handle_cstyle(struct lldata *vim_buf);
+static void handle_python(struct lldata *vim_buf);
 
 
-struct lldata *
+void
 strip_comments(struct lldata *buffer, const char *lang)
 {
         size_t i, size;
@@ -49,23 +41,19 @@ strip_comments(struct lldata *buffer, const char *lang)
         for (i = 0, size = ARRSIZ(languages); i < size; ++i)
                 if (streq(lang, languages[i].lang))
                         break;
-
         if (i == size) {
                 warnx("Failed to identify language '%s'.", lang);
-                return NULL;
+                return;
         }
 
         const struct comment_s com = comments[languages[i].type];
-        struct lldata *ret = NULL;
 
         if (com.type == C_LIKE)
-                ret = handle_cstyle(CC(buffer));
+                handle_cstyle(buffer);
         else if (com.type == PYTHON)
-                ret = handle_python(CC(buffer), com.delim);
+                handle_python(buffer);
         else
                 errx(1, "This shouldn't be reachable...");
-
-        return ret;
 }
 
 
@@ -74,30 +62,27 @@ strip_comments(struct lldata *buffer, const char *lang)
 
 #define QUOTE (single_q || double_q)
 
-#define check_quote(CHECK, OTHER)                                       \
-    do {                                                                \
-            if (!(OTHER) && !comment) {                                 \
-                    if (CHECK) {                                        \
-                            if (!escape)                                \
-                                    (CHECK) = false, transition = true; \
-                    } else {                                            \
-                            (CHECK) = true;                             \
-                    }                                                   \
-            }                                                           \
+#define check_quote(CHECK, OTHER)                      \
+    do {                                               \
+            if (!(OTHER) && !comment) {                \
+                    if (CHECK) {                       \
+                            if (!escape)               \
+                                    (CHECK) = false,   \
+                                    transition = true; \
+                    } else                             \
+                            (CHECK) = true;            \
+            }                                          \
+            slash = false;                             \
     } while (0)
 
-#define setcomment(TYPE) comment = (TYPE), buf = marker
-#define set_slash()      slash = true, marker = buf
+#define set_comment(TYPE) comment = (TYPE), buf = marker
+#define set_slash()       slash = true, marker = buf
 
-enum c_com_type {
-        NONE,
-        BLOCK,
-        LINE
-};
+enum c_com_type { NONE, BLOCK, LINE };
 
 
-static struct lldata *
-handle_cstyle(const struct lldata *const vim_buf)
+static void
+handle_cstyle(struct lldata *vim_buf)
 {
         enum c_com_type comment = NONE;
         bool double_q, single_q, slash, escape, transition;
@@ -106,16 +91,17 @@ handle_cstyle(const struct lldata *const vim_buf)
         const char *pos = vim_buf->s;
 
         double_q = single_q = slash  = escape = transition = false;
-        buf_orig = marker   = buf    = xmalloc((size_t)vim_buf->len);
+        buf_orig = marker   = buf    = xmalloc(vim_buf->len + 1LLU);
 
         if (!*pos)
                 errx(1, "Empty vim buffer!");
 
+        /* Add a non-offensive character to the buffer so we never have to worry
+         * about going out of bounds when checking 1 character backwards. */
+        *buf++ = ' ';
+
         do {
                 switch (*pos) {
-                case '\\':
-                        break;
-
                 case '/':
                         if (comment == BLOCK && *(pos - 1) == '*') {
                                 comment    = NONE;
@@ -123,7 +109,7 @@ handle_cstyle(const struct lldata *const vim_buf)
                                 transition = true;
                         } else if (!double_q) {
                                 if (slash && !comment)
-                                        setcomment(LINE);
+                                        set_comment(LINE);
                                 else
                                         set_slash();
                         }
@@ -132,7 +118,7 @@ handle_cstyle(const struct lldata *const vim_buf)
                 case '*':
                         if (!double_q && slash) {
                                 if (!comment)
-                                        setcomment(BLOCK);
+                                        set_comment(BLOCK);
                                 slash = false;
                         }
                         break;
@@ -142,23 +128,22 @@ handle_cstyle(const struct lldata *const vim_buf)
                                 slash = double_q = false;
                                 if (comment == LINE)
                                         comment = NONE;
+                                if (buf != buf_orig && *(buf - 1) == '\n')
+                                        transition = true;
                         }
                         break;
 
-                case '"':
-                        check_quote(double_q, single_q);
-                        break;
-
-                case '\'':
-                        check_quote(single_q, double_q);
-                        break;
-
-                default:
-                        slash = false;
+                case '\\': break;
+                case '"':  check_quote(double_q, single_q); break;
+                case '\'': check_quote(single_q, double_q); break;
+                default:   slash = false;
                 }
 
-                escape = (*pos == '\\' ? (escape ? false : true) : false);
-                space  = ((isblank(*pos)) ? space + 1 : 0);
+                escape = (*pos == '\\') ? !escape : false;
+                space  = (isblank(*pos) &&
+                          !(transition = (transition) ? 1 : (buf != buf_orig &&
+                                                             *(buf - 1) == '\n'))
+                          ) ? space + 1 : 0;
 
                 if (transition)
                         transition = false;
@@ -168,11 +153,10 @@ handle_cstyle(const struct lldata *const vim_buf)
         } while (*pos++);
 
         *buf++ = '\0';
-        struct lldata *ret = xmalloc(buf - buf_orig);
-        *ret = (struct lldata){ xrealloc(buf_orig, buf - buf_orig), '\0',
-                                buf - buf_orig };
 
-        return ret;
+        free(vim_buf->s);
+        vim_buf->len = buf - buf_orig;
+        vim_buf->s   = xrealloc(buf_orig, vim_buf->len);
 }
 
 #undef QUOTE
@@ -185,7 +169,7 @@ handle_cstyle(const struct lldata *const vim_buf)
 /* Python */
 
 
-#define QUOTE (Single.b || Double.b || in_docstring)
+#define QUOTE (Single.Q || Double.Q || in_docstring)
 
 #define check_docstring(AA, BB)                                     \
     do {                                                            \
@@ -199,14 +183,10 @@ handle_cstyle(const struct lldata *const vim_buf)
                                                                     \
                     in_docstring = ((AA).cnt != 0) ? (AA).val       \
                                                    : NO_DOCSTRING;  \
-                                                                    \
-                    if (in_docstring) {                             \
-                            (AA).b = (BB).b = false;                \
+                    if (!in_docstring)                              \
                             transition = true;                      \
-                    }                                               \
-                                                                    \
             } else {                                                \
-                    if ((AA).cnt == 0 && !((AA).b || (BB).b))       \
+                    if ((AA).cnt == 0 && !((AA).Q || (BB).Q))       \
                             ++(AA).cnt;                             \
                     else if (*(pos - 1) == (AA).ch)                 \
                             ++(AA).cnt;                             \
@@ -215,16 +195,15 @@ handle_cstyle(const struct lldata *const vim_buf)
                                                    : NO_DOCSTRING;  \
                                                                     \
                     if (in_docstring) {                             \
-                            (AA).b = (BB).b = false;                \
+                            (AA).Q = (BB).Q = false;                \
                             transition = true;                      \
-                    } else if (!(BB).b && !comment) {               \
-                            if ((AA).b) {                           \
+                    } else if (!(BB).Q && !comment) {               \
+                            if ((AA).Q) {                           \
                                     if (!escape)                    \
-                                            (AA).b = false,         \
+                                            (AA).Q = false,         \
                                             transition = true;      \
-                            } else {                                \
-                                    (AA).b = true;                  \
-                            }                                       \
+                            } else                                  \
+                                    (AA).Q = true;                  \
                     }                                               \
             }                                                       \
     } while (0)
@@ -237,19 +216,15 @@ enum docstring_e {
 };
 
 struct py_quote {
-        bool b;
+        bool Q;
         int cnt;
         char ch;
         enum docstring_e val;
 };
 
-#define DUMP(VAR_) (#VAR_), 0, (VAR_)
-#define FIELDB "%s: \033[%dm\033[34m%d\033[0m, "
-#define FIELDG "%s: \033[%um\033[32m%d\033[0m, "
 
-
-static struct lldata *
-handle_python(const struct lldata *const vim_buf, const char delim)
+static void
+handle_python(struct lldata *vim_buf)
 {
         enum docstring_e in_docstring = NO_DOCSTRING;
         struct py_quote Single = { false, 0, '\'', SINGLE_DOCSTRING };
@@ -260,14 +235,18 @@ handle_python(const struct lldata *const vim_buf, const char delim)
         char *buf, *buf_orig;
         bool escape, comment, transition;
 
-        buf    = buf_orig = xmalloc((size_t)vim_buf->len);
+        buf    = buf_orig = xmalloc(vim_buf->len + 1LLU);
         escape = comment  = transition = false;
 
         if (*pos == '\0')
-                errx(1, "Empty vim vim_buf!");
+                errx(1, "Empty vim buffer!");
+
+        /* Add a non-offensive character to the buffer so we never have to worry
+         * about going out of bounds when checking 1 character backwards. */
+        *buf++ = ' ';
 
         do {
-                if (!comment && !QUOTE && !escape && *pos == delim) {
+                if (!comment && !QUOTE && !escape && *pos == '#') {
                         comment = true;
                         space   = 0;
                         continue;
@@ -278,9 +257,11 @@ handle_python(const struct lldata *const vim_buf, const char delim)
 
                 switch (*pos) {
                 case '\n':
+                        if (*(buf - 1) == '\n')
+                                transition = true;
                         comment = false;
                         space = 0;
-                        goto cont;
+                        break;
 
                 case '"':
                         if (in_docstring != SINGLE_DOCSTRING)
@@ -294,8 +275,12 @@ handle_python(const struct lldata *const vim_buf, const char delim)
                         space = 0;
                         break;
 
+                case '\t':
                 case ' ':
-                        ++space;
+                        if (*(buf - 1) == '\n')
+                                transition = true;
+                        else
+                                ++space;
                         break;
 
                 default:
@@ -324,24 +309,21 @@ handle_python(const struct lldata *const vim_buf, const char delim)
                                 Double.cnt = 0;
                         break;
 
-                default:
-                        errx(1, "Not reachable.");
+                default: /* not reachable */ abort();
                 }
 
                 if (transition)
                         transition = false;
                 else if (!QUOTE && space < 2)
-cont:
                         *buf++ = *pos;
 
-                escape = (*pos == '\\' ? (escape ? false : true) : false);
+                escape = (*pos == '\\' ? !escape : false);
 
         } while (*pos++);
 
         *buf++ = '\0';
-        struct lldata *ret = xmalloc(buf - buf_orig);
-        *ret = (struct lldata){ xrealloc(buf_orig, buf - buf_orig), '\0',
-                                buf - buf_orig };
 
-        return ret;
+        free(vim_buf->s);
+        vim_buf->len = buf - buf_orig;
+        vim_buf->s   = xrealloc(buf_orig, vim_buf->len);
 }
