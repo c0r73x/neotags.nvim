@@ -15,49 +15,59 @@
      } while (0)
 
 
-static void ll_strsep      (struct linked_list *ll, char *buf);
-static void plain_getlines (struct linked_list *ll, const char *filename);
-static void gz_getlines    (struct linked_list *ll, const char *filename);
-static void xz_getlines    (struct linked_list *ll, const char *filename);
+static void ll_strsep      (struct StringLst *tags, char *buf);
+static void plain_getlines (struct StringLst *tags, const char *filename);
+static void gz_getlines    (struct StringLst *tags, const char *filename);
+#ifdef LZMA_SUPPORT
+static void xz_getlines    (struct StringLst *tags, const char *filename);
+#endif
 
 /* ========================================================================== */
 
 
-void
-getlines(struct linked_list *ll, const char *comptype, const char *filename)
+int
+getlines(struct StringLst *tags, const char *comptype, const char *filename)
 {
-        if (backup_iterator == 19)
+        if (backup_iterator == NUM_BACKUPS)
                 errx(1, "Too many files!");
+        warnx("Attempting to read tag file %s", filename);
 
-        warnx("Recieved comptype '%s'", comptype);
         if (streq(comptype, "none"))
-                plain_getlines(ll, filename);
+                plain_getlines(tags, filename);
         else if (streq(comptype, "gzip"))
-                gz_getlines(ll, filename);
+                gz_getlines(tags, filename);
 #ifdef LZMA_SUPPORT
         else if (streq(comptype, "lzma"))
-                xz_getlines(ll, filename);
+                xz_getlines(tags, filename);
 #endif
-        else
-                errx(1, "Unknown compression type %s!", comptype);
+        else {
+                warnx("Unknown compression type %s!", comptype);
+                return 0;
+        }
+        return 1; /* 1 indicates success here... */
 }
 
 
 static void
-ll_strsep(struct linked_list *ll, char *buf)
+ll_strsep(struct StringLst *tags, char *buf)
 {
         char *tok;
         /* Set this global pointer so the string can be free'd later... */
+        if (backup_iterator == NUM_BACKUPS)
+                errx(5, "Too many files!");
         backup_pointers[backup_iterator++] = buf;
 
         while ((tok = strsep(&buf, "\n")) != NULL) {
                 if (*tok == '\0')
                         continue;
-                struct string *str = xmalloc(sizeof *str);
-                str->len = buf - tok;
+                struct String *str = malloc(sizeof *str);
+                str->len = buf - tok - 1LLU;
                 str->s   = tok;
 
-                ll_add(ll, str);
+                if (tags->num == tags->max)
+                        tags->data = nrealloc(tags->data, (tags->max += TAGS_INC),
+                                              sizeof(*tags->data));
+                tags->data[tags->num++] = str;
         }
 }
 
@@ -80,13 +90,13 @@ ll_strsep(struct linked_list *ll, char *buf)
 
 
 static void
-plain_getlines(struct linked_list *ll, const char *filename)
+plain_getlines(struct StringLst *tags, const char *filename)
 {
         FILE *fp = safe_fopen(filename, "rb");
         struct stat st;
 
         safe_stat(filename, &st);
-        char *buffer = xmalloc(st.st_size + 1L);
+        char *buffer = malloc(st.st_size + 1LL);
 
         if (fread(buffer, 1, st.st_size, fp) != (size_t)st.st_size || ferror(fp))
                 err(1, "Error reading file %s", filename);
@@ -94,7 +104,7 @@ plain_getlines(struct linked_list *ll, const char *filename)
         buffer[st.st_size] = '\0';
 
         fclose(fp);
-        ll_strsep(ll, buffer);
+        ll_strsep(tags, buffer);
 }
 
 
@@ -105,67 +115,47 @@ plain_getlines(struct linked_list *ll, const char *filename)
 
 
 static void
-gz_getlines(struct linked_list *ll, const char *filename)
+gz_getlines(struct StringLst *tags, const char *filename)
 {
         struct archive_size size;
         gzip_size(&size, filename);
         report_size(&size);
 
-        int ret;
-        uint8_t *in_buf  = xmalloc(size.archive);
-        uint8_t *out_buf = xmalloc(size.uncompressed + 1);
-        FILE *fp         = safe_fopen(filename, "rb");
+        gzFile gfp = gzopen(filename, "rb");
+        if (!gfp)
+                err(1, "Failed to open file");
 
-        /* Read the data from the file in one go. */
-        fread(in_buf, 1, size.archive, fp);
-        if (ferror(fp))
-                err(1, "%s: Error in read operation", filename);
-        fclose(fp);
+        /* Magic macros to the rescue. */
+        uint8_t *out_buf = malloc(size.uncompressed + 1);
+        int64_t numread  = gzread(gfp, out_buf, size.uncompressed);
 
-        /* Setup the zlib stream. */
-        z_stream strm;
-        strm.avail_in  = size.archive;
-        strm.avail_out = size.uncompressed;
-        strm.next_in   = in_buf;
-        strm.next_out  = out_buf;
-        strm.opaque    = Z_NULL;
-        strm.zalloc    = Z_NULL;
-        strm.zfree     = Z_NULL;
-
-        if ((ret = inflateInit2(&strm, 32)) != Z_OK)
-                errx(1, "Something broke during init (%d) -> %s\n",
-                     ret, strm.msg);
-
-        if ((ret = inflate(&strm, Z_FINISH)) != Z_STREAM_END)
-                errx(1, "Something broke during decompression (%d) -> %s\n",
-                     ret, strm.msg);
-
-        ret = inflateEnd(&strm);
-        assert(ret == Z_OK);
-        free(in_buf);
+        assert (numread == 0 || numread == (int64_t)size.uncompressed);
+        gzclose(gfp);
 
         /* Always remember to null terminate the thing. */
         out_buf[size.uncompressed] = '\0';
-        ll_strsep(ll, (char *)out_buf);
+        ll_strsep(tags, (char *)out_buf);
 }
 
 
 /* ========================================================================== */
 /* XZ */
 
-#include <lzma.h>
+#ifdef LZMA_SUPPORT
+#   include <lzma.h>
 extern const char * message_strm(lzma_ret);
 
 
+/* It would be nice if there were some magic macros to read an xz file too. */
 static void
-xz_getlines(struct linked_list *ll, const char *filename)
+xz_getlines(struct StringLst *tags, const char *filename)
 {
         struct archive_size size;
         xz_size(&size, filename);
         report_size(&size);
 
-        uint8_t *in_buf  = xmalloc(size.archive + 1);
-        uint8_t *out_buf = xmalloc(size.uncompressed + 1);
+        uint8_t *in_buf  = malloc(size.archive + 1);
+        uint8_t *out_buf = malloc(size.uncompressed + 1);
 
         /* Setup the stream and initialize the decoder */
         lzma_stream strm[] = {LZMA_STREAM_INIT};
@@ -175,7 +165,7 @@ xz_getlines(struct linked_list *ll, const char *filename)
         lzma_ret ret = lzma_stream_decoder(strm, UINT64_MAX, LZMA_CONCATENATED);
         if (ret != LZMA_OK)
                 errx(1, "%s\n", ret == LZMA_MEM_ERROR ?
-                             strerror(ENOMEM) : "Internal error (bug)");
+                     strerror(ENOMEM) : "Internal error (bug)");
 
         /* avail_in is the number of bytes read from a file to the strm that
          * have not yet been decoded. avail_out is the number of bytes remaining
@@ -202,12 +192,13 @@ xz_getlines(struct linked_list *ll, const char *filename)
 
         if (ret != LZMA_STREAM_END)
                 errx(5, "Unexpected error on line %d in file %s: %d => %s",
-                     __LINE__, __FILE__, ret, message_strm(ret));
+                        __LINE__, __FILE__, ret, message_strm(ret));
 
         out_buf[size.uncompressed] = '\0';
         fclose(fp);
         lzma_end(strm);
         free(in_buf);
 
-        ll_strsep(ll, (char *)out_buf);
+        ll_strsep(tags, (char *)out_buf);
 }
+#endif

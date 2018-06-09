@@ -4,29 +4,39 @@ include (FindPkgConfig)
 include (CheckFunctionExists)
 include (CheckSymbolExists)
 
-# Windows is too hard to support properly.
 if (MSVC OR MINGW)
-    message(FATAL_ERROR "\
-Native Microsoft Windows is not supported through cmake. Please use the included \
-Visual Studio project solution and libraries. Believe me, this is saving you \
-hours of effort.")
+    set(ISWIN 1)
 endif()
 
 set (REQUIRED_LZMA_VERSION 5.3.1)
 option(USE_LIBBSD "Use libbsd on linux/cygwin if available.")
 option(BUILD_DIST "\
-Include the required alpha (and therefore uncommon) liblzma version as a static
-// library, and use bundled BSD extensions instead of libbsd even if it is available.")
+Include the required alpha (and therefore uncommon) liblzma version as a static\
+library, and use bundled BSD extensions instead of libbsd even if it is available.")
 option(STATIC_LIBS_ONLY "Build with only static libraries.")
 
 ###############################################################################
 # Libraries
 
-find_package (ZLIB REQUIRED)
-find_package (LibLZMA)
-# pkg_check_modules (neotags_PCRE-8 libpcre2-8 REQUIRED)
-CHECK_FUNCTION_EXISTS (strlcpy HAVE_STRLCPY)
-CHECK_SYMBOL_EXISTS   (err "err.h" HAVE_ERR)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+if (ISWIN)
+    set (LZMA_SUPPORT 1)
+    set (USE_PTHREADS 1)
+else()
+    find_package (ZLIB REQUIRED)
+    find_package (Threads)
+    find_package (LibLZMA)
+endif()
+
+set (CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE -DHAVE_CONFIG_H)
+
+CHECK_SYMBOL_EXISTS (reallocarray "stdlib.h" HAVE_REALLOCARRAY)
+CHECK_SYMBOL_EXISTS (asprintf     "stdio.h"  HAVE_ASPRINTF)
+CHECK_SYMBOL_EXISTS (strlcpy      "string.h" HAVE_STRLCPY)
+CHECK_SYMBOL_EXISTS (strdupa      "string.h" HAVE_STRDUPA)
+CHECK_SYMBOL_EXISTS (strsep       "string.h" HAVE_STRSEP)
+CHECK_SYMBOL_EXISTS (err          "err.h"    HAVE_ERR)
 
 if (LIBLZMA_FOUND)
     if (${LIBLZMA_VERSION_STRING} STRLESS ${REQUIRED_LZMA_VERSION})
@@ -49,6 +59,10 @@ if (NOT HAVE_STRLCPY AND USE_LIBBSD)
     endif()
 endif()
 
+if (THREADS_HAVE_PTHREAD_ARG)
+    set (USE_PTHREADS 1)
+endif()
+
 ###############################################################################
 # Flags
 
@@ -56,22 +70,32 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set (DEBUG 1)
 endif()
 
-if (NOT BUILD_DIST) 
-    set (MARCH_SETTING "-march=native")
+if (MSVC)
+    set (CMAKE_C_FLAGS_RELEASE "/Ox /Oi /Ot /GL /MD /favor:INTEL64 /MP")
+    set (CMAKE_BUILD_TYPE Release)
+    set (CMAKE_C_FLAGS_DEBUG "/GS /TC /Wall /ZI /Gm- /Od /RTC1 /Gd /Oi /MD /FC")
+    set (CMAKE_C_FLAGS_MINSIZEREL ${CMAKE_C_FLAGS_RELEASE})
+    set (CMAKE_C_FLAGS_RELWITHDEBINFO ${CMAKE_C_FLAGS_RELEASE})
+else()
+    if (NOT BUILD_DIST) 
+        set (MARCH_SETTING "-march=native")
+    endif()
+
+    set (WARNS "-fdiagnostics-color=always -Wall")
+
+    set (CMAKE_C_FLAGS_DEBUG          "${MARCH_SETTING} ${WARNS} -Og -g -Wextra -Wpedantic -Wformat")
+    set (CMAKE_C_FLAGS_MINSIZEREL     "${MARCH_SETTING} ${WARNS} -Os")
+    set (CMAKE_C_FLAGS_RELWITHDEBINFO "${MARCH_SETTING} ${WARNS} -Ofast -g")
+    set (CMAKE_C_FLAGS_RELEASE        "${MARCH_SETTING} ${WARNS} -Ofast")
+
+    set (CMAKE_EXE_LINKER_FLAGS "-L/usr/local/lib")
+    set (CMAKE_EXE_LINKER_FLAGS_RELEASE "-s")
+    set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-s")
 endif()
-set (WARNS "-fdiagnostics-color=always -Wall -Wno-macro-redefined")
 
-set (CMAKE_C_FLAGS_DEBUG         "${MARCH_SETTING} ${WARNS} -Og -g -Wextra -Wpedantic -Wformat")
-set (CMAKE_C_FLAGS_MINSIZEREL    "${MARCH_SETTING} ${WARNS} -Os")
-set (CMAKE_C_FLAGS_RELWITHDEBINFO"${MARCH_SETTING} ${WARNS} -Ofast -g")
-set (CMAKE_C_FLAGS_RELEASE       "${MARCH_SETTING} ${WARNS} -Ofast")
-
-set (CMAKE_EXE_LINKER_FLAGS "-L/usr/local/lib")
-set (CMAKE_EXE_LINKER_FLAGS_RELEASE "-s")
-set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-s")
 add_definitions(-D_GNU_SOURCE -DHAVE_CONFIG_H)
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 configure_file(cmake-config.h.in config.h)
 
 add_subdirectory(src)
+

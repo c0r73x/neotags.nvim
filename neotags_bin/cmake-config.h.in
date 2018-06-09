@@ -1,7 +1,12 @@
-#cmakedefine HAVE_STRLCPY
-#cmakedefine HAVE_LIBBSD
-#cmakedefine HAVE_ERR
-#cmakedefine LZMA_SUPPORT
 #cmakedefine DEBUG
-#define VERSION "1.1.0"
-#define PACKAGE_STRING "neotags 1.1.0"
+#cmakedefine HAVE_ASPRINTF
+#cmakedefine HAVE_ERR
+#cmakedefine HAVE_LIBBSD
+#cmakedefine HAVE_REALLOCARRAY
+#cmakedefine HAVE_STRDUPA
+#cmakedefine HAVE_STRLCPY
+#cmakedefine HAVE_STRSEP
+#cmakedefine LZMA_SUPPORT
+#cmakedefine USE_PTHREADS
+#define VERSION "1.1.1"
+#define PACKAGE_STRING "neotags " VERSION

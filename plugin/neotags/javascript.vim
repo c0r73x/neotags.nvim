@@ -1,25 +1,31 @@
 let g:neotags#javascript#order = 'cCfmpo'
 
 let g:neotags#javascript#c = {
-            \   'group': 'ClassTag',
+            \   'group': 'javascriptClassTag',
             \   'notin': [
             \       'jsx.*',
+            \       '.*Comment.*',
+            \       '.*String.*',
             \       'javascriptTemplate'
             \   ]
             \ }
 
 let g:neotags#javascript#C = {
-            \   'group': 'ConstantTag',
+            \   'group': 'javascriptConstantTag',
             \   'notin': [
             \       'jsx.*',
+            \       '.*Comment.*',
+            \       '.*String.*',
             \       'javascriptTemplate'
             \   ]
             \ }
 
 let g:neotags#javascript#f = {
-            \   'group': 'FunctionTag',
+            \   'group': 'javascriptFunctionTag',
             \   'notin': [
             \       'jsx.*',
+            \       '.*Comment.*',
+            \       '.*String.*',
             \       'javascriptTemplate',
             \       'javascriptConditional',
             \       'javascriptRepeat'
@@ -27,9 +33,11 @@ let g:neotags#javascript#f = {
             \ }
 
 let g:neotags#javascript#m = {
-            \   'group': 'MethodTag',
+            \   'group': 'javascriptMethodTag',
             \   'notin': [
             \       'jsx.*',
+            \       '.*Comment.*',
+            \       '.*String.*',
             \       'javascriptTemplate',
             \       'javascriptConditional',
             \       'javascriptRepeat'
@@ -37,9 +45,11 @@ let g:neotags#javascript#m = {
             \ }
 
 let g:neotags#javascript#o = {
-            \   'group': 'ObjectTag',
+            \   'group': 'javascriptObjectTag',
             \   'notin': [
             \       'jsx.*',
+            \       '.*Comment.*',
+            \       '.*String.*',
             \       'javascriptTemplate',
             \       'javascriptConditional',
             \       'javascriptRepeat'
@@ -47,18 +57,20 @@ let g:neotags#javascript#o = {
             \ }
 
 let g:neotags#javascript#p = {
-            \   'group': 'PropTag',
+            \   'group': 'javascriptPropTag',
             \   'notin': [
             \       'jsx.*',
+            \       '.*Comment.*',
+            \       '.*String.*',
             \       'javascriptTemplate',
             \       'javascriptConditional',
             \       'javascriptRepeat'
             \   ]
             \ }
 
-highlight def link ClassTag	neotags_ClassTag
-highlight def link ConstantTag	neotags_ConstantTag
-highlight def link FunctionTag	neotags_FunctionTag
-highlight def link MethodTag	neotags_MethodTag
-highlight def link ObjectTag	neotags_ObjectTag
-highlight def link PropTag	neotags_PreProcTag
+highlight def link javascriptClassTag	neotags_ClassTag
+highlight def link javascriptConstantTag	neotags_ConstantTag
+highlight def link javascriptFunctionTag	neotags_FunctionTag
+highlight def link javascriptMethodTag	neotags_MethodTag
+highlight def link javascriptObjectTag	neotags_ObjectTag
+highlight def link javascriptPropTag	neotags_PreProcTag

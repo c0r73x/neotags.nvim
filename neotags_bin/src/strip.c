@@ -2,19 +2,12 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
-#define CC(VAR_)     ((const struct string *const)(VAR_))
+#define CC(VAR_)     ((const struct String *const)(VAR_))
 #define ARRSIZ(ARR_) (sizeof(ARR_) / sizeof(*(ARR_)))
 
-enum lang_e {
-        _C_,
-        _CPP_,
-        _CSHARP_,
-        _GO_,
-        _JAVA_,
-        _PYTHON_,
-};
-
+enum lang_e      { _C_, _CPP_, _CSHARP_, _GO_, _JAVA_, _PYTHON_, };
 enum basic_types { C_LIKE, PYTHON };
 
 static const struct lang_s {
@@ -36,103 +29,112 @@ static const struct comment_s {
 } comments[] = {{0, '\0'}, {1, '#'}, {2, ';'}, {3, '"'}};
 
 
-static char *handle_cstyle(const struct string *const vim_buf);
-static char *handle_python(const struct string *const vim_buf, const char delim);
+static void handle_cstyle(struct String *vim_buf);
+static void handle_python(struct String *vim_buf);
 
+/* These functions perform a rather crude stripping of comments and string
+ * literals from the a few languages. This means fewer words to search though
+ * when the buffer is searched for applicable tags later on, and avoids any
+ * false positives caused by tag names appearing in comments and strings. */
 
-char *
-strip_comments(struct string *buffer, const char *lang)
+void
+strip_comments(struct String *buffer, const char *lang)
 {
-        size_t i, size = ARRSIZ(languages);
-        warnx("Size is %zu, it should be %zu", size, 6L);
+        size_t i, size;
 
-        for (i = 0; i < size; ++i)
+        for (i = 0, size = ARRSIZ(languages); i < size; ++i)
                 if (streq(lang, languages[i].lang))
                         break;
-
         if (i == size) {
                 warnx("Failed to identify language '%s'.", lang);
-                return NULL;
+                return;
         }
-
         const struct comment_s com = comments[languages[i].type];
-        char *ret;
 
-        if (com.type == C_LIKE)
-                ret = handle_cstyle(CC(buffer));
-        else if (com.type == PYTHON)
-                ret = handle_python(CC(buffer), com.delim);
-        else
-                errx(1, "This shouldn't be reachable...");
-
-        return ret;
+        switch (com.type) {
+        case C_LIKE: handle_cstyle(buffer); break;
+        case PYTHON: handle_python(buffer); break;
+        default:     errx(1, "This shouldn't be reachable...");
+        }
 }
 
 
 /*============================================================================*/
 /* C style languages */
 
-#define QUOTE (single_q || double_q)
+#define QUOTE() (single_q || double_q)
 
-#define check_quote(CHECK, OTHER)                                       \
-    do {                                                                \
-            if (!(OTHER) && !comment) {                                 \
-                    if (CHECK) {                                        \
-                            if (!escape)                                \
-                                    (CHECK) = false, transition = true; \
-                    } else {                                            \
-                            (CHECK) = true;                             \
-                    }                                                   \
-            }                                                           \
+#define check_quote(CHECK, OTHER)                      \
+    do {                                               \
+            if (!(OTHER)) {                            \
+                    if (CHECK) {                       \
+                            if (!escape)               \
+                                    (CHECK) = false,   \
+                                    skip = true;       \
+                    } else                             \
+                            (CHECK) = true;            \
+            }                                          \
+            slash = false;                             \
     } while (0)
 
-#define setcomment(TYPE) comment = (TYPE), buf = marker
-#define set_slash()      slash = true, marker = buf
+#define SLS(STR_) (STR_), (sizeof(STR_) - 1)
 
-enum c_com_type {
-        NONE,
-        BLOCK,
-        LINE
-};
+enum c_com_type { NONE, BLOCK, LINE };
 
 
-static char *
-handle_cstyle(const struct string *const vim_buf)
+static void
+handle_cstyle(struct String *vim_buf)
 {
-        enum c_com_type comment = NONE;
-        bool double_q, single_q, slash, escape, transition;
-        char *buf, *buf_orig, *marker;
-        uint32_t space  = 0;
-        const char *pos = vim_buf->s;
+        /* enum c_com_type comment = NONE; */
+        bool double_q, single_q, slash, escape, skip, header;
+        char *buf, *buf_orig;
+        uint32_t   space = 0;
+        const char *pos  = vim_buf->s;
 
-        double_q = single_q = slash  = escape = transition = false;
-        buf_orig = marker   = buf    = xmalloc((size_t)vim_buf->len);
+        double_q = single_q = slash = escape = skip = header = false;
+        buf_orig = buf = malloc(vim_buf->len + 2LLU);
 
         if (!*pos)
                 errx(1, "Empty vim buffer!");
 
+        /* Add a non-offensive character to the buffer so we never have to worry
+         * about going out of bounds when checking 1 character backwards. */
+        *buf++ = ' ';
+
         do {
                 switch (*pos) {
-                case '\\':
-                        break;
-
                 case '/':
-                        if (comment == BLOCK && *(pos - 1) == '*') {
-                                comment    = NONE;
-                                slash      = false;
-                                transition = true;
-                        } else if (!double_q) {
-                                if (slash && !comment)
-                                        setcomment(LINE);
-                                else
-                                        set_slash();
-                        }
+                        if (!QUOTE() && slash) {
+                                const char *tmp = pos + 1;
+                                --buf;
+                                /* Find the end of comment, but keep in mind
+                                 * that 'single line' C comments can be multiple
+                                 * lines long if the newline is escaped. */
+                                do
+                                        tmp = strchr(tmp+1, '\n');
+                                while (tmp && *(tmp - 1) == '\\');
+
+                                if (!tmp)
+                                        errx(1, "Couldn't find end of comment.");
+                                pos = tmp;
+                                /* Add the newline only if the last char in the
+                                 * output buffer was not also a newline. */
+                                if (*(buf - 1) == '\n')
+                                        skip = true;
+                        } else if (!QUOTE())
+                                slash = true;
                         break;
 
                 case '*':
-                        if (!double_q && slash) {
-                                if (!comment)
-                                        setcomment(BLOCK);
+                        if (!QUOTE() && slash) {
+                                const char *tmp;
+                                --buf;
+                                if (!(tmp = strstr(pos, "*/")))
+                                        errx(1, "Couldn't find end of comment. pos -> %s", pos);
+                                pos = tmp + 2;
+                                /* Don't add newlines after infixed comments. */
+                                if (*pos == '\n' && *(buf - 1) == '\n')
+                                        skip = true;
                                 slash = false;
                         }
                         break;
@@ -140,91 +142,100 @@ handle_cstyle(const struct string *const vim_buf)
                 case '\n':
                         if (!escape) {
                                 slash = double_q = false;
-                                if (comment == LINE)
-                                        comment = NONE;
+                                if (*(buf - 1) == '\n')
+                                        skip = true;
+                                header = false;
                         }
                         break;
 
-                case '"':
-                        check_quote(double_q, single_q);
-                        break;
-
-                case '\'':
-                        check_quote(single_q, double_q);
-                        break;
-
-                default:
+                case '#':;
+                        /* Strip out include directives as well. */
+                        const char *endln;
+                        if (*(buf - 1) == '\n' && (endln = strchr(pos, '\n'))) {
+                                const char *tmp = pos + 1;
+                                while (tmp < endln && isblank(*tmp))
+                                        ++tmp;
+                                if (strncmp(tmp, SLS("include")) == 0) {
+                                        header = true;
+                                        pos = endln - 1;
+                                        continue;
+                                }
+                        }
                         slash = false;
+                        break;
+
+                case '\\': break;
+                case '"':  check_quote(double_q, single_q); break;
+                case '\'': check_quote(single_q, double_q); break;
+                default:   slash = false;
                 }
 
-                escape = (*pos == '\\' ? (escape ? false : true) : false);
-                space  = ((isblank(*pos)) ? space + 1 : 0);
+                escape = (*pos == '\\') ? !escape : false;
+                /* Avoid adding spaces at the start of lines, and don't add more
+                 * than one space or newline in succession. */
+                space  = (isblank(*pos) &&
+                          !(skip = (skip) ? true : *(buf - 1) == '\n')
+                         ) ? space + 1 : 0;
 
-                if (transition)
-                        transition = false;
-                else if (!comment && !QUOTE && space < 2)
+                if (skip)
+                        skip = false;
+                else if (!QUOTE() && !header && space < 2)
                         *buf++ = *pos;
 
         } while (*pos++);
 
-        *buf++ = '\0';
-        buf    = xrealloc(buf_orig, buf - buf_orig);
+        *buf = '\0';
 
-        return buf;
+        free(vim_buf->s);
+        vim_buf->len = buf - buf_orig - 1LLU;
+        vim_buf->s   = xrealloc(buf_orig, vim_buf->len + 1);
 }
 
 #undef QUOTE
 #undef check_quote
-#undef setcomment
-#undef set_slash
 
 
 /*============================================================================*/
 /* Python */
 
 
-#define QUOTE (Single.b || Double.b || in_docstring)
+#define QUOTE() (Single.Q || Double.Q || in_docstring)
 
-#define check_docstring(AA, BB)                                     \
-    do {                                                            \
-            if (in_docstring) {                                     \
-                    if ((AA).cnt == 3)                              \
-                            --(AA).cnt;                             \
-                    else if (*(pos - 1) == (AA).ch)                 \
-                            --(AA).cnt;                             \
-                    else                                            \
-                            (AA).cnt = 3;                           \
-                                                                    \
-                    in_docstring = ((AA).cnt != 0) ? (AA).val       \
-                                                   : NO_DOCSTRING;  \
-                                                                    \
-                    if (in_docstring) {                             \
-                            (AA).b = (BB).b = false;                \
-                            transition = true;                      \
-                    }                                               \
-                                                                    \
-            } else {                                                \
-                    if ((AA).cnt == 0 && !((AA).b || (BB).b))       \
-                            ++(AA).cnt;                             \
-                    else if (*(pos - 1) == (AA).ch)                 \
-                            ++(AA).cnt;                             \
-                                                                    \
-                    in_docstring = ((AA).cnt == 3) ? (AA).val       \
-                                                   : NO_DOCSTRING;  \
-                                                                    \
-                    if (in_docstring) {                             \
-                            (AA).b = (BB).b = false;                \
-                            transition = true;                      \
-                    } else if (!(BB).b && !comment) {               \
-                            if ((AA).b) {                           \
-                                    if (!escape)                    \
-                                            (AA).b = false,         \
-                                            transition = true;      \
-                            } else {                                \
-                                    (AA).b = true;                  \
-                            }                                       \
-                    }                                               \
-            }                                                       \
+#define check_docstring(AA, BB)                                      \
+    do {                                                             \
+            if (in_docstring) {                                      \
+                    if ((AA).cnt == 3)                               \
+                            --(AA).cnt;                              \
+                    else if (*(pos - 1) == (AA).ch)                  \
+                            --(AA).cnt;                              \
+                    else                                             \
+                            (AA).cnt = 3;                            \
+                                                                     \
+                    in_docstring = ((AA).cnt != 0) ? (AA).val        \
+                                                   : NO_DOCSTRING;   \
+                    if (!in_docstring)                               \
+                            skip = true;                             \
+            } else {                                                 \
+                    if ((AA).cnt == 0 && !((AA).Q || (BB).Q))        \
+                            ++(AA).cnt;                              \
+                    else if (*(pos - 1) == (AA).ch)                  \
+                            ++(AA).cnt;                              \
+                                                                     \
+                    in_docstring = ((AA).cnt == 3) ? (AA).val        \
+                                                   : NO_DOCSTRING;   \
+                                                                     \
+                    if (in_docstring) {                              \
+                            (AA).Q = (BB).Q = false;                 \
+                            skip = true;                             \
+                    } else if (!(BB).Q && !comment) {                \
+                            if ((AA).Q) {                            \
+                                    if (!escape)                     \
+                                            (AA).Q = false,          \
+                                            skip = true;             \
+                            } else                                   \
+                                    (AA).Q = true;                   \
+                    }                                                \
+            }                                                        \
     } while (0)
 
 
@@ -235,44 +246,38 @@ enum docstring_e {
 };
 
 struct py_quote {
-        bool b;
+        bool Q;
         int cnt;
         char ch;
         enum docstring_e val;
 };
 
-#define DUMP(VAR_) (#VAR_), 0, (VAR_)
-#define FIELDB "%s: \033[%dm\033[34m%d\033[0m, "
-#define FIELDG "%s: \033[%um\033[32m%d\033[0m, "
 
-
-/* static void _check_docstring_(
-        struct quote_s *A, struct quote_s *B, enum docstring_e *in_docstring,
-        bool *transition, const char *const pos, const bool escape, const bool comment); */
-
-
-static char *
-handle_python(const struct string *const vim_buf, const char delim)
+static void
+handle_python(struct String *vim_buf)
 {
         enum docstring_e in_docstring = NO_DOCSTRING;
-        struct py_quote Single = { false, 0, '\'', SINGLE_DOCSTRING };
-        struct py_quote Double = { false, 0, '"',  DOUBLE_DOCSTRING };
-        const char *pos        = vim_buf->s;
-        uint32_t space         = 0;
+        struct py_quote  Single = { false, 0, '\'', SINGLE_DOCSTRING };
+        struct py_quote  Double = { false, 0, '"',  DOUBLE_DOCSTRING };
+        const char      *pos    = vim_buf->s;
+        uint32_t         space  = 0;
 
         char *buf, *buf_orig;
-        bool escape, comment, transition;
+        bool escape, comment, skip;
 
-        buf    = buf_orig = xmalloc((size_t)vim_buf->len);
-        escape = comment  = transition = false;
+        buf    = buf_orig = malloc(vim_buf->len + 2LLU);
+        escape = comment  = skip = false;
 
         if (*pos == '\0')
-                errx(1, "Empty vim vim_buf!");
+                errx(1, "Empty vim buffer!");
+
+        /* Add a non-offensive character to the buffer so we never have to worry
+         * about going out of bounds when checking 1 character backwards. */
+        *buf++ = ' ';
 
         do {
-                if (!comment && !QUOTE && !escape && *pos == delim) {
+                if (!comment && !QUOTE() && !escape && *pos == '#') {
                         comment = true;
-                        escape  = false;
                         space   = 0;
                         continue;
                 }
@@ -282,9 +287,11 @@ handle_python(const struct string *const vim_buf, const char delim)
 
                 switch (*pos) {
                 case '\n':
+                        if (*(buf - 1) == '\n')
+                                skip = true;
                         comment = false;
                         space = 0;
-                        goto cont;
+                        break;
 
                 case '"':
                         if (in_docstring != SINGLE_DOCSTRING)
@@ -298,8 +305,12 @@ handle_python(const struct string *const vim_buf, const char delim)
                         space = 0;
                         break;
 
+                case '\t':
                 case ' ':
-                        ++space;
+                        if (*(buf - 1) == '\n')
+                                skip = true;
+                        else
+                                ++space;
                         break;
 
                 default:
@@ -328,22 +339,21 @@ handle_python(const struct string *const vim_buf, const char delim)
                                 Double.cnt = 0;
                         break;
 
-                default:
-                        errx(1, "Not reachable.");
+                default: /* not reachable */ abort();
                 }
 
-                if (transition)
-                        transition = false;
-                else if (!QUOTE && space < 2)
-cont:
+                if (skip)
+                        skip = false;
+                else if (!QUOTE() && space < 2)
                         *buf++ = *pos;
 
-                escape = (*pos == '\\' ? (escape ? false : true) : false);
+                escape = (*pos == '\\' ? !escape : false);
 
         } while (*pos++);
 
-        *buf++ = '\0';
-        buf    = xrealloc(buf_orig, buf - buf_orig);
+        *buf = '\0';
 
-        return buf;
+        free(vim_buf->s);
+        vim_buf->len = buf - buf_orig - 1LLU;
+        vim_buf->s   = xrealloc(buf_orig, vim_buf->len + 1);
 }

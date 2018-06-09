@@ -52,58 +52,9 @@ my_fgetline(char **ptr, void *fp)
 }
 
 
-#if 0
-struct linked_list *
-get_all_lines(const char *filename)
-{
-        FILE *fp = safe_fopen(filename, "rb");
-        struct linked_list *ll = new_list(true);
-        struct string *str;
-
-        for (;;) {
-                str = xmalloc(sizeof * str);
-                str->len = my_fgetline(&str->s, fp);
-
-                /* Only EOF will return a size of 0. Even an empty string has
-                 * to be size 1 to fit the null char. */
-                if (str->len == 0)
-                        break;
-
-                ll_add(ll, str);
-        }
-
-        fclose(fp);
-        return ll;
-}
-
-
-struct linked_list *
-llstrsep(struct string *buffer)
-{
-        char *tok, *buf;
-        struct linked_list *ll = new_list(false);
-
-        /* Set this global pointer so it can be free'd later... */
-        evil_global_backup_pointer = buf = buffer->s;
-
-        while ((tok = strsep(&buf, "\n")) != NULL) {
-                if (*tok == '\0')
-                        continue;
-                struct string *str = xmalloc(sizeof * str);
-                str->len = buf - tok;
-                str->s   = tok;
-
-                ll_add(ll, str);
-        }
-
-        return ll;
-}
-#endif
-
-
 FILE *
-safe_fopen(const char * const restrict filename,
-           const char * const restrict mode)
+safe_fopen(const char * const __restrict filename,
+           const char * const __restrict mode)
 {
         FILE *fp = fopen(filename, mode);
         if (!fp)
@@ -128,7 +79,7 @@ xmalloc(const size_t size)
 {
         void *tmp = malloc(size);
         if (tmp == NULL)
-                err(100, "Malloc call failed - attempted %zu bytes\n", size);
+                err(100, "Malloc call failed - attempted %zu bytes", size);
         return tmp;
 }
 
@@ -138,7 +89,7 @@ xcalloc(const int num, const size_t size)
 {
         void *tmp = calloc(num, size);
         if (tmp == NULL)
-                err(125, "Calloc call failed - attempted %zu bytes\n", size);
+                err(101, "Calloc call failed - attempted %zu bytes", size);
         return tmp;
 }
 
@@ -148,9 +99,21 @@ xrealloc(void *ptr, const size_t size)
 {
         void *tmp = realloc(ptr, size);
         if (tmp == NULL)
-                err(150, "Realloc call failed - attempted %zu bytes\n", size);
+                err(102, "Realloc call failed - attempted %zu bytes", size);
         return tmp;
 }
+
+
+#ifdef HAVE_REALLOCARRAY
+void *
+xreallocarray(void *ptr, size_t num, size_t size)
+{
+        void *tmp = reallocarray(ptr, num, size);
+        if (tmp == NULL)
+                err(103, "Realloc call failed - attempted %zu bytes", size);
+        return tmp;
+}
+#endif
 
 
 int64_t
@@ -205,21 +168,21 @@ __free_all(void *ptr, ...)
         va_list ap;
         va_start(ap, ptr);
 
-        do free(ptr);
+        do xfree(ptr);
         while ((ptr = va_arg(ap, void *)) != NULL);
 
         va_end(ap);
 }
 
 
-#if (defined(_WIN64) || defined(_WIN32)) && !defined(__CYGWIN__)
+#ifdef DOSISH
 char *
 basename(char *path)
 {
         assert(path != NULL && *path != '\0');
         size_t len = strlen(path);
         char *ptr = path + len;
-        while ((*ptr != '/' && *ptr != '\\') && ptr != path)
+        while (*ptr != '/' && *ptr != '\\' && ptr != path)
                 --ptr;
         
         return (*ptr == '/' || *ptr == '\\') ? ptr + 1 : ptr;
@@ -229,27 +192,47 @@ basename(char *path)
 
 #ifndef HAVE_ERR
 void
-_warn(bool print_err, const char *const restrict fmt, ...)
+_warn(bool print_err, const char *const __restrict fmt, ...)
 {
         va_list ap;
-        char *buf;
         va_start(ap, fmt);
+        char buf[BUFSIZ];
 
         if (print_err)
-                asprintf(&buf, "%s: %s: %s\n", program_name, fmt,
+                snprintf(buf, BUFSIZ, "%s: %s: %s\n", program_name, fmt,
                          strerror(errno));
         else
-                asprintf(&buf, "%s: %s\n", program_name, fmt);
+                snprintf(buf, BUFSIZ, "%s: %s\n", program_name, fmt);
 
-        if (buf == NULL) {
-                /* Allocation failed: print the original format and a \n. */
-                vfprintf(stderr, fmt, ap);
-                fputc('\n', stderr);
-        } else {
-                vfprintf(stderr, buf, ap);
-                free(buf);
-        }
+        vfprintf(stderr, buf, ap);
 
         va_end(ap);
 }
 #endif
+
+
+int
+find_num_cpus(void)
+{
+#ifdef DOSISH
+        SYSTEM_INFO sysinfo;
+        GetSystemInfo(&sysinfo);
+        return sysinfo.dwNumberOfProcessors;
+#elif MACOS
+        int nm[2];
+        size_t len = 4;
+        uint32_t count;
+
+        nm[0] = CTL_HW; nm[1] = HW_AVAILCPU;
+        sysctl(nm, 2, &count, &len, NULL, 0);
+
+        if (count < 1) {
+                nm[1] = HW_NCPU;
+                sysctl(nm, 2, &count, &len, NULL, 0);
+                if (count < 1) { count = 1; }
+        }
+        return count;
+#else
+        return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+}
