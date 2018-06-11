@@ -2,6 +2,7 @@
 #cmakedefine HAVE_ASPRINTF
 #cmakedefine HAVE_ERR
 #cmakedefine HAVE_LIBBSD
+#cmakedefine HAVE_REALLOCARRAY
 #cmakedefine HAVE_STRDUPA
 #cmakedefine HAVE_STRLCPY
 #cmakedefine HAVE_STRSEP

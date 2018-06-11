@@ -19,12 +19,19 @@ endfunction
 
 call InitVar('file', '')
 call InitVar('ctags_bin', 'ctags')
-call InitVar('ignored_tags', [])
+
+call InitVar('ignored_tags', {})
 call InitVar('ignored_dirs', [])
 
 call InitVar('directory',     expand('~/.vim_tags'))
 call InitVar('bin',           expand(g:neotags_directory . '/bin/neotags'))
 call InitVar('settings_file', expand(g:neotags_directory . '/neotags.txt'))
+
+if file_readable(g:neotags_bin)
+    call InitVar('use_binary',  1)
+else
+    call InitVar('use_binary',  0)
+endif
 
 call InitVar('use_compression',   1)
 call InitVar('compression_level', 9)
@@ -37,13 +44,20 @@ call InitVar('highlight',   1)
 call InitVar('no_autoconf', 1)
 call InitVar('recursive',   1)
 call InitVar('run_ctags',   1)
-call InitVar('use_binary',  0)
 call InitVar('verbose',     0)
 call InitVar('strip_comments', 1)
 call InitVar('silent_timeout', 0)
-call InitVar('ctags_timeout',  60)
+call InitVar('ctags_timeout',  240)
 call InitVar('patternlength',  2048)
 
+" People often make annoying #defines for C and C++ keywords, types, etc. Avoid
+" highlighting these by default, leaving the built in vim highlighting intact.
+call InitVar('restored_groups', {
+                \     'c':   ['cConstant', 'cStorageClass', 'cConditional', 'cRepeat', 'cType'],
+                \     'cpp': ['cConstant', 'cStorageClass', 'cConditional', 'cRepeat', 'cType',
+                \             'cppStorageClass', 'cppType'],
+                \ })
+ 
 call InitVar('norecurse_dirs', [
                 \ $HOME,
                 \ '/',
@@ -90,8 +104,8 @@ if g:neotags_run_ctags
                 \   '--c-kinds=+p',
                 \   '--c++-kinds=+p',
                 \   '--sort=yes',
-                \   '--extras=+q',
                 \   "--exclude='.mypy_cache'",
+                \   '--regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/'''
                 \ ])
     else
         echohl ErrorMsg
@@ -168,24 +182,25 @@ else
     augroup END
 endif
 
-function! s:Add_Remove_Project(operation, ...)
+function! s:Add_Remove_Project(operation, ctags, ...)
     if exists('a:1')
         let l:path = a:1
     else
         let l:path = getcwd()
     endif
     if a:operation ==# 0
-        call NeotagsRemoveProject(l:path)
+        call NeotagsRemoveProject(a:ctags, l:path)
     elseif a:operation ==# 1
-        call NeotagsAddProject(l:path)
+        call NeotagsAddProject(a:ctags, l:path)
     endif
 endfunction
 
 " command! -nargs=1 -complete=file NeotagsAddProject call NeotagsAddProject(<f-args>)
 " command! -nargs=1 -complete=file NeotagsRemoveProject call NeotagsRemoveProject(<f-args>)
 command! -nargs=? -complete=file NeotagsToggleProject call s:Add_remove_Project(2, <q-args>)
-command! -nargs=? -complete=file NeotagsAddProject call s:Add_Remove_Project(1, <q-args>)
-command! -nargs=? -complete=file NeotagsRemoveProject call s:Add_Remove_Project(0, <q-args>)
+command! -nargs=? -complete=file NeotagsAddProject call s:Add_Remove_Project(1, <q-args>, 1)
+command! -nargs=? -complete=file NeotagsAddProjectNoCtags call s:Add_Remove_Project(1, <q-args>, 0)
+command! -nargs=? -complete=file NeotagsRemoveProject call s:Add_Remove_Project(0, <q-args>, 0)
 command! NeotagsToggle call NeotagsToggle()
 command! NeotagsVerbosity call Neotags_Toggle_Verbosity()
 command! NeotagsBinaryToggle call Neotags_Toggle_C_Binary()

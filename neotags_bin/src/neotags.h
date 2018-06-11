@@ -47,22 +47,29 @@
 /*===========================================================================*/
 
 
-struct lldata {
+struct String {
         char *s;
         char kind;
         size_t len;
 };
 
-struct datalist {
-        struct lldata **data;
+struct StringLst {
+        struct String **data;
+        int64_t num;
+        int64_t max;
+};
+
+struct Backups {
+        char **lst;
         int64_t num;
         int64_t max;
 };
 
 
 char *program_name;
-char *backup_pointers[NUM_BACKUPS];
-int backup_iterator;
+/* char *backup_pointers[NUM_BACKUPS];
+int backup_iterator; */
+struct Backups backup_pointers;
 
 /*===========================================================================*/
 
@@ -106,6 +113,8 @@ int backup_iterator;
 #define eputs(STR_)  fputs((STR_), stderr)
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 
+#define xfree(PTR_) ((PTR_) ? free(PTR_), (PTR_) = NULL : NULL)
+
 
 /*===========================================================================*/
 
@@ -123,23 +132,39 @@ int backup_iterator;
 extern int64_t __xatoi      (char *str, bool strict);
 extern size_t  my_fgetline  (char **ptr, void *fp);
 extern int     my_fgetc     (void *fp);
-extern void *  xmalloc      (const size_t size)                __attribute__((__warn_unused_result__)) __attribute__((__malloc__));
-extern void *  xcalloc      (const int num, const size_t size) __attribute__((__warn_unused_result__)) __attribute__((__malloc__));
-extern void *  xrealloc     (void *ptr, const size_t size)     __attribute__((__warn_unused_result__));
+extern void    add_to_list  (struct StringLst *list, struct String *str);
+extern void    add_backup   (struct Backups *list, void *str);
+extern void *  xmalloc      (const size_t size)               
+        __attribute__((__warn_unused_result__)) __attribute__((__malloc__));
+extern void *  xcalloc      (const int num, const size_t size)
+        __attribute__((__warn_unused_result__)) __attribute__((__malloc__));
+extern void *  xrealloc     (void *ptr, const size_t size)
+        __attribute__((__warn_unused_result__));
 extern FILE *  safe_fopen   (const char * const __restrict filename, const char * const __restrict mode);
 extern bool    file_is_reg  (const char *filename);
 extern void  __dump_list    (char **list, FILE *fp, const char *varname);
 extern void  __dump_string  (char *str, const char *filename, FILE *fp, const char *varname);
 extern void  __free_all     (void *ptr, ...);
 extern int   find_num_cpus  (void);
+#ifdef HAVE_REALLOCARRAY
+extern void *  xreallocarray(void *ptr, size_t num, size_t size)
+        __attribute__((__warn_unused_result__));
+#  define nmalloc(NUM_, SIZ_)        reallocarray(NULL, (NUM_), (SIZ_))
+#  define nrealloc(PTR_, NUM_, SIZ_) xreallocarray((PTR_), (NUM_), (SIZ_))
+#else
+#  define nmalloc(NUM_, SIZ_)        malloc(((size_t)(NUM_)) * ((size_t)(SIZ_)))
+#  define nrealloc(PTR_, NUM_, SIZ_) xrealloc((PTR_), ((size_t)(NUM_)) * ((size_t)(SIZ_)))
+#endif
 
 
 /* 
  * Else
  */
-extern int  getlines(struct datalist *tags, const char *comptype, const char *filename);
-extern void strip_comments(struct lldata *buffer, const char *lang);
+extern int  getlines(struct StringLst *tags, const char *comptype, const char *filename);
+extern void strip_comments(struct String *buffer, const char *lang);
+extern struct StringLst * tokenize(struct String *vimbuf);
 
+/* #include "inline.h" */
 
 #ifdef __cplusplus
     }

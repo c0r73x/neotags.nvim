@@ -4,12 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-
 #include <inttypes.h>
-#include <zlib.h>
 
-#define STARTSIZE 2048
-#define INCSIZE   256
+#define STARTSIZE 1024
 #define GUESS 100
 #define INC   10
 
@@ -31,10 +28,8 @@ my_fgetline(char **ptr, void *fp)
         while ((ch = fgetc(fp)) != '\n' && ch != EOF) {
                 if (ch == '\r')
                         continue;
-                if (it >= (size - 1)) {
-                        size += INCSIZE;
-                        buf = xrealloc((void*)buf, size);
-                }
+                if (it >= (size - 1))
+                        buf = xrealloc(buf, (size <<= 1));
 
                 buf[it++] = ch;
         }
@@ -50,55 +45,6 @@ my_fgetline(char **ptr, void *fp)
 
         return it;
 }
-
-
-#if 0
-struct linked_list *
-get_all_lines(const char *filename)
-{
-        FILE *fp = safe_fopen(filename, "rb");
-        struct linked_list *ll = new_list(ST_STRING_FREE);
-        struct lldata *str;
-
-        for (;;) {
-                str = xmalloc(sizeof * str);
-                str->len = my_fgetline(&str->s, fp);
-
-                /* Only EOF will return a size of 0. Even an empty string has
-                 * to be size 1 to fit the null char. */
-                if (str->len == 0)
-                        break;
-
-                ll_add(ll, str);
-        }
-
-        fclose(fp);
-        return ll;
-}
-
-
-struct linked_list *
-llstrsep(struct lldata *buffer)
-{
-        char *tok, *buf;
-        struct linked_list *ll = new_list(ST_STRING_NOFREE);
-
-        /* Set this global pointer so it can be free'd later... */
-        evil_global_backup_pointer = buf = buffer->s;
-
-        while ((tok = strsep(&buf, "\n")) != NULL) {
-                if (*tok == '\0')
-                        continue;
-                struct lldata *str = xmalloc(sizeof * str);
-                str->len = buf - tok;
-                str->s   = tok;
-
-                ll_add(ll, str);
-        }
-
-        return ll;
-}
-#endif
 
 
 FILE *
@@ -117,9 +63,30 @@ safe_fopen(const char * const __restrict filename,
 bool
 file_is_reg(const char *filename)
 {
-        struct stat st;
+        struct stat st = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0}, {0}, {0}, {0, 0, 0}};
         safe_stat(filename, &st);
         return S_ISREG(st.st_mode);
+}
+
+
+void
+add_to_list(struct StringLst *list, struct String *str)
+{
+        if (list->num == (list->max - 1))
+                list->data =
+                    nrealloc(list->data, (list->max = (size_t)((double)list->max * 1.5)),
+                             sizeof *list->data);
+        list->data[list->num++] = str;
+}
+
+
+void
+add_backup(struct Backups *list, void *item)
+{
+        if (list->num >= (list->max - 1))
+                list->lst = nrealloc(list->lst, (list->max <<= 1),
+                                     sizeof *list->lst);
+        list->lst[list->num++] = item;
 }
 
 
@@ -128,7 +95,7 @@ xmalloc(const size_t size)
 {
         void *tmp = malloc(size);
         if (tmp == NULL)
-                err(100, "Malloc call failed - attempted %zu bytes\n", size);
+                err(100, "Malloc call failed - attempted %zu bytes", size);
         return tmp;
 }
 
@@ -138,7 +105,7 @@ xcalloc(const int num, const size_t size)
 {
         void *tmp = calloc(num, size);
         if (tmp == NULL)
-                err(125, "Calloc call failed - attempted %zu bytes\n", size);
+                err(101, "Calloc call failed - attempted %zu bytes", size);
         return tmp;
 }
 
@@ -148,16 +115,28 @@ xrealloc(void *ptr, const size_t size)
 {
         void *tmp = realloc(ptr, size);
         if (tmp == NULL)
-                err(150, "Realloc call failed - attempted %zu bytes\n", size);
+                err(102, "Realloc call failed - attempted %zu bytes", size);
         return tmp;
 }
 
 
+#ifdef HAVE_REALLOCARRAY
+void *
+xreallocarray(void *ptr, size_t num, size_t size)
+{
+        void *tmp = reallocarray(ptr, num, size);
+        if (tmp == NULL)
+                err(103, "Realloc call failed - attempted %zu bytes", size);
+        return tmp;
+}
+#endif
+
+
 int64_t
-__xatoi(char *str, bool strict)
+__xatoi(char *str, const bool strict)
 {
         char *endptr;
-        long int val = strtol(str, &endptr, 10);
+        const long long int val = strtol(str, &endptr, 10);
 
         if ((endptr == str) || (strict && *endptr != '\0'))
                 errx(30, "Invalid integer '%s'.\n", str);
@@ -205,7 +184,7 @@ __free_all(void *ptr, ...)
         va_list ap;
         va_start(ap, ptr);
 
-        do free(ptr);
+        do xfree(ptr);
         while ((ptr = va_arg(ap, void *)) != NULL);
 
         va_end(ap);
@@ -217,7 +196,7 @@ char *
 basename(char *path)
 {
         assert(path != NULL && *path != '\0');
-        size_t len = strlen(path);
+        const size_t len = strlen(path);
         char *ptr = path + len;
         while (*ptr != '/' && *ptr != '\\' && ptr != path)
                 --ptr;
@@ -229,42 +208,19 @@ basename(char *path)
 
 #ifndef HAVE_ERR
 void
-_warn(bool print_err, const char *const __restrict fmt, ...)
+_warn(const bool print_err, const char *const __restrict fmt, ...)
 {
         va_list ap;
-        char *buf;
         va_start(ap, fmt);
+        char buf[BUFSIZ];
 
-#ifdef HAVE_ASPRINTF
         if (print_err)
-                asprintf(&buf, "%s: %s: %s\n", program_name, fmt,
+                snprintf(buf, BUFSIZ, "%s: %s: %s\n", program_name, fmt,
                          strerror(errno));
         else
-                asprintf(&buf, "%s: %s\n", program_name, fmt);
-#else
-        size_t size;
-        if (print_err) {
-                char tmp[BUFSIZ];
-                /* strerror() is guarenteed to be less than 8192, strcpy is fine. */
-                strcpy(tmp, strerror(errno));
-                size = strlen(fmt) + strlen(program_name) + strlen(tmp) + 6;
-                buf = xmalloc(size);
-                snprintf(buf, size, "%s: %s: %s\n", program_name, fmt, tmp);
-        } else {
-                size = strlen(fmt) + strlen(program_name) + 4;
-                buf = xmalloc(size);
-                snprintf(buf, size, "%s: %s\n", program_name, fmt);
-        }
-#endif
+                snprintf(buf, BUFSIZ, "%s: %s\n", program_name, fmt);
 
-        if (buf == NULL) {
-                /* Allocation failed: print the original format and a \n. */
-                vfprintf(stderr, fmt, ap);
-                fputc('\n', stderr);
-        } else {
-                vfprintf(stderr, buf, ap);
-                free(buf);
-        }
+        vfprintf(stderr, buf, ap);
 
         va_end(ap);
 }
@@ -274,7 +230,7 @@ _warn(bool print_err, const char *const __restrict fmt, ...)
 int
 find_num_cpus(void)
 {
-#ifdef WIN32
+#ifdef DOSISH
         SYSTEM_INFO sysinfo;
         GetSystemInfo(&sysinfo);
         return sysinfo.dwNumberOfProcessors;

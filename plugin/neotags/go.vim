@@ -1,5 +1,5 @@
 if !exists('g:neotags#go#order')
-        let g:neotags#go#order = 'pftsicm'
+        let g:neotags#go#order = 'pftsicmv'
 endif
 
 let g:neotags#go#p = { 'group': 'goPackageTag', }
@@ -7,9 +7,10 @@ let g:neotags#go#c = { 'group': 'goConstantTag', }
 let g:neotags#go#t = { 'group': 'goTypeTag', }
 let g:neotags#go#s = { 'group': 'goStructTag', }
 let g:neotags#go#i = { 'group': 'goInterfaceTag', }
+let g:neotags#go#v = { 'group': 'goGlobalVarTag', }
 let g:neotags#go#f = {
             \   'group': 'goFunctionTag',
-            \   'suffix': '\>\%(\s*(\)\@='
+            \   'suffix': '\>\%(\s*(\|\s*:\?=\s*func\)\@='
             \ }
 let g:neotags#go#m = {
             \   'group': 'goMemberTag',
@@ -19,7 +20,8 @@ let g:neotags#go#m = {
 highlight def link goConstantTag	neotags_ConstantTag
 highlight def link goFunctionTag	neotags_FunctionTag
 highlight def link goInterfaceTag	neotags_InterfaceTag
-highlight def link goMemberTag	neotags_MemberTag
-highlight def link goPackageTag	neotags_PreProcTag
-highlight def link goStructTag	neotags_StructTag
-highlight def link goTypeTag	neotags_TypeTag
+highlight def link goMemberTag		neotags_MemberTag
+highlight def link goPackageTag		neotags_PreProcTag
+highlight def link goStructTag		neotags_StructTag
+highlight def link goTypeTag		neotags_TypeTag
+highlight def link goGlobalVarTag	neotags_PreProcTag

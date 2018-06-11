@@ -4,6 +4,7 @@ set (neotags_SOURCES
     getlines.c
     neotags.c
     strip.c
+    tok.c
     util.c)
 
 if (LZMA_SUPPORT)
@@ -17,13 +18,10 @@ add_executable(neotags ${neotags_SOURCES})
 
 if (ISWIN)
     include_directories(neotags "${CMAKE_SOURCE_DIR}/contrib/include")
-    #add_library(libz SHARED IMPORTED)
-    #add_library(liblzma SHARED IMPORTED)
-    #set_property(TARGET libz PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/contrib/libz.lib")
-    #set_property(TARGET liblzma PROPERTY IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/contrib/liblzma.lib")
-    #message("lzma -> ${liblzma}, libz -> ${libz}")
-    #target_link_libraries(neotags libz liblzma)
-    target_link_libraries(neotags "${CMAKE_SOURCE_DIR}/contrib/libz.lib" "${CMAKE_SOURCE_DIR}/contrib/liblzma.lib")
+    target_link_libraries(neotags
+        "${CMAKE_SOURCE_DIR}/contrib/libz.lib"
+        "${CMAKE_SOURCE_DIR}/contrib/liblzma.lib"
+        "${CMAKE_SOURCE_DIR}/contrib/libpthread.lib")
 else()
     if (LZMA_SUPPORT)
         include_directories(${LIBLZMA_INCLUDE_DIRS})

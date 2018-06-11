@@ -1,5 +1,5 @@
 if !exists('g:neotags#c#order')
-        let g:neotags#c#order = 'gstuedfm'
+        let g:neotags#c#order = 'guesmdft'
 endif
 
 let g:neotags#c#g = { 'group': 'cEnumTypeTag' }
@@ -15,9 +15,15 @@ let g:neotags#c#m = {
             \   'group': 'cMemberTag',
             \   'prefix': '\%(\%(\>\|\]\|)\)\%(\.\|->\)\)\@5<=',
             \ }
-let g:neotags#c#f = {
-            \   'group': 'cFunctionTag',
-            \   'suffix': '\>\%(\s*(\)\@='
+" let g:neotags#c#f = {
+            " \   'group': 'cFunctionTag',
+            " \   'suffix': '\>\%(\s*(\)\@='
+            " \ }
+let g:neotags#c#f = { 'group': 'cFunctionTag' }
+
+let g:neotags#c#R = {
+            \    'group': 'cFuncRef',
+            \    'prefix': '\%(&\)\@1<='
             \ }
 
 let g:neotags#c#equivalent = { 'p': 'f' }
@@ -26,6 +32,7 @@ highlight def link cClassTag	neotags_TypeTag
 highlight def link cEnumTypeTag	neotags_EnumTypeTag
 highlight def link cStructTag	neotags_StructTag
 highlight def link cUnionTag	neotags_UnionTag
+highlight def link cFuncRef	neotags_FunctionTag
 
 highlight def link cEnumTag	neotags_EnumTag
 highlight def link cFunctionTag	neotags_FunctionTag
