@@ -6,13 +6,17 @@
 #include <string.h>
 
 #define INIT_STRINGS 8192
-#define FIRST() (ch == '_' || ch == ':' || isalpha(ch))
-#define ELSE()  (ch == '_' || ch == ':' || isalnum(ch))
+#define DECLARE(FUNC_NAME) \
+        static bool FUNC_NAME (const char ch, const bool first)
 
-static void do_tokenize(struct StringLst *list, char *vimbuf);
-static char * strsep_f(char **stringp, bool (*check)(char, bool));
-static bool compar_func(char ch, bool first);
+typedef bool (*cmp_f)(char, bool);
 
+DECLARE(c_func);
+DECLARE(vim_func);
+
+static void do_tokenize(struct StringLst *list, char *vimbuf, cmp_f check);
+static void tokenize_vim(struct StringLst *list, char *vimbuf, cmp_f check);
+static char *strsep_f(char **stringp, cmp_f check);
 
 
 struct StringLst *
@@ -25,42 +29,51 @@ tokenize(struct String *vimbuf)
 
         struct StringLst *list = malloc(sizeof *list);
         *list = (struct StringLst){
-                .data = nmalloc(INIT_STRINGS, sizeof(struct String *)),
-                .num  = 0,
-                .max  = INIT_STRINGS
+            .lst = nmalloc(INIT_STRINGS, sizeof(struct String *)),
+            .num = 0,
+            .max = INIT_STRINGS
         };
 
-        do_tokenize(list, cpy);
+#if 0
+        const struct cmp_funcs *f = &cmp_functions[0];
+
+        for (size_t i = 1, size = ARRSIZ(cmp_functions); i < size; ++i) {
+                if (streq(lang, cmp_functions[i].lang)) {
+                        f = &cmp_functions[i];
+                        break;
+                }
+        }
+
+#endif
+        switch (lang_id) {
+        case _VIM_:  tokenize_vim(list, cpy, vim_func); break;
+        default:     do_tokenize(list, cpy, c_func);  break;
+        }
+        /* do_tokenize(list, cpy, &cmp_functions[0]); */
 
         return list;
 }
 
 
 static void
-do_tokenize(struct StringLst *list, char *vimbuf)
+do_tokenize(struct StringLst *list, char *vimbuf, cmp_f check)
 {
         char *tok = NULL;
 
-        while ((tok = strsep_f(&vimbuf, &compar_func)) != NULL) {
+        while ((tok = strsep_f(&vimbuf, check)) != NULL) {
                if (!tok[0])
                        continue;
                struct String *tmp;
-again:
                tmp = malloc(sizeof *tmp);
                tmp->s = tok;
-               tmp->len = vimbuf - tok - 1LLU;
+               tmp->len = vimbuf - tok - 1;
                add_to_list(list, tmp);
-
-               if (tok[0] == '&') {
-                       ++tok;
-                       goto again;
-               }
         }
 }
 
 
 static char *
-strsep_f(char **stringp, bool (*check)(char, bool))
+strsep_f(char **stringp, cmp_f check)
 {
         char *ptr, *tok;
         if ((ptr = tok = *stringp) == NULL)
@@ -80,15 +93,38 @@ strsep_f(char **stringp, bool (*check)(char, bool))
 }
 
 
-static bool
-compar_func(const char ch, const bool first)
+static bool c_func(const char ch, const bool first)
 {
-        bool ret;
-
-        if (first)
-                ret = FIRST();
-        else
-                ret = ELSE();
-
-        return ret;
+        return (first) ? (ch == '_' || isalpha(ch))
+                       : (ch == '_' || isalnum(ch));
 } 
+
+static bool vim_func(const char ch, const bool first)
+{
+        return (first) ? (ch == '_' || isalpha(ch))
+                       : (ch == '_' || ch == ':' || isalnum(ch));
+} 
+
+
+//===============================================================================
+
+
+static void
+tokenize_vim(struct StringLst *list, char *vimbuf, cmp_f check)
+{
+        char *tok = NULL, *col = NULL;
+
+        while ((tok = strsep_f(&vimbuf, check)) != NULL) {
+               if (!tok[0])
+                       continue;
+               struct String *tmp = malloc(sizeof *tmp);
+               *tmp = (struct String){ tok, vimbuf - tok - 1LLU, 0 };
+               add_to_list(list, tmp);
+
+               if ((col = strchr(tok, ':'))) {
+                       tmp = malloc(sizeof *tmp);
+                       *tmp = (struct String){ tok, vimbuf - (col + 1) - 1LLU, 0 };
+                       add_to_list(list, tmp);
+               }
+        }
+}

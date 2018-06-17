@@ -59,9 +59,9 @@ ll_strsep(struct StringLst *tags, char *buf)
                 str->s   = tok;
 
                 if (tags->num == tags->max)
-                        tags->data = nrealloc(tags->data, (tags->max += TAGS_INC),
-                                              sizeof(*tags->data));
-                tags->data[tags->num++] = str;
+                        tags->lst = nrealloc(tags->lst, (tags->max += TAGS_INC),
+                                             sizeof(*tags->lst));
+                tags->lst[tags->num++] = str;
         }
 }
 

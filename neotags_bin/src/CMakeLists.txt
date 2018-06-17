@@ -5,6 +5,7 @@ set (neotags_SOURCES
     neotags.c
     strip.c
     tok.c
+    id.c
     util.c)
 
 if (LZMA_SUPPORT)

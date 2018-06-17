@@ -11,15 +11,20 @@ let g:neotags#vim#c = {
             \ }
 
 " Use :set iskeyword+=: for vim to make s:/<sid> functions to show correctly
+" let g:neotags#vim#f = { 'group': 'vimFuncNameTag', }
 let g:neotags#vim#f = {
-            \   'group': 'vimFuncNameTag',
-            \   'prefix': '\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
-            \   'filter': {
-            \       'pattern': '(?i)(<sid>|\bs:)',
-            \       'group': 'vimvimScriptFuncNameTag',
-            \       'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)',
-            \   }
+            \ 'group': 'vimFuncNameTag',
+            \ 'prefix': '\%(\%(g\|s\|l\):\)\=',
             \ }
+" let g:neotags#vim#f = {
+"             \   'group': 'vimFuncNameTag',
+"             \   'prefix': '\%(\<s:\|<[sS][iI][dD]>\)\@<!\<',
+"             \   'filter': {
+"             \       'pattern': '(?i)(<sid>|\bs:)',
+"             \       'group': 'vimvimScriptFuncNameTag',
+"             \       'prefix': '\C\%(\<s:\|<[sS][iI][dD]>\)\?',
+"             \   }
+"             \ }
 
 
 highlight def link vimFuncNameTag		neotags_FunctionTag

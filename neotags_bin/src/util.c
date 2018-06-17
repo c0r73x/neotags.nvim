@@ -73,10 +73,10 @@ void
 add_to_list(struct StringLst *list, struct String *str)
 {
         if (list->num == (list->max - 1))
-                list->data =
-                    nrealloc(list->data, (list->max = (size_t)((double)list->max * 1.5)),
-                             sizeof *list->data);
-        list->data[list->num++] = str;
+                list->lst =
+                    nrealloc(list->lst, (list->max = (size_t)((double)list->max * 1.5)),
+                             sizeof *list->lst);
+        list->lst[list->num++] = str;
 }
 
 
@@ -185,6 +185,25 @@ __free_all(void *ptr, ...)
         va_start(ap, ptr);
 
         do xfree(ptr);
+        while ((ptr = va_arg(ap, void *)) != NULL);
+
+        va_end(ap);
+}
+
+
+#define free_list(LST)                           \
+        do {                                     \
+                for (int i = 0; i < (LST)->num; ++i) \
+                        free((LST)->lst[i]);         \
+        } while (0)
+
+void
+__free_all_strlists(strlist *ptr, ...)
+{
+        va_list ap;
+        va_start(ap, ptr);
+
+        do free_list(ptr);
         while ((ptr = va_arg(ap, void *)) != NULL);
 
         va_end(ap);

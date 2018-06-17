@@ -3,22 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ARRSIZ(ARR_) (sizeof(ARR_) / sizeof(*(ARR_)))
-
-enum lang_e      { _C_, _CPP_, _CSHARP_, _GO_, _JAVA_, _PYTHON_, };
 enum basic_types { C_LIKE, PYTHON };
 
 static const struct lang_s {
-        const char *lang;
+        const enum lang_e id;
         const enum basic_types type;
-        const enum lang_e lang_id;
 } languages[] = {
-    { "c",      C_LIKE, _C_      },
-    { "cpp",    C_LIKE, _CPP_    },
-    { "cs",     C_LIKE, _CSHARP_ },
-    { "go",     C_LIKE, _GO_     },
-    { "java",   C_LIKE, _JAVA_   },
-    { "python", PYTHON, _PYTHON_ },
+    { _C_,      C_LIKE, },
+    { _CPP_,    C_LIKE, },
+    { _CSHARP_, C_LIKE, },
+    { _GO_,     C_LIKE, },
+    { _JAVA_,   C_LIKE, },
+    { _RUST_,   C_LIKE, },
+    { _PYTHON_, PYTHON, },
 };
 
 static const struct comment_s {
@@ -36,20 +33,22 @@ static void handle_python(struct String *vim_buf);
  * false positives caused by tag names appearing in comments and strings. */
 
 void
-strip_comments(struct String *buffer, const char *lang)
+strip_comments(struct String *buffer)
 {
-        size_t i, size;
+        const struct comment_s *com = NULL;
 
-        for (i = 0, size = ARRSIZ(languages); i < size; ++i)
-                if (streq(lang, languages[i].lang))
+        for (size_t i = 0; i < ARRSIZ(languages); ++i) {
+                if (lang_id == languages[i].id) {
+                        com = &comments[languages[i].type];
                         break;
-        if (i == size) {
-                warnx("Failed to identify language '%s'.", lang);
+                }
+        }
+        if (!com) {
+                warnx("Failed to identify language.");
                 return;
         }
-        const struct comment_s com = comments[languages[i].type];
 
-        switch (com.type) {
+        switch (com->type) {
         case C_LIKE: handle_cstyle(buffer); break;
         case PYTHON: handle_python(buffer); break;
         default:     errx(1, "This shouldn't be reachable...");
@@ -111,8 +110,10 @@ handle_cstyle(struct String *vim_buf)
                                 do tmp = strchr(tmp+1, '\n');
                                 while (tmp && *(tmp - 1) == '\\');
 
-                                if (!tmp)
-                                        errx(1, "Couldn't find end of comment.");
+                                if (!tmp) {
+                                        warnx("Couldn't find end of comment.");
+                                        break;
+                                }
                                 pos = tmp;
                                 /* Add the newline only if the last char in the
                                  * output buffer was not also a newline. */

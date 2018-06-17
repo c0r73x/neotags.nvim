@@ -290,8 +290,9 @@ class Neotags(object):
                     cmds.append(self.__keyword_pattern %
                                 (hl.key, r' '.join(current)))
                 else:
-                    cmds.append(self.__match_pattern % (hl.key, hl.prefix,
-                                r'\|'.join(current), hl.suffix))
+                    cmds.append(self.__match_pattern %
+                                (hl.key, hl.prefix, r'\|'.join(current), hl.suffix))
+                                # (hl.key, hl.prefix, r'\|'.join(current), hl.suffix) + ' containedin=ALL' )
 
             if hl.ft != self.vim.api.eval('&ft'):
                 dia.debug_end('filetype changed aborting highlight')
@@ -431,11 +432,12 @@ class Neotags(object):
             equiv_str = SEPCHAR.join([A + B for A, B in equivalent.items()])
 
         indata = self.__slurp.encode('ascii', errors='replace')
+        File = os.path.realpath(self.vim.api.eval("expand('%:p')"))
 
         dia.debug_echo("Cmd is: %s" % [
             self.__neotags_bin, file_list, lang, vimlang, order,
             str(self.vv('strip_comments')), len(indata),
-            ignored_tags, equiv_str])
+            ignored_tags, equiv_str, File])
 
         # Required arguments (in this order):
         #    1) List of tags files the compression type of each file, with
@@ -459,28 +461,36 @@ class Neotags(object):
                 str(len(indata)),
                 ignored_tags,
                 equiv_str,
+                File
             ),
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
         out, err = proc.communicate(input=indata)
-        out = out.rstrip().split(b'\n')
+        if sys.platform == 'win32':
+            out = out.rstrip().split(b'\n').rstrip(b'\r')
+        else:
+            out = out.rstrip().split(b'\n')
         err = err.rstrip().decode(errors='replace').split('\n')
 
-        dia.debug_echo("Returned %d items" % (len(out) / 2))
+        dia.debug_echo("Returned %d items" % (len(out)))
         for line in err:
             if line:
                 dia.debug_echo("ERR: %s" % line)
         if proc.returncode:
             raise CBinError(proc.returncode, err[-1])
 
-        for i in range(0, len(out) - 1, 2):
-            key = "%s#%s" % (ft, out[i].decode().rstrip('\r'))
+        for line in out:
             try:
-                groups[key].append(out[i+1].rstrip(b'\r'))
+                key, name = line.split(b'\t')
+            except ValueError:
+                continue
+            key = key.decode()
+            try:
+                groups[key].append(name)
             except KeyError:
-                groups[key] = [out[i+1].rstrip(b'\r')]
+                groups[key] = [name]
 
         dia.debug_echo("Elapsed time for reading file: %fs" %
                        (float(time.time()) - stime), err=True)
@@ -900,7 +910,7 @@ class Neotags(object):
         if not self.vv('enabled'):
             dia.inform_echo("Re-enabling neotags.")
             self.vv('enabled', SET=1)
-            self.update(force=True)
+            self.update(force=False)
         else:
             dia.inform_echo("Disabling neotags.")
             self.vv('enabled', SET=0)
