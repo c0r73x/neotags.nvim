@@ -1,5 +1,5 @@
 if !exists('g:neotags#c#order')
-        let g:neotags#c#order = 'guesmfdt'
+        let g:neotags#c#order = 'guesmfdtv'
 endif
 
 " let g:neotags#c#g = { 'group': 'cEnumTypeTag' }
@@ -47,6 +47,8 @@ let g:neotags#c#R = {
             \    'prefix': '\%(&\)\@1<='
             \ }
 
+let g:neotags#c#v = { 'group': 'cGlobalVar' }
+
 let g:neotags#c#equivalent = { 'p': 'f' }
 
 highlight def link cClassTag	neotags_TypeTag
@@ -55,6 +57,7 @@ highlight def link cStructTag	neotags_StructTag
 highlight def link cUnionTag	neotags_UnionTag
 highlight def link cFuncRef	neotags_FunctionTag
 
+highlight def link cGlobalVar	neotags_GlobalVarTag
 highlight def link cEnumTag	neotags_EnumTag
 highlight def link cFunctionTag	neotags_FunctionTag
 highlight def link cMemberTag	neotags_MemberTag

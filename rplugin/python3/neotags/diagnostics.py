@@ -35,15 +35,17 @@ class Diagnostics:
             self.inform_echo(message)
 
     def inform_echo(self, message):
-        self.vim.command('echom "%s"' % self.__to_escape.sub(
-                         r'\\\g<0>', message).replace('"', r'\"'))
+        # self.vim.command('echom "%s"' % self.__to_escape.sub(
+        #                  r'\\\g<0>', message).replace('"', r'\"'))
+        self.vim.out_write('%s\n' % message)
 
     def error(self, message):
         if message:
             message = 'Neotags: ' + message
-            message = message.replace('\\', '\\\\').replace('"', '\\"')
-            self.vim.command('echohl ErrorMsg | echom "%s" | echohl None' %
-                             message)
+            # message = message.replace('\\', '\\\\').replace('"', '\\"')
+            # self.vim.command('echohl ErrorMsg | echom "%s" | echohl None' %
+            #                  message)
+            self.vim.err_write('%s\n' % message)
 
     def clear_stack(self):
         while self.__start_time:
@@ -59,3 +61,7 @@ class Diagnostics:
             self.inform_echo('Switching off verbose output.')
             self.debug_start = self.debug_echo = self.debug_end = self.__void
             self.vv('verbose', SET=0)
+
+    def pop(self):
+        if not self.debug_echo == self.__void:
+            self.__start_time.pop()
