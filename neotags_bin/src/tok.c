@@ -45,7 +45,7 @@ tokenize(struct String *vimbuf)
         }
 
 #endif
-        switch (lang_id) {
+        switch (lang_id->id) {
         case _VIM_:  tokenize_vim(list, cpy, vim_func); break;
         default:     do_tokenize(list, cpy, c_func);  break;
         }

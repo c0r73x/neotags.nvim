@@ -2,10 +2,8 @@
 
 #define mkstring(STR) {(STR), sizeof(STR) - 1, 0}
 
-static const struct language_id {
-        const string lang;
-        const enum lang_e id;
-} languages[] = {
+const struct language_id languages[] = {
+    { mkstring("unknown"),     _NONE_   },
     { mkstring("c"),           _C_      },
     { mkstring("cpp"),         _CPP_    },
     { mkstring("cs"),          _CSHARP_ },
@@ -24,12 +22,16 @@ static const struct language_id {
 };
 
 
-enum lang_e
+const struct language_id *
 id_lang(const string *lang)
 {
-        for (size_t i = 0; i < ARRSIZ(languages); ++i)
-                if (string_eq(lang, &languages[i].lang))
-                        return languages[i].id;
+        for (size_t i = 1; i < ARRSIZ(languages); ++i) {
+                if (string_eq(lang, &languages[i].lang)) {
+                        int tmp = languages[i].id;
+                        warnx("Recognized ft as language \"%s\".", languages[tmp].lang.s);
+                        return &languages[i];
+                }
+        }
         warnx("Language %s not recognized", lang->s);
         return _NONE_;
 }

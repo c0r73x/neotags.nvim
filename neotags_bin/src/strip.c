@@ -8,7 +8,7 @@ enum basic_types { C_LIKE, PYTHON };
 static const struct lang_s {
         const enum lang_e id;
         const enum basic_types type;
-} languages[] = {
+} lang_comment_groups[] = {
     { _C_,      C_LIKE, },
     { _CPP_,    C_LIKE, },
     { _CSHARP_, C_LIKE, },
@@ -37,14 +37,15 @@ strip_comments(struct String *buffer)
 {
         const struct comment_s *com = NULL;
 
-        for (size_t i = 0; i < ARRSIZ(languages); ++i) {
-                if (lang_id == languages[i].id) {
-                        com = &comments[languages[i].type];
+        for (size_t i = 0; i < ARRSIZ(lang_comment_groups); ++i) {
+                if (lang_id->id == lang_comment_groups[i].id) {
+                        com = &comments[lang_comment_groups[i].type];
                         break;
                 }
         }
         if (!com) {
-                warnx("Failed to identify language.");
+                warnx("Comment stripping not supported for %d \"%s\".",
+                      lang_id->id, lang_id->lang.s);
                 return;
         }
 

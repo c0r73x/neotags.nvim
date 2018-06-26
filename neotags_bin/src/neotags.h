@@ -68,13 +68,32 @@ struct Backups {
 typedef struct String string;
 typedef struct StringLst strlist;
 
-enum lang_e { _NONE_, _C_, _CPP_, _CSHARP_, _GO_, _JAVA_, _PYTHON_, _VIM_,
-              _PERL_, _LISP_, _RUST_, _RUBY_, _JS_, _SH_, _ZSH_, _PHP_ };
+enum lang_e {
+        _NONE_,
+        _C_,
+        _CPP_,
+        _CSHARP_,
+        _GO_,
+        _JAVA_,
+        _JS_,
+        _LISP_,
+        _PERL_,
+        _PHP_,
+        _PYTHON_,
+        _RUBY_,
+        _RUST_,
+        _SH_,
+        _VIM_,
+        _ZSH_,
+};
 
-enum lang_e lang_id;
+extern const struct language_id {
+        const struct String lang;
+        const enum lang_e id;
+} languages[];
+
+const struct language_id *lang_id;
 char *program_name;
-/* char *backup_pointers[NUM_BACKUPS];
-int backup_iterator; */
 struct Backups backup_pointers;
 
 /*===========================================================================*/
@@ -167,7 +186,8 @@ extern void * xreallocarray(void *ptr, size_t num, size_t size) __attribute__((_
 extern int  getlines(strlist *tags, const char *comptype, const char *filename);
 extern void strip_comments(string *buffer);
 extern strlist * tokenize(string *vimbuf);
-extern enum lang_e id_lang(const string *lang);
+/* extern enum lang_e id_lang(const string *lang); */
+extern const struct language_id * id_lang(const string *lang);
 extern void print_tags_vim(strlist *list, const char *ft);
 
 

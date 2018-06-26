@@ -288,7 +288,8 @@ class Neotags(object):
                 current = group[i:i + self.__patternlength]
                 current = [x.decode('ascii') for x in current]
                 if hl.notin:
-                    hl.notin.append(self.vv('global_notin'))
+                    hl.notin = [*hl.notin, *self.vv('global_notin')]
+                    dia.debug_echo(hl.notin)
                     cmds.append(self.__notin_pattern %
                                 (hl.key, hl.prefix, r'\|'.join(current),
                                  hl.suffix, ','.join(hl.notin)))
@@ -297,11 +298,8 @@ class Neotags(object):
                     cmds.append(self.__keyword_pattern %
                                 (hl.key, r' '.join(current)))
                 else:
-                    # cmds.append(self.__match_pattern %
-                    #             (hl.key, hl.prefix, r'\|'.join(current), hl.suffix))
                     cmds.append(self.__match_pattern_not %
                                 (hl.key, hl.prefix, r'\|'.join(current), hl.suffix, ','.join(self.vv('global_notin'))))
-                                # (hl.key, hl.prefix, r'\|'.join(current), hl.suffix) + ' containedin=ALL' )
 
             if hl.ft != self.vim.api.eval('&ft'):
                 dia.debug_end('filetype changed aborting highlight')
@@ -311,6 +309,7 @@ class Neotags(object):
             cmds.append('hi def link %s %s' % (hl.key, hl.group))
 
         full_cmd = ' | '.join(cmds)
+        dia.debug_echo(full_cmd)
 
         if self.__cur['buf'] == self.vim.current.buffer:
             self.vim.command(full_cmd, async=True)

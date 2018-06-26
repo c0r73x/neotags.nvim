@@ -59,7 +59,7 @@ main(int argc, char *argv[])
         const string  filename  = tostring(*argv++);
 
         lang_id     = id_lang(&vimlang);
-        is_c_or_cpp = (lang_id == _C_ || lang_id == _CPP_);
+        is_c_or_cpp = (lang_id->id == _C_ || lang_id->id == _CPP_);
 
         strlist tags   = { nmalloc(INIT_TAGS, sizeof(*tags.lst)), 0, INIT_TAGS };
         string vim_buf = { malloc(nchars + 1llu), 0, 0 };
@@ -85,7 +85,7 @@ main(int argc, char *argv[])
         strlist *toks = tokenize(&vim_buf);
         strlist *list = tok_search(&tags, toks, skip, equiv, &ctlang, &order, &filename);
 
-        if (lang_id == _VIM_)
+        if (lang_id->id == _VIM_)
                 print_tags_vim(list, vimlang.s);
         else
                 print_tags(list, vimlang.s);
