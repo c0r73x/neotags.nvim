@@ -53,37 +53,37 @@ call InitVar('patternlength',  2048)
 " People often make annoying #defines for C and C++ keywords, types, etc. Avoid
 " highlighting these by default, leaving the built in vim highlighting intact.
 call InitVar('restored_groups', {
-                \     'c':   ['cConstant', 'cStorageClass', 'cConditional', 'cRepeat', 'cType'],
-                \     'cpp': ['cConstant', 'cStorageClass', 'cConditional', 'cRepeat', 'cType',
-                \             'cppStorageClass', 'cppType'],
-                \ })
- 
+            \     'c':   ['cConstant', 'cStorageClass', 'cConditional', 'cRepeat', 'cType'],
+            \     'cpp': ['cConstant', 'cStorageClass', 'cConditional', 'cRepeat', 'cType',
+            \             'cppStorageClass', 'cppType'],
+            \ })
+
 call InitVar('norecurse_dirs', [
-                \ $HOME,
-                \ '/',
-                \ '/lib',
-                \ '/include',
-                \ '/usr/lib/',
-                \ '/usr/share',
-                \ '/usr/include',
-                \ '/usr/local/lib',
-                \ '/usr/local/share',
-                \ '/usr/local/include',
-                \ ])
+            \ $HOME,
+            \ '/',
+            \ '/lib',
+            \ '/include',
+            \ '/usr/lib/',
+            \ '/usr/share',
+            \ '/usr/include',
+            \ '/usr/local/lib',
+            \ '/usr/local/share',
+            \ '/usr/local/include',
+            \ ])
 
 call InitVar('events_update', [
-                \   'BufWritePost'
-                \ ])
+            \   'BufWritePost'
+            \ ])
 
 call InitVar('events_highlight', [
-                \   'BufReadPre',
-                \   'BufEnter',
-                \ ])
+            \   'BufReadPre',
+            \   'BufEnter',
+            \ ])
 
 call InitVar('events_rehighlight', [
-                \   'FileType',
-                \   'Syntax',
-                \ ])
+            \   'FileType',
+            \   'Syntax',
+            \ ])
 
 if g:neotags_run_ctags
     let s:found = 0
@@ -100,13 +100,13 @@ if g:neotags_run_ctags
 
     if s:found
         call InitVar('ctags_args', [
-                \   '--fields=+l',
-                \   '--c-kinds=+p',
-                \   '--c++-kinds=+p',
-                \   '--sort=yes',
-                \   "--exclude='.mypy_cache'",
-                \   '--regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/'''
-                \ ])
+                    \   '--fields=+l',
+                    \   '--c-kinds=+p',
+                    \   '--c++-kinds=+p',
+                    \   '--sort=yes',
+                    \   "--exclude='.mypy_cache'",
+                    \   '--regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/'''
+                    \ ])
     else
         echohl ErrorMsg
         echom 'Neotags: Universal Ctags not found, cannot run ctags.'
@@ -132,33 +132,34 @@ if g:neotags_run_ctags && g:neotags_no_autoconf == 1
 endif
 
 call InitVar('global_notin', [
-                \   '.*String.*',
-                \   '.*Comment.*',
-                \   'cIncluded',
-                \   'cCppOut2',
-                \   'cCppInElse2',
-                \   'cCppOutIf2',
-                \   'pythonDocTest',
-                \   'pythonDocTest2',
-                \ ])
+            \   '.*String.*',
+            \   '.*Comment.*',
+            \   'cIncluded',
+            \   'cCppOut2',
+            \   'cCppInElse2',
+            \   'cCppOutIf2',
+            \   'pythonDocTest',
+            \   'pythonDocTest2',
+            \ ])
 
 call InitVar('ignore', [
-                \   'cfg',
-                \   'conf',
-                \   'help',
-                \   'mail',
-                \   'markdown',
-                \   'nerdtree',
-                \   'nofile',
-                \   'qf',
-                \   'text',
-                \ ])
+            \   'cfg',
+            \   'conf',
+            \   'help',
+            \   'mail',
+            \   'markdown',
+            \   'nerdtree',
+            \   'nofile',
+            \   'readdir',
+            \   'qf',
+            \   'text',
+            \ ])
 
 call InitVar('ft_conv', {
-                \   "C++": 'cpp',
-                \   'C#': 'cs',
-                \   'Sh': 'zsh',
-                \ })
+            \   "C++": 'cpp',
+            \   'C#': 'cs',
+            \   'Sh': 'zsh',
+            \ })
 
 if !isdirectory(g:neotags_directory)
     call mkdir(g:neotags_directory)
@@ -209,27 +210,27 @@ nnoremap <unique> <Plug>NeotagsToggle :call NeotagsToggle()<CR>
 nmap <silent> <leader>tag <Plug>NeotagsToggle
 
 
-"============================================================================= 
+"=============================================================================
 
 
-highlight def link neotags_ClassTag		neotags_TypeTag
-highlight def link neotags_EnumTypeTag		neotags_TypeTag
-highlight def link neotags_StructTag		neotags_TypeTag
-highlight def link neotags_UnionTag		neotags_TypeTag
-highlight def link neotags_MethodTag		neotags_FunctionTag
-highlight def link neotags_VariableTag		neotags_ObjectTag
-highlight def link neotags_FieldTag		neotags_MemberTag
+highlight def link neotags_ClassTag     neotags_TypeTag
+highlight def link neotags_EnumTypeTag  neotags_TypeTag
+highlight def link neotags_StructTag    neotags_TypeTag
+highlight def link neotags_UnionTag     neotags_TypeTag
+highlight def link neotags_MethodTag    neotags_FunctionTag
+highlight def link neotags_VariableTag  neotags_ObjectTag
+highlight def link neotags_FieldTag     neotags_MemberTag
 
-highlight def link neotags_GlobalVarTag		PreCondit
-highlight def link neotags_ConstantTag		Constant
-highlight def link neotags_EnumTag		Define
-highlight def link neotags_FunctionTag		Function
-highlight def link neotags_InterfaceTag		Identifier
-highlight def link neotags_MemberTag		Identifier
-highlight def link neotags_ModuleTag		PreProc
-highlight def link neotags_ObjectTag		Identifier
-highlight def link neotags_PreProcTag		PreProc
-highlight def link neotags_TypeTag		Type
+highlight def link neotags_GlobalVarTag PreCondit
+highlight def link neotags_ConstantTag  Constant
+highlight def link neotags_EnumTag      Define
+highlight def link neotags_FunctionTag  Function
+highlight def link neotags_InterfaceTag Identifier
+highlight def link neotags_MemberTag    Identifier
+highlight def link neotags_ModuleTag    PreProc
+highlight def link neotags_ObjectTag    Identifier
+highlight def link neotags_PreProcTag   PreProc
+highlight def link neotags_TypeTag      Type
 
 
 " vim:fdm=marker
