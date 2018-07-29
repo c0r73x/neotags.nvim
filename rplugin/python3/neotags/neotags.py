@@ -125,9 +125,9 @@ class Neotags(object):
 
             self.__patternlength = self.vv('patternlength')
 
-            self.vim.command('autocmd %s * call NeotagsUpdate()' % evupd, async=True)
-            self.vim.command('autocmd %s * call NeotagsHighlight()' % evhl, async=True)
-            self.vim.command('autocmd %s * call NeotagsRehighlight()' % evre, async=True)
+            self.vim.command('autocmd %s * call NeotagsUpdate()' % evupd, async_=True)
+            self.vim.command('autocmd %s * call NeotagsHighlight()' % evhl, async_=True)
+            self.vim.command('autocmd %s * call NeotagsRehighlight()' % evre, async_=True)
 
             if self.vv('loaded'):
                 self.update(False)
@@ -139,10 +139,10 @@ class Neotags(object):
 
         if not self.vv('enabled'):
             self._clear(ft)
-            self.vim.command(self.__autocmd, async=True)
+            self.vim.command(self.__autocmd, async_=True)
             return
-        if ft == '' or ft in self.vv('ignore'):
-            self.vim.command(self.__autocmd, async=True)
+        if ft == '' or ft in self.vv('ignore') or self.vim.api.eval('&previewwindow'):
+            self.vim.command(self.__autocmd, async_=True)
             return
         if self.__is_running:
             # XXX This should be more robust
@@ -178,7 +178,7 @@ class Neotags(object):
 
         self.highlight(force, hl)
 
-        self.vim.command(self.__autocmd, async=True)
+        self.vim.command(self.__autocmd, async_=True)
 
         dia.clear_stack()
         dia.debug_echo('Finished all => (%.4fs)' % (time.time() - init_time))
@@ -312,7 +312,7 @@ class Neotags(object):
         dia.debug_echo(full_cmd)
 
         if self.__cur['buf'] == self.vim.current.buffer:
-            self.vim.command(full_cmd, async=True)
+            self.vim.command(full_cmd, async_=True)
             success = True
         else:
             dia.error('Buffer changed, aborting.')
@@ -368,7 +368,7 @@ class Neotags(object):
                 return self._bin_get_tags(files, ft)
             except CBinError as err:
                 self.vim.command("echoerr 'C binary failed with status %d: \"%s\"' "
-                                 "| echoerr 'Will try python code.'" % err.args, async=True)
+                                 "| echoerr 'Will try python code.'" % err.args, async_=True)
                 return self._get_tags(files, ft)
         else:
             return self._get_tags(files, ft)
@@ -394,7 +394,7 @@ class Neotags(object):
         cmds.append('hi! link %s %s' % (group, lnk))
 
         full_cmd = ' | '.join(cmds)
-        self.vim.command(full_cmd, async=True)
+        self.vim.command(full_cmd, async_=True)
 
 
 # =============================================================================
@@ -650,7 +650,7 @@ class Neotags(object):
             else:
                 if self.vv('silent_timeout') == 0:
                     self.vim.command("echom 'Ctags process timed out!'",
-                                     async=True)
+                                     async_=True)
 
         finally:
             dia.debug_end("Finished running ctags")
@@ -749,7 +749,7 @@ class Neotags(object):
 
         dia.debug_echo(str(cmds))
 
-        self.vim.command(' | '.join(cmds), async=True)
+        self.vim.command(' | '.join(cmds), async_=True)
 
     def _kill(self, proc_pid):
         import psutil
@@ -824,7 +824,7 @@ class Neotags(object):
             run = 1
             self._path_replace(File)
 
-        self.vim.command('let g:neotags_file = "%s"' % self.__tagfile, async=True)
+        self.vim.command('let g:neotags_file = "%s"' % self.__tagfile, async_=True)
 
         return recurse, path, run
 
@@ -869,7 +869,7 @@ class Neotags(object):
                     'name': tmpfile.name
                 }
                 tmpfile.write(open_file.read())
-                self.vim.command('set tags+=%s' % tmpfile.name, async=True)
+                self.vim.command('set tags+=%s' % tmpfile.name, async_=True)
             else:
                 if sys.platform == 'win32':
                     tmpfile = open(self.__tmp_cache[tagfile]['name'], 'wb')

@@ -43,15 +43,12 @@ id_lang(const string *lang)
 void print_tags_vim(struct StringLst *list, const char *ft)
 {
         char *tmp;
-        /* eprintf("Looking for vim stuff\n"); */
 
         /* Always print the first tag. */
         if (DATA[0]->kind == 'f' && (tmp = strchr(DATA[0]->s, ':'))) {
                 printf("%s#%c\t%s\n", ft, DATA[0]->kind, tmp + 1);
-                /* eprintf("%c - %s\n", DATA[0]->kind, tmp + 1); */
         } else {
                 printf("%s#%c\t%s\n", ft, DATA[0]->kind, DATA[0]->s);
-                /* eprintf("%c - %s\n", DATA[0]->kind, DATA[0]->s); */
         }
 
 
@@ -61,10 +58,8 @@ void print_tags_vim(struct StringLst *list, const char *ft)
                 {
                         if (DATA[0]->kind == 'f' && (tmp = strchr(DATA[i]->s, ':'))) {
                                 printf("%s#%c\t%s\n", ft, DATA[i]->kind, tmp + 1);
-                                /* eprintf("%c - %s\n", DATA[i]->kind, tmp + 1); */
                         } else {
                                 printf("%s#%c\t%s\n", ft, DATA[i]->kind, DATA[i]->s);
-                                /* eprintf("%c - %s\n", DATA[i]->kind, DATA[i]->s); */
                         }
                 }
 }
