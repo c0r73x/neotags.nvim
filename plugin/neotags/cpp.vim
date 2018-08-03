@@ -20,7 +20,7 @@ let g:neotags#cpp#f = {
 
 let g:neotags#cpp#equivalent = { 'p': 'f' }
 
-highlight def link cppClassTag		neotags_TypeTag
+highlight def link cppClassTag		neotags_ClassTag
 highlight def link cppEnumTypeTag	neotags_EnumTypeTag
 highlight def link cppStructTag		neotags_StructTag
 highlight def link cppUnionTag		neotags_UnionTag

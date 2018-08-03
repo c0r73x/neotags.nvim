@@ -51,7 +51,7 @@ let g:neotags#c#v = { 'group': 'cGlobalVar' }
 
 let g:neotags#c#equivalent = { 'p': 'f' }
 
-highlight def link cClassTag	neotags_TypeTag
+highlight def link cClassTag	neotags_ClassTag
 highlight def link cEnumTypeTag	neotags_EnumTypeTag
 highlight def link cStructTag	neotags_StructTag
 highlight def link cUnionTag	neotags_UnionTag
