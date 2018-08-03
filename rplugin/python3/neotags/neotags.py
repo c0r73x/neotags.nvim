@@ -294,7 +294,8 @@ class Neotags(object):
                                 (hl.key, hl.prefix, r'\|'.join(current),
                                  hl.suffix, ','.join(hl.notin)))
                 elif (hl.prefix == self.__prefix and
-                      hl.suffix == self.__suffix):
+                      hl.suffix == self.__suffix and
+                      '.' not in r''.join(current)):
                     cmds.append(self.__keyword_pattern %
                                 (hl.key, r' '.join(current)))
                 else:
@@ -591,7 +592,7 @@ class Neotags(object):
         toks = sorted(tokenize(buf, dia))
 
         for match in match_list:
-            if bindex(toks, match['name']) != (-1):
+            if bindex(toks, match['name']) != (-1) or b'.' in match['name']:
                 key = "%s#%s" % (ft, match['kind'].decode('ascii'))
                 groups[key].add(match['name'])
 
