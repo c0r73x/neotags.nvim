@@ -592,7 +592,9 @@ class Neotags(object):
         toks = sorted(tokenize(buf, dia))
 
         for match in match_list:
-            if bindex(toks, match['name']) != (-1) or b'.' in match['name']:
+            if (bindex(toks, match['name']) != (-1)
+                    or b'$' in match['name']
+                    or b'.' in match['name']):
                 key = "%s#%s" % (ft, match['kind'].decode('ascii'))
                 groups[key].add(match['name'])
 
