@@ -4,9 +4,9 @@ import time
 
 
 class Diagnostics:
-    def __init__(self, enabled, vim, settings):
+    def __init__(self, enabled, vim, vv):
         self.vim = vim
-        self.settings = settings
+        self.vv = vv
         self.__backup = [self.debug_echo, self.debug_start, self.debug_end]
         self.__start_time = []
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
@@ -56,11 +56,11 @@ class Diagnostics:
         if self.debug_echo == self.__void:
             self.inform_echo('Switching to verbose output.')
             (self.debug_echo, self.debug_start, self.debug_end) = self.__backup
-            self.settings.setvar('verbose', 1)
+            self.vv('verbose', SET=1)
         else:
             self.inform_echo('Switching off verbose output.')
             self.debug_start = self.debug_echo = self.debug_end = self.__void
-            self.settings.setvar('verbose', 0)
+            self.vv('verbose', SET=0)
 
     def pop(self):
         if not self.debug_echo == self.__void:
