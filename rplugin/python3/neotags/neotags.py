@@ -25,57 +25,25 @@ from neotags.diagnostics import Diagnostics
 
 CLIB = None
 dia = None
-vim = None
-settings = None
 if sys.platform == 'win32':
     SEPCHAR = ';'
 else:
     SEPCHAR = ':'
 
 
-def vimvar(varname, SET=None):
-    """Either return a nvim variable prepended with 'neotags_', or set that
-    variable to the value of SET and then return that value.
-    """
-    try:
-        if SET is None:
-            return vim.vars["neotags_" + varname]
-        else:
-            vim.vars["neotags_" + varname] = SET
-            return SET
-
-    except (NvimError, KeyError) as err:
-        dia.debug_echo("ERROR: varname %s doesn't exist." % varname)
-        raise err
-
-
-def open_gzfile(filename, mode, comp_type, level=None, **kwargs):
-    if comp_type not in ('gzip', 'lzma'):
-        string = 'open(filename, mode, **kwargs)'
-
-    elif comp_type == 'gzip':
-        string = 'CLIB.open(filename, mode, %s **kwargs)' % (
-            '' if level is None else 'compresslevel=level,')
-
-    elif comp_type == 'lzma':
-        string = 'CLIB.open(filename, mode, %s **kwargs)' % (
-            '' if level is None else 'preset=level,')
-
-    return eval(string)
-
-
 class Neotags(object):
-    def __init__(self, nvim_obj):
-        self.buflist = {}
+    def __init__(self, vim):
 
         self.__prefix = r'\C\<'
         self.__suffix = r'\>'
         self.__initialized = False
         self.__is_running = False
+        self.__run_ctags = False
 
         self.__cmd_cache = {}
         self.__exists_buffer = {}
         self.__groups = {}
+        self.__md5_cache = {}
         self.__regex_buffer = {}
         self.__tmp_cache = {}
         self.__cur = {'file': None, 'buf': None}
@@ -84,70 +52,97 @@ class Neotags(object):
         self.__backup_groups = {}
 
         self.__autocmd = None
+        self.__gzfile = None
         self.__init_tagfiles = None
+        self.__neotags_bin = None
         self.__patternlength = None
         self.__slurp = None
+        self.__tagfile = None
 
+        self.__ctov = ''
+        self.__fsuffix = ''
         self.__keyword_pattern = ''
         self.__match_pattern = ''
         self.__match_pattern_not = ''
         self.__notin_pattern = ''
         self.__to_escape = ''
+        self.__vtoc = ''
 
         self.__hlbuf = 1
 
-        global vim
-        vim = nvim_obj
+        self.vim = vim
 
     def init(self):
         if self.__initialized:
             return
-
-        global dia, settings
-        dia = Diagnostics(bool(vimvar('verbose')), vim, settings)
-        settings = Settings()
-
-        self.__init_tagfiles = vim.api.eval('&tags').split(",")
+        self.__ctov = self.vv('ft_conv')
+        self.__init_tagfiles = self.vim.api.eval('&tags').split(",")
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
+        self.__vtoc = {y: x for x, y in self.__ctov.items()}
+
         self.__notin_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s display'
         self.__match_pattern_not = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s display'
         self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ display'
         self.__keyword_pattern = r'syntax keyword %s %s'
 
+        if self.vv('use_binary') == 1:
+            self.__neotags_bin = self._get_binary()
+
+        global dia
+        dia = Diagnostics(bool(self.vv('verbose')), self.vim, self.vv)
+
+        if self.vv('use_compression'):
+            global CLIB
+            ctype = self.vv('compression_type')
+
+            if ctype in ('gz', 'gzip'):
+                import gzip as CLIB
+                self.vv('compression_type', SET='gzip')
+                self.__fsuffix = '.gz'
+            elif ctype in ('xz', 'lzma'):
+                import lzma as CLIB
+                self.vv('compression_type', SET='lzma')
+                self.__fsuffix = '.xz'
+            else:
+                dia.error("Neotags: Unrecognized compression type.")
+                self.vv('compression_type', SET=None)
+                self.vv('use_compression', SET=0)
+        else:
+            self.vv('compression_type', SET=None)
+            self.vv('use_compression', SET=0)
+
+        dia.debug_echo("Using compression type %s with ext %s" %
+                       (self.vv('compression_type'), self.__fsuffix))
+
         self.__autocmd = "if execute('autocmd User') =~# 'NeotagsPost' | " \
                          "doautocmd User NeotagsPost | endif"
         self.__initialized = True
 
-        if settings.enabled:
-            evupd = ','.join(vimvar('events_update'))
-            evhl = ','.join(vimvar('events_highlight'))
-            evre = ','.join(vimvar('events_rehighlight'))
+        if self.vv('enabled'):
+            evupd = ','.join(self.vv('events_update'))
+            evhl = ','.join(self.vv('events_highlight'))
+            evre = ','.join(self.vv('events_rehighlight'))
 
-            self.__patternlength = vimvar('patternlength')
+            self.__patternlength = self.vv('patternlength')
 
-            vim.command('autocmd %s * call NeotagsUpdate()' % evupd, async_=True)
-            vim.command('autocmd %s * call NeotagsHighlight()' % evhl, async_=True)
-            vim.command('autocmd %s * call NeotagsRehighlight()' % evre, async_=True)
+            self.vim.command('autocmd %s * call NeotagsUpdate()' % evupd, async_=True)
+            self.vim.command('autocmd %s * call NeotagsHighlight()' % evhl, async_=True)
+            self.vim.command('autocmd %s * call NeotagsRehighlight()' % evre, async_=True)
 
-            if vimvar('loaded'):
+            if self.vv('loaded'):
                 self.update(False)
 
     def update(self, force):
         """Update tags file, tags cache, and highlighting."""
-        buf = vim.current.buffer
-        if buf.number in self.buflist:
-            bdata = self.buflist[buf.number]
-        else:
-            bdata = Bufdata(buf, vim.api.eval('&ft'))
-
+        ft = self.vim.api.eval('&ft')
         init_time = time.time()
 
-        if not settings.enabled:
-            self._clear(bdata.ft)
-            vim.command(self.__autocmd, async_=True)
+        if not self.vv('enabled'):
+            self._clear(ft)
+            self.vim.command(self.__autocmd, async_=True)
             return
-        if bdata.ft == '' or bdata.ft in settings.ignore or vim.api.eval('&previewwindow'):
-            vim.command(self.__autocmd, async_=True)
+        if ft == '' or ft in self.vv('ignore') or self.vim.api.eval('&previewwindow'):
+            self.vim.command(self.__autocmd, async_=True)
             return
         if self.__is_running:
             # XXX This should be more robust
@@ -156,34 +151,42 @@ class Neotags(object):
         dia.debug_start()
         self.__is_running = True
         self.__exists_buffer = {}
-        self.__cur['file'] = bdata.name.full
-        self.__cur['buf'] = vim.current.buffer
-        # hl.highlights = self._getbufferhl(bdata.num)
 
-        self._run_ctags(bdata, force)
+        hl = HighlightGroup()
+        hl.ft = ft
+        hl.file = self.vim.api.eval("expand('%:p:p')")
+        self.__cur['file'] = os.path.realpath(hl.file)
+        self.__cur['buf'] = self.vim.current.buffer
+        hl.highlights, hl.number = self._getbufferhl()
+
+        if hl.number in self.__md5_cache:
+            hl.highlights = self.__md5_cache[hl.number]
+        else:
+            self.__md5_cache[hl.number] = hl.highlights = {}
 
         if force:
-            if self.__run_ctags:
+            if self.vv('run_ctags'):
                 self._run_ctags(True)
-            self.__groups[bdata.ft] = self._parseTags(bdata)
-        elif bdata.num not in self.__seen:
+            self.__groups[ft] = self._parseTags(ft)
+
+        elif hl.number not in self.__seen:
             self.__seen.append(self.__cur['buf'].number)
-            self.__groups[bdata.ft] = self._parseTags(bdata)
-        elif bdata.num not in self.__cmd_cache:
-            self.__groups[bdata.ft] = self._parseTags(bdata)
+            self.__groups[ft] = self._parseTags(ft)
 
-        self.highlight(force, bdata)
+        elif hl.number not in self.__cmd_cache:
+            self.__groups[ft] = self._parseTags(ft)
 
-        vim.command(self.__autocmd, async_=True)
+        self.highlight(force, hl)
+
+        self.vim.command(self.__autocmd, async_=True)
+
         dia.clear_stack()
         dia.debug_echo('Finished all => (%.4fs)' % (time.time() - init_time))
         self.__is_running = False
 
-    def highlight(self, force, bdata):
+    def highlight(self, force, hl):
         """Analyze the tags data and format it for nvim's regex engine."""
-        restored_groups = settings.restored_groups
-        hl = HighlightGroup(bdata)
-
+        restored_groups = self.vv('restored_groups')
         if hl.ft not in self.__backup_groups:
             self.__backup_groups[hl.ft] = {}
 
@@ -212,10 +215,10 @@ class Neotags(object):
                 hl.suffix = self._exists(hl.key, '.suffix', self.__suffix)
                 hl.notin = self._exists(hl.key, '.notin', [])
 
-                if not self._highlight(bdata, hl, groups[hl.key], force):
+                if not self._highlight(hl, groups[hl.key], force):
                     break
             else:
-                dia.error("Unexpected error -> %s : %s : %s" % (hl.group, hl.key, groups.keys()))
+                dia.error("Unexpected error")
 
             fkey = hl.key + '_filter'
             if fgroup is not None and fkey in groups:
@@ -225,7 +228,7 @@ class Neotags(object):
                 fhl.suffix = self._exists(hl.key, '.filter.suffix', self.__suffix)
                 fhl.notin = self._exists(hl.key, '.filter.notin', [])
 
-                if not self._highlight(bdata, fhl, groups[fhl.key], force):
+                if not self._highlight(fhl, groups[fhl.key], force):
                     break
 
         for group in self.__backup_groups[hl.ft]:
@@ -238,19 +241,22 @@ class Neotags(object):
 # Projects
 
     def setBase(self, args):
-        do_set_base(dia, settings.settings_file, args)
+        do_set_base(dia, self.vv('settings_file'), args)
 
     def removeBase(self, args):
-        do_remove_base(dia, settings.settings_file, args)
+        do_remove_base(dia, self.vv('settings_file'), args)
 
 ##############################################################################
 # Private
 
-    def _highlight(self, bdata, hl, group, force):
+    def _highlight(self, hl, group, force):
         highlights, number = hl.highlights, hl.number
 
         dia.debug_echo("Highlighting for buffer %s" % number)
-        highlights = bdata.md5_cache
+        if number in self.__md5_cache:
+            highlights = self.__md5_cache[number]
+        else:
+            self.__md5_cache[number] = highlights = {}
 
         current = []
         cmds = []
@@ -282,7 +288,7 @@ class Neotags(object):
                 current = group[i:i + self.__patternlength]
                 current = [x.decode('ascii') for x in current]
                 if hl.notin:
-                    hl.notin = [*hl.notin, *settings.global_notin]
+                    hl.notin = [*hl.notin, *self.vv('global_notin')]
                     dia.debug_echo(hl.notin)
                     cmds.append(self.__notin_pattern %
                                 (hl.key, hl.prefix, r'\|'.join(current),
@@ -294,20 +300,20 @@ class Neotags(object):
                                 (hl.key, r' '.join(current)))
                 else:
                     cmds.append(self.__match_pattern_not %
-                                (hl.key, hl.prefix, r'\|'.join(current), hl.suffix, ','.join(settings.global_notin)))
+                                (hl.key, hl.prefix, r'\|'.join(current), hl.suffix, ','.join(self.vv('global_notin'))))
 
-            if hl.ft != vim.api.eval('&ft'):
+            if hl.ft != self.vim.api.eval('&ft'):
                 dia.debug_end('filetype changed aborting highlight')
                 return False
 
-            bdata.md5_cache[hl.key] = md5hash
+            self.__md5_cache[number][hl.key] = md5hash
             cmds.append('hi def link %s %s' % (hl.key, hl.group))
 
         full_cmd = ' | '.join(cmds)
         dia.debug_echo(full_cmd)
 
-        if self.__cur['buf'] == vim.current.buffer:
-            vim.command(full_cmd, async_=True)
+        if self.__cur['buf'] == self.vim.current.buffer:
+            self.vim.command(full_cmd, async_=True)
             success = True
         else:
             dia.error('Buffer changed, aborting.')
@@ -325,24 +331,25 @@ class Neotags(object):
                 dia.pop()
             return True
 
-    def _parseTags(self, bdata):
+    def _parseTags(self, ft):
+        self._get_file()
         files = []
 
         dia.debug_start()
-        dia.debug_echo("Using tags file %s" % bdata.gzfile)
-        dia.debug_echo("run_ctags -> %d" % settings.should_run_ctags)
+        dia.debug_echo("Using tags file %s" % self.__gzfile)
+        dia.debug_echo("run_ctags -> %d" % self.vv('run_ctags'))
 
-        if not os.path.exists(bdata.gzfile):
-            if settings.should_run_ctags:
+        if not os.path.exists(self.__gzfile):
+            if self.vv('run_ctags'):
                 self._run_ctags(True)
-                files.append(bdata.gzfile)
+                files.append(self.__gzfile)
             else:
                 self.__gzfile = None
         else:
             dia.debug_echo('updating vim-tagfile')
-            with open_gzfile(bdata.gzfile, 'rb', settings.compression_type) as fp:
-                self._update_vim_tagfile(bdata.gzfile, fp)
-            files.append(bdata.gzfile)
+            with self._open(self.__gzfile, 'rb', self.vv('compression_type')) as fp:
+                self._update_vim_tagfile(self.__gzfile, fp)
+            files.append(self.__gzfile)
 
         for File in self.__init_tagfiles:
             if os.path.exists(File):
@@ -357,18 +364,18 @@ class Neotags(object):
         # Slurp the whole content of the current buffer
         self.__slurp = '\n'.join(self.__cur['buf'])
 
-        if settings.neotags_bin is not None:
+        if self.__neotags_bin is not None:
             try:
-                return bdata.bin_get_tags(self.__slurp, files)
+                return self._bin_get_tags(files, ft)
             except CBinError as err:
-                vim.command("echoerr 'C binary failed with status %d: \"%s\"' "
-                            "| echoerr 'Will try python code.'" % err.args, async_=True)
-                return bdata.get_tags(self.__slurp, files)
+                self.vim.command("echoerr 'C binary failed with status %d: \"%s\"' "
+                                 "| echoerr 'Will try python code.'" % err.args, async_=True)
+                return self._get_tags(files, ft)
         else:
-            return bdata.get_tags(self.__slurp, files)
+            return self._get_tags(files, ft)
 
     def _get_backup(self, ft, group):
-        tmp = vim.api.eval("execute('syn list %s')" % group)
+        tmp = self.vim.api.eval("execute('syn list %s')" % group)
         tmp = re.sub(r'.*xxx\s*(.*)\s*links to (.*)', r'\1 \2', tmp, flags=re.S)
         tmp = re.sub(r'(?:\s+|\n)', ' ', tmp).split()
 
@@ -589,16 +596,15 @@ class Neotags(object):
                     or b'.' in match['name']):
                 key = "%s#%s" % (ft, match['kind'].decode('ascii'))
                 groups[key].add(match['name'])
-=======
-        vim.command(full_cmd, async_=True)
->>>>>>> Slight refactor/reorganization
 
+        dia.debug_end("Finished _parse, found %d items."
+                      % sum(map(len, groups.values())))
 
 # =============================================================================
 
-    def _run_ctags(self, bdata, force):
+    def _run_ctags(self, force):
         dia.debug_start()
-        ctags_command = bdata.get_ctags_command(force)
+        ctags_command = self._get_ctags_command(force)
         if ctags_command is None:
             dia.debug_end("Not running ctags.")
             return
@@ -606,7 +612,7 @@ class Neotags(object):
         try:
             proc = subprocess.Popen(
                 ctags_command, shell=True, stderr=subprocess.PIPE)
-            proc.wait(settings.ctags_timeout)
+            proc.wait(self.vv('ctags_timeout'))
             err = proc.communicate()[1]
 
             if err:
@@ -616,32 +622,83 @@ class Neotags(object):
             else:
                 dia.debug_echo('Ctags completed successfully')
 
-            cmpt = settings.compression_type
+            cmpt = self.vv('compression_type')
             try:
                 dia.debug_start()
                 if cmpt in ('gzip', 'lzma'):
-                    with open(bdata.tagfile, 'rb') as src:
-                        with open_gzfile(bdata.gzfile, 'wb', cmpt, level=9) as dst:
+                    with open(self.__tagfile, 'rb') as src:
+                        with self._open(self.__gzfile, 'wb', cmpt, level=9) as dst:
                             dst.write(src.read())
+
                         src.seek(0)
-                        self._update_vim_tagfile(bdata.gzfile, src)
-                    os.unlink(bdata.tagfile)
+                        self._update_vim_tagfile(self.__gzfile, src)
+
+                    os.unlink(self.__tagfile)
+
             except IOError as err:
                 dia.error("Unexpected IO Error -> '%s'" % err)
+
             finally:
                 dia.debug_end('Finished compressing file.')
+
         except FileNotFoundError as error:
             dia.error('failed to run Ctags %s' % error)
+
         except subprocess.TimeoutExpired:
             try:
                 self._kill(proc.pid)
             except ImportError:
                 proc.kill()
             else:
-                if settings.silent_timeout == 0:
-                    vim.command("echom 'Ctags process timed out!'", async_=True)
+                if self.vv('silent_timeout') == 0:
+                    self.vim.command("echom 'Ctags process timed out!'",
+                                     async_=True)
+
         finally:
             dia.debug_end("Finished running ctags")
+
+    def _get_ctags_command(self, force):
+        """Create the commandline to be invoked when running ctags."""
+        ctags_args = self.vv('ctags_args')
+
+        # NOTE: _get_file() sets self.__tagfile and self.__gzfile!
+        recurse, path, run = self._get_file()
+        if not run or (not force and os.path.exists(self.__gzfile)
+                       and os.stat(self.__gzfile).st_size > 0):
+            return None
+
+        ctags_args.append('-f "%s"' % self.__tagfile)
+        ctags_binary = None
+
+        if recurse:
+            if self.vv('find_tool'):
+                ctags_args.append('-L-')
+                ctags_binary = "%s %s | %s" % (
+                    self.vv('find_tool'), path,
+                    self.vv('ctags_bin'))
+                dia.debug_echo(
+                    "Using %s to find files recursively in dir '%s'" %
+                    (self.vv('find_tool'), path))
+            else:
+                ctags_args.append('-R')
+                ctags_args.append('"%s"' % path)
+                ctags_binary = self.vv('ctags_bin')
+
+                dia.debug_echo("Running ctags on dir '%s'" % path)
+
+        else:
+            dia.debug_echo(
+                "Not running ctags recursively for dir '%s'" % path)
+            File = self.__cur['file']
+            ctags_args.append('"%s"' % File)
+            ctags_binary = self.vv('ctags_bin')
+
+            dia.debug_echo("Running ctags on file '%s'" % File)
+
+        full_command = '%s %s' % (ctags_binary, ' '.join(ctags_args))
+        dia.debug_echo(full_command)
+
+        return full_command
 
 # ==============================================================================
 # Debug and util
@@ -662,11 +719,21 @@ class Neotags(object):
 
         if buf not in self.__exists_buffer:
             try:
-                self.__exists_buffer[buf] = vim.api.eval('neotags#' + buf)
+                self.__exists_buffer[buf] = self.vim.api.eval('neotags#' + buf)
             except NvimError:
                 self.__exists_buffer[buf] = default
 
         return self.__exists_buffer[buf]
+
+    def _getbufferhl(self):
+        number = self.__cur['buf'].number
+
+        if number in self.__md5_cache.keys():
+            highlights = self.__md5_cache[number]
+        else:
+            self.__md5_cache[number] = highlights = {}
+
+        return highlights, number
 
     def _clear(self, ft):
         if ft is None:
@@ -683,7 +750,7 @@ class Neotags(object):
 
         dia.debug_echo(str(cmds))
 
-        vim.command(' | '.join(cmds), async_=True)
+        self.vim.command(' | '.join(cmds), async_=True)
 
     def _kill(self, proc_pid):
         import psutil
@@ -693,16 +760,117 @@ class Neotags(object):
             proc.kill()
         process.kill()
 
+    def _ctags_to_vim(self, lang, languages):
+        lang = lang.strip('\\')
+        if lang in self.__ctov and self.__ctov[lang] in languages:
+            return self.__ctov[lang]
+
+        return lang.lower()
+
+    def _vim_to_ctags(self, languages):
+        for i, lang in enumerate(languages):
+            if lang in self.__vtoc:
+                languages[i] = self.__vtoc[lang]
+                languages[i] = languages[i].strip('\\')
+
+            languages[i] = re.escape(languages[i])
+
+        return languages
+
+    def _get_file(self):
+        File = self.__cur['file']
+        path = os.path.dirname(File)
+        projects = {}
+        recurse = (self.vv('recursive')
+                   and path not in self.vv('norecurse_dirs'))
+
+        if recurse:
+            try:
+                try:
+                    with open(self.vv('settings_file'), 'r') as fp:
+                        projects = {
+                            p: int(run) for p, run in
+                            [j.split('\t') for j in [i.rstrip() for i in fp]]
+                        }
+
+                except FileNotFoundError:
+                    with open(self.vv('settings_file'), 'x') as fp:
+                        fp.write('')
+
+            except ValueError:
+                projects = {}  # Just reset projects
+                with open(self.vv('settings_file'), 'r') as fp:
+                    for line in fp:
+                        line = line.rstrip()
+                        if line.find('\t') == (-1):
+                            projects[line] = 1
+                        else:
+                            path, run = line.split('\t')
+                            projects[path] = int(run)
+                with open(self.vv('settings_file'), 'w') as fp:
+                    for item in projects:
+                        fp.write("%s\t%d\n" % (item, projects[item]))
+
+            run = 1
+            for proj_path in projects:
+                if os.path.commonpath([path, proj_path]) == proj_path:
+                    path = proj_path
+                    run = projects[path]
+                    break
+
+            path = os.path.realpath(path)
+            self._path_replace(path)
+
+        else:
+            run = 1
+            self._path_replace(File)
+
+        self.vim.command('let g:neotags_file = "%s"' % self.__tagfile, async_=True)
+
+        return recurse, path, run
+
+    def _path_replace(self, path):
+        if (sys.platform == 'win32'):
+            # For some reason replace wouldn't work here. I have no idea why.
+            path = re.sub(':', '__', path)
+            sep_char = '\\'
+        else:
+            sep_char = '/'
+
+        self.__tagfile = "%s/%s.tags" % (self.vv('directory'),
+                                         path.replace(sep_char, '__'))
+        self.__gzfile = self.__tagfile + self.__fsuffix
+
+    def _get_binary(self, loud=False):
+        binary = self.vv('bin')
+
+        if sys.platform == 'win32' and binary.find('.exe') < 0:
+            binary += '.exe'
+
+        if os.path.exists(binary):
+            self.vv('use_binary', SET=1)
+        else:
+            self.vv('use_binary', SET=0)
+            binary = None
+            if loud:
+                dia.inform_echo("Binary '%s' doesn't exist. Cannot enable." %
+                                  self.__neotags_bin)
+            else:
+                dia.debug_echo(
+                    "Binary '%s' doesn't exist." % self.__neotags_bin)
+
+        return binary
+
     def _update_vim_tagfile(self, tagfile, open_file):
         try:
             if tagfile not in self.__tmp_cache:
-                tmpfile = open(vim.call('tempname'), 'wb')
+                tmpfile = open(self.vim.call('tempname'), 'wb')
                 self.__tmp_cache[tagfile] = {
                     'fp': tmpfile,
                     'name': tmpfile.name
                 }
                 tmpfile.write(open_file.read())
-                vim.command('set tags+=%s' % tmpfile.name, async_=True)
+                self.vim.command('set tags+=%s' % tmpfile.name, async_=True)
             else:
                 if sys.platform == 'win32':
                     tmpfile = open(self.__tmp_cache[tagfile]['name'], 'wb')
@@ -722,33 +890,61 @@ class Neotags(object):
         except IOError as err:
             dia.error("Unexpected io error: %s" % err)
 
+    def _open(self, filename, mode, comp_type, level=None, **kwargs):
+        if comp_type not in ('gzip', 'lzma'):
+            string = 'open(filename, mode, **kwargs)'
+
+        elif comp_type == 'gzip':
+            string = 'CLIB.open(filename, mode, %s **kwargs)' % (
+                '' if level is None else 'compresslevel=level,')
+
+        elif comp_type == 'lzma':
+            string = 'CLIB.open(filename, mode, %s **kwargs)' % (
+                '' if level is None else 'preset=level,')
+
+        return eval(string)
+
+    def vv(self, varname, SET=None):
+        """Either return a nvim variable prepended with 'neotags_', or set that
+        variable to the value of SET and then return that value.
+        """
+        try:
+            if SET is None:
+                return self.vim.vars["neotags_" + varname]
+            else:
+                self.vim.vars["neotags_" + varname] = SET
+                return SET
+
+        except (NvimError, KeyError) as err:
+            dia.debug_echo("ERROR: varname %s doesn't exist." % varname)
+            raise err
+
 ###############################################################################
 # Toggling. These are ugly and repeditive.
 
     def toggle(self):
         """Toggle state of the plugin."""
-        self.__hlbuf = 0
-        if not settings.enabled:
+        if not self.vv('enabled'):
             dia.inform_echo("Re-enabling neotags.")
-            settings.setvar('enabled', 1)
+            self.vv('enabled', SET=1)
             self.update(force=False)
         else:
             dia.inform_echo("Disabling neotags.")
-            settings.setvar('enabled', 0)
+            self.vv('enabled', SET=0)
             self.__seen = []
             self.__md5_cache = {}
             self.__cmd_cache = {}
             self.update(force=False)
 
     def toggle_C_bin(self):
-        if settings.neotags_bin is None:
-            settings.neotags_bin = self._get_binary(loud=True)
-            if settings.neotags_bin is not None:
+        if self.__neotags_bin is None:
+            self.__neotags_bin = self._get_binary(loud=True)
+            if self.__neotags_bin is not None:
                 dia.inform_echo("Switching to use C binary.")
-                settings.setvar('use_binary', 1)
+                self.vv('use_binary', SET=1)
         else:
-            settings.neotags_bin = None
-            settings.setvar('use_binary', 0)
+            self.__neotags_bin = None
+            self.vv('use_binary', SET=0)
             dia.inform_echo("Switching to use python code.")
 
     def toggle_verbosity(self):
@@ -760,16 +956,16 @@ class Neotags(object):
 
 class HighlightGroup:
     """Exists to keep the number of arguments being passed around down."""
-    def __init__(self, bdata):
-        self.file = bdata.name.full
-        self.ft = bdata.ft
+    def __init__(self):
+        self.file = None
+        self.ft = None
         self.group = None
         self.key = None
         self.notin = None
         self.prefix = None
         self.suffix = None
-        self.highlights = bdata.md5_cache
-        self.number = bdata.num
+        self.highlights = None
+        self.number = None
 
 
 class CBinError(Exception):
