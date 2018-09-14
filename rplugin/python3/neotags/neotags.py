@@ -390,7 +390,6 @@ class Neotags(object):
         full_cmd = ' | '.join(cmds)
         vim.command(full_cmd, async_=True)
 
-
 # =============================================================================
 
     def _run_ctags(self, bdata, force):
@@ -980,7 +979,9 @@ class Bufdata():
         toks = sorted(tokenize(buf, dia))
 
         for match in match_list:
-            if bindex(toks, match['name']) != (-1) or b'.' in match['name']:
+            if (bindex(toks, match['name']) != (-1)
+                    or b'$' in match['name']
+                    or b'.' in match['name']):
                 key = "%s#%s" % (self.ft, match['kind'].decode('ascii'))
                 groups[key].add(match['name'])
 
