@@ -23,11 +23,15 @@
         } while (0)
 
 static const strlist *get_colon_data(char *oarg);
-static void print_tags(const strlist *lst, const char *ft);
-static strlist *tok_search(strlist *tags, strlist *vimbuf, const strlist *skip,
-                           const strlist *equiv, const string *lang,
-                           const string *order, const string *filename);
-static void *do_tok_search(void *vdata);
+static void           print_tags(const strlist *lst, const char *ft);
+static strlist *      tok_search(strlist *      tags,
+                                 strlist *      vimbuf,
+                                 const strlist *skip,
+                                 const strlist *equiv,
+                                 const string * lang,
+                                 const string * order,
+                                 const string * filename);
+static void *         do_tok_search(void *vdata);
 
 bool is_c_or_cpp;
 
@@ -38,35 +42,34 @@ main(int argc, char *argv[])
         if (isatty(0))
                 errx(1, "This program can't be run manually.");
         if (--argc != REQUIRED_INPUT)
-                errx(2, "Error: Wrong number of paramaters (%d, need %d).",
-                        argc, REQUIRED_INPUT);
+                errx(2, "Error: Wrong number of paramaters (%d, need %d).", argc, REQUIRED_INPUT);
         eputs("Program ID: " PROG_ID "\n");
 
-        int nread = 0;
-        program_name = handle_progname(*argv++);
+        int nread           = 0;
+        program_name        = handle_progname(*argv++);
         backup_pointers.lst = nmalloc((backup_pointers.max = 1024llu), sizeof(char *));
 
         /* The only thing that uses this program is neotags.py, so the input is
          * guarenteed to be provided in the following order. */
-        const strlist *files    = get_colon_data(*argv++);
-        const string  ctlang    = tostring(*argv++);
-        const string  vimlang   = tostring(*argv++);
-        const string  order     = tostring(*argv++);
-        const bool    strip_com = xatoi(*argv++);
-        const size_t  nchars    = xatoi(*argv++);
-        const strlist *skip     = get_colon_data(*argv++);
-        const strlist *equiv    = get_colon_data(*argv++);
-        const string  filename  = tostring(*argv++);
+        const strlist *files     = get_colon_data(*argv++);
+        const string   ctlang    = tostring(*argv++);
+        const string   vimlang   = tostring(*argv++);
+        const string   order     = tostring(*argv++);
+        const bool     strip_com = xatoi(*argv++);
+        const size_t   nchars    = xatoi(*argv++);
+        const strlist *skip      = get_colon_data(*argv++);
+        const strlist *equiv     = get_colon_data(*argv++);
+        const string   filename  = tostring(*argv++);
 
         lang_id     = id_lang(&vimlang);
         is_c_or_cpp = (lang_id->id == _C_ || lang_id->id == _CPP_);
 
-        strlist tags   = { nmalloc(INIT_TAGS, sizeof(*tags.lst)), 0, INIT_TAGS };
-        string vim_buf = { malloc(nchars + 1llu), 0, 0 };
+        strlist tags    = {nmalloc(INIT_TAGS, sizeof(*tags.lst)), 0, INIT_TAGS};
+        string  vim_buf = {malloc(nchars + 1llu), 0, 0};
 
         /* Read all of the tag files and combine the tags into one list. */
         for (unsigned i = 0; i < files->num; i += 2)
-                nread += getlines(&tags, files->lst[i]->s, files->lst[i+1]->s);
+                nread += getlines(&tags, files->lst[i]->s, files->lst[i + 1]->s);
         if (nread == 0)
                 errx(1, "Error: no files were successfully read.");
 
@@ -93,8 +96,8 @@ main(int argc, char *argv[])
         /* Pointlessly free everything. */
         free_list(&backup_pointers);
         free_all_strlists(&tags, files, skip, equiv, toks, list);
-        free_all(equiv->lst, (void *)equiv, files->lst, files, skip->lst, skip,
-                 tags.lst, vim_buf.s, toks->lst, toks, list->lst, list, backup_pointers.lst);
+        free_all(equiv->lst, (void *)equiv, files->lst, files, skip->lst, skip, tags.lst,
+                 vim_buf.s, toks->lst, toks, list->lst, list, backup_pointers.lst);
 
         return 0;
 }
@@ -104,17 +107,17 @@ main(int argc, char *argv[])
 static const strlist *
 get_colon_data(char *oarg)
 {
-        char sep[2], *tok, *arg = oarg;
+        char     sep[2], *tok, *arg = oarg;
         string **data, **odata;
-        int num = 0;
+        int      num = 0;
 
         while (*arg && (arg = strchr(arg, SEPCHAR)))
                 ++num, ++arg;
 
         data = odata = nmalloc(++num, sizeof(*data));
-        arg = oarg;
-        sep[0] = SEPCHAR;
-        sep[1] = '\0';
+        arg          = oarg;
+        sep[0]       = SEPCHAR;
+        sep[1]       = '\0';
 
         while ((tok = strsep(&arg, sep))) {
                 *data    = malloc(sizeof **data);
@@ -122,7 +125,7 @@ get_colon_data(char *oarg)
         }
 
         strlist *ret = malloc(sizeof *ret);
-        *ret = (strlist){ odata, num, num };
+        *ret         = (strlist){odata, num, num};
         return ret;
 }
 
@@ -134,7 +137,7 @@ get_colon_data(char *oarg)
 static int
 tag_cmp(const void *vA, const void *vB)
 {
-        int ret;
+        int           ret;
         const string *A = *(string **)(vA);
         const string *B = *(string **)(vB);
 
@@ -154,7 +157,7 @@ tag_cmp(const void *vA, const void *vB)
 static int
 s_string_cmp(const void *vA, const void *vB)
 {
-        int ret;
+        int           ret;
         const string *A = *(string **)(vA);
         const string *B = *(string **)(vB);
 
@@ -177,7 +180,7 @@ print_tags(const strlist *lst, const char *ft)
         PRINT(0);
 
         for (uint32_t i = 1; i < lst->num; ++i)
-                if (!string_eq(DATA[i], DATA[i-1]))
+                if (!string_eq(DATA[i], DATA[i - 1]))
                         PRINT(i);
 }
 
@@ -231,28 +234,28 @@ skip_tag(const strlist *skip, const string *find)
 /*============================================================================*/
 
 
-#define vim_d  (vimbuf->lst)
+#define vim_d (vimbuf->lst)
 #define uniq_d (uniq->lst)
 struct pdata {
         const strlist *vim_buf;
         const strlist *skip;
         const strlist *equiv;
-        const string *lang;
-        const string *order;
-        const string *filename;
-        string **lst;
-        int num;
+        const string * lang;
+        const string * order;
+        const string * filename;
+        string **      lst;
+        int            num;
 };
 
 
 static strlist *
-tok_search(strlist *tags,
-           strlist *vimbuf,
+tok_search(strlist *      tags,
+           strlist *      vimbuf,
            const strlist *skip,
            const strlist *equiv,
-           const string *lang,
-           const string *order,
-           const string *filename)
+           const string * lang,
+           const string * order,
+           const string * filename)
 {
         if (tags->num == 0)
                 errx(1, "No tags found!");
@@ -262,7 +265,7 @@ tok_search(strlist *tags,
                 num_threads = 4;
 
         pthread_t *tid = alloca(num_threads * sizeof(*tid));
-        strlist **out  = alloca(num_threads * sizeof(*out));
+        strlist ** out = alloca(num_threads * sizeof(*out));
         warnx("Sorting through %ld tags with %d cpus.", tags->num, num_threads);
 
         /* Because we may have examined multiple tags files, it's very possible
@@ -270,27 +273,32 @@ tok_search(strlist *tags,
         qsort(vim_d, vimbuf->num, sizeof(*vim_d), &s_string_cmp);
 
         strlist *uniq = malloc(sizeof *uniq);
-        *uniq = (strlist){
-                .lst = nmalloc(vimbuf->num, sizeof *uniq->lst),
-                .num = 1, .max = vimbuf->num
-        };
+        *uniq     = (strlist){.lst = nmalloc(vimbuf->num, sizeof *uniq->lst),
+                          .num = 1,
+                          .max = vimbuf->num};
         uniq_d[0] = vim_d[0];
 
         for (int i = 1; i < vimbuf->num; ++i)
-                if (!string_eq(vim_d[i], vim_d[i-1]))
+                if (!string_eq(vim_d[i], vim_d[i - 1]))
                         uniq_d[uniq->num++] = vim_d[i];
 
         /* Launch the actual search in separate threads, with each handling as
          * close to an equal number of tags as the math allows. */
         for (int i = 0; i < num_threads; ++i) {
-                struct pdata *tmp = malloc(sizeof *tmp);
-                int quot = (int)tags->num / num_threads;
-                int num  = (i == num_threads - 1)
+                struct pdata *tmp  = malloc(sizeof *tmp);
+                int           quot = (int)tags->num / num_threads;
+                int           num  = (i == num_threads - 1)
                               ? (int)(tags->num - ((num_threads - 1) * quot))
                               : quot;
 
-                *tmp = (struct pdata){uniq, skip, equiv, lang, order, filename,
-                                      tags->lst + (i * quot), num};
+                *tmp = (struct pdata){uniq,
+                                      skip,
+                                      equiv,
+                                      lang,
+                                      order,
+                                      filename,
+                                      tags->lst + (i * quot),
+                                      num};
 
                 if (pthread_create(tid + i, NULL, &do_tok_search, tmp) != 0)
                         err(1, "pthread_create failed");
@@ -312,12 +320,11 @@ tok_search(strlist *tags,
          * then sorted and returned. */
         string **alldata = nmalloc(total, sizeof *alldata);
         strlist *ret     = malloc(sizeof *ret);
-        *ret = (strlist){ alldata, total, total };
+        *ret             = (strlist){alldata, total, total};
 
         for (int T = 0; T < num_threads; ++T) {
                 if (out[T]->num > 0) {
-                        memcpy(alldata + offset, out[T]->lst,
-                               out[T]->num * sizeof(*out));
+                        memcpy(alldata + offset, out[T]->lst, out[T]->num * sizeof(*out));
                         offset += out[T]->num;
                 }
                 free_all(out[T]->lst, out[T]);
@@ -335,11 +342,8 @@ static void *
 do_tok_search(void *vdata)
 {
         struct pdata *data = vdata;
-        strlist *ret = malloc(sizeof *ret);
-        *ret = (strlist){
-                .lst = nmalloc(INIT_MAX, sizeof(string)),
-                .num = 0, .max = INIT_MAX
-        };
+        strlist *     ret  = malloc(sizeof *ret);
+        *ret               = (strlist){.lst = nmalloc(INIT_MAX, sizeof(string)), .num = 0, .max = INIT_MAX};
 
         for (int i = 0; i < data->num; ++i) {
                 /* Skip empty lines and comments. */
@@ -353,10 +357,10 @@ do_tok_search(void *vdata)
                 name.len       = (cur_str - name.s - 1);
                 match_file.s   = strsep(&cur_str, "\t");
                 match_file.len = (cur_str - match_file.s - 1);
-                cur_str = strchr(cur_str, '\t');
+                cur_str        = strchr(cur_str, '\t');
 
-                char *tok, kind = '\0';
-                string match_lang = { NULL, 0, 0 };
+                char * tok, kind = '\0';
+                string match_lang = {NULL, 0, 0};
 
                 /* Extract the 'kind' and 'language' fields. The former is the
                  * only one that is 1 character long, and the latter is prefaced. */
@@ -377,15 +381,15 @@ do_tok_search(void *vdata)
                  *    3) are not included in the `skip' list, and
                  *    4) are present in the current vim buffer.
                  * If invalid, just move on. */
-                if ( in_order(data->equiv, data->order, &kind) &&
-                     is_correct_lang(data->lang, &match_lang) &&
+                if (in_order(data->equiv, data->order, &kind) &&
+                    is_correct_lang(data->lang, &match_lang) &&
                     !skip_tag(data->skip, &name) &&
-                     (string_eq(data->filename, &match_file) ||
-                      bsearch(&name_p, data->vim_buf->lst, data->vim_buf->num,
-                              sizeof(*data->vim_buf->lst), &s_string_cmp)))
+                    (string_eq(data->filename, &match_file) ||
+                     bsearch(&name_p, data->vim_buf->lst, data->vim_buf->num,
+                             sizeof(*data->vim_buf->lst), &s_string_cmp)))
                 {
                         string *tmp = malloc(sizeof *tmp);
-                        *tmp = (string){ name.s, name.len, kind };
+                        *tmp        = (string){name.s, name.len, kind};
                         add_to_list(ret, tmp);
                 }
         }
