@@ -673,7 +673,6 @@ class Neotags(object):
             dia.debug_echo('Clear called with null ft')
             return
 
-        highlights, _ = self._getbufferhl()
         cmds = []
         order = self._tags_order(ft)
 
