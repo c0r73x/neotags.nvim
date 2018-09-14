@@ -594,7 +594,7 @@ class Neotags(object):
             if (bindex(toks, match['name']) != (-1)
                     or b'$' in match['name']
                     or b'.' in match['name']):
-                key = "%s#%s" % (ft, match['kind'].decode('ascii'))
+                key = "%s#%s" % (self.ft, match['kind'].decode('ascii'))
                 groups[key].add(match['name'])
 
         dia.debug_end("Finished _parse, found %d items."
