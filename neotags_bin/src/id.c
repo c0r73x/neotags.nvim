@@ -6,6 +6,8 @@ const struct language_id languages[] = {
     { mkstring("unknown"),     _NONE_   },
     { mkstring("c"),           _C_      },
     { mkstring("cpp"),         _CPP_    },
+    { mkstring("objc"),        _C_      },
+    { mkstring("objcpp"),      _CPP_    },
     { mkstring("cs"),          _CSHARP_ },
     { mkstring("go"),          _GO_     },
     { mkstring("java"),        _JAVA_   },

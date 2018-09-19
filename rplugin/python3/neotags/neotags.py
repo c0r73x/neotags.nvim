@@ -78,7 +78,14 @@ class Neotags(object):
         self.__ctov = self.vv('ft_conv')
         self.__init_tagfiles = self.vim.api.eval('&tags').split(",")
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
-        self.__vtoc = {y: x for x, y in self.__ctov.items()}
+
+        self.__vtoc = {}
+        for x, y in self.__ctov.items():
+            if isinstance(y, list):
+                for z in y:
+                    self.__vtoc[z] = x
+            else:
+                self.__vtoc[y] = x
 
         self.__notin_pattern = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s display'
         self.__match_pattern_not = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s display'
