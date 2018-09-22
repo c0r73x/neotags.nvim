@@ -156,8 +156,7 @@ class Neotags(object):
             bdata = self.__buflist[bufnum]
         else:
             try:
-                bdata = Bufdata(
-                    buf, vim.request('nvim_buf_get_option', bufnum, 'ft'))
+                bdata = Bufdata(buf, vim.request('nvim_buf_get_option', bufnum, 'ft'))
                 self.__buflist[bdata.num] = bdata
             except BadFiletype:
                 return
@@ -174,6 +173,11 @@ class Neotags(object):
 
     def _parse_tags(self, bdata):
         bdata.update_contents()
+        try:
+            if settings.use_binary:
+                bdata.use_binary()
+        except (ChildProcessError, NotImplementedError) as err:
+            error(str(err))
         bdata.parse_raw_tags()
 
     def setBase(self, args):
@@ -251,11 +255,8 @@ class Bufdata():
         self.__ignored_tags = settings.ignored_tags(self.ft)
         self.__order = vimvar('%s#order' % self.ft, NS=True)
         self.__equiv = vimvar('%s#equivalent' % self.ft, NS=True)
-        self.__groups = {
-            "%s#%s" % (self.ft, kind): set()
-            for kind in [chr(i) for i in self.__order.encode('utf-8')]
-        }
-
+        self.__groups = {"%s#%s" % (self.ft, kind):
+                         set() for kind in self.__order}
         self.__restore_cmd = self._get_restore_command()
         self.__group_info = {}
         for kind in self.__order:
@@ -378,7 +379,8 @@ class Bufdata():
         groups = deepcopy(self.__groups)
 
         for match in match_list:
-            if (bindex(toks, match['name']) != (-1) or b'$' in match['name']
+            if (bindex(toks, match['name']) != (-1)
+                    or b'$' in match['name']
                     or b'.' in match['name']):
                 key = "%s#%s" % (self.ft, match['kind'].decode('utf-8'))
                 groups[key].add(match['name'])
@@ -487,3 +489,49 @@ class Bufdata():
             cmds.append('silent! syntax clear %s_%s' % (grp.key.replace('#', '_'), grp.grpid))
         echo(cmds)
         vim.command(' | '.join(cmds), async_=True)
+
+    def use_binary(self):
+        raise NotImplementedError("Sorry, the C code is quite broken.")
+        echo("=============== Executing C code ===============")
+        ignored_tags, equiv = '', ''
+        if self.__ignored_tags is not None:
+            ignored_tags = ':'.join(self.__ignored_tags)
+        if self.__equiv is not None:
+            equiv = ':'.join([A + B for A, B in equiv.items()])
+
+        inputdata = self.contents.encode('ascii', errors='replace')
+        proc = subprocess.Popen(
+            (settings.neotags_bin, self.name.full, self.ft,
+             self.ctags_ft, self.__order, str(settings.strip_comments),
+             str(len(inputdata)), ignored_tags, equiv, self.name.full),
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+        )
+        out, err = proc.communicate(input=inputdata)
+        if sys.platform == 'win32':
+            out = out.rstrip().split(b'\n').rstrip(b'\r')
+        else:
+            out = out.rstrip().split(b'\n')
+        err = err.rstrip().decode(errors='replace').split('\n')
+
+        echo("Returned %d items" % (len(out)))
+        for line in err:
+            if line:
+                error(line)
+        # if proc.returncode:
+        #     raise ChildProcessError(proc.returncode, err[-1])
+
+        groups = {}
+        for line in out:
+            try:
+                key, name = line.split(b'\t')
+            except ValueError:
+                continue
+            key = key.decode()
+            try:
+                groups[key].append(name)
+            except KeyError:
+                groups[key] = [name]
+
+        echo(groups)
