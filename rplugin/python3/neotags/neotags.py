@@ -1,4 +1,3 @@
-import bisect
 import gzip
 import os
 import re
@@ -7,6 +6,8 @@ import sys
 import time
 from copy import copy, deepcopy
 from neovim.api.nvim import NvimError
+from .utils import (bindex, try_dict_get, do_set_base, do_remove_base,
+                    SimpleTimer, BadFiletype, BufferChanged)
 
 PATHSEP = '\\' if sys.platform == 'win32' else '/'
 PACKAGE_NAME = "neotags"
@@ -17,19 +18,6 @@ whitelist = [
 ]
 vim = None
 settings = None
-
-
-class SimpleTimer():
-    def __init__(self):
-        self.start = time.time()
-
-
-class BadFiletype(BaseException):
-    """"""
-
-
-class BufferChanged(BaseException):
-    """"""
 
 
 def echo(mes, force=False):
@@ -66,21 +54,6 @@ def vimvar(varname, SET=None, NS=False, EV=False):
                 return SET
     except (NvimError, KeyError) as err:
         return None
-
-
-def try_dict_get(dictionary, item):
-    try:
-        return dictionary[item]
-    except KeyError:
-        return None
-
-
-def bindex(a, x):
-    """Locate the leftmost value exactly equal to x"""
-    i = bisect.bisect_left(a, x)
-    if i != len(a) and a[i] == x:
-        return i
-    return (-1)
 
 
 class Settings():
@@ -161,15 +134,17 @@ class Neotags(object):
         vim = nvim_obj
         self.__buflist = {}
         self.__initialized = False
+        self.__enabled = True
 
     def start(self):
         global settings
         settings = Settings()
         self.__initialized = True
+        self.__enabled = settings.enabled
         self.update(True)
 
     def update(self, force):
-        if not self.__initialized:
+        if not self.__initialized or not self.__enabled:
             return
         # Behind the scenes, every seeminly free access of these "variables" is
         # really an RPC call to neovim for the information. Best to keep them
@@ -201,6 +176,24 @@ class Neotags(object):
         bdata.update_contents()
         bdata.parse_raw_tags()
 
+    def setBase(self, args):
+        do_set_base(echo, error, settings.settings_file, args)
+
+    def removeBase(self, args):
+        do_remove_base(echo, error, settings.settings_file, args)
+
+    def toggle(self):
+        bufnum = vim.current.buffer.number
+        if self.__enabled:
+            echo("Disabled", force=True)
+            if bufnum in self.__buflist:
+                self.__buflist[bufnum].clear()
+            self.__enabled = False
+        else:
+            echo("Enabled", force=True)
+            self.__enabled = True
+            self.update(True)
+
 
 ################################################################################
 
@@ -230,6 +223,7 @@ class Bufdata():
             self.filt_prefix = vimvar('%s#%c.filter.prefix' % (bdata.ft, kind), NS=True, EV=True)
             self.filt_suffix = vimvar('%s#%c.filter.suffix' % (bdata.ft, kind), NS=True, EV=True)
             self.notin = vimvar('%s#%s.notin' % (bdata.ft, kind), NS=True, EV=True)
+            self.key = '_Neotags#%s#%c' % (bdata.ft, kind)
 
     def __init__(self, nvim_buffer, ft):
         if ft not in whitelist:
@@ -486,3 +480,10 @@ class Bufdata():
             raise BufferChanged
 
         return command
+
+    def clear(self):
+        cmds = []
+        for grp in self.__group_info.values():
+            cmds.append('silent! syntax clear %s_%s' % (grp.key.replace('#', '_'), grp.grpid))
+        echo(cmds)
+        vim.command(' | '.join(cmds), async_=True)

@@ -217,18 +217,18 @@ augroup NeoTags
 augroup END
 
 
-" command! -nargs=1 -complete=file NeotagsAddProject call NeotagsAddProject(<f-args>)
-" command! -nargs=1 -complete=file NeotagsRemoveProject call NeotagsRemoveProject(<f-args>)
-" command! -nargs=? -complete=file NeotagsToggleProject call s:Add_remove_Project(2, <q-args>)
-" command! -nargs=? -complete=file NeotagsAddProject call s:Add_Remove_Project(1, <q-args>, 1)
-" command! -nargs=? -complete=file NeotagsAddProjectNoCtags call s:Add_Remove_Project(1, <q-args>, 0)
-" command! -nargs=? -complete=file NeotagsRemoveProject call s:Add_Remove_Project(0, <q-args>, 0)
-" command! NeotagsToggle call DoNeotagsToggle()
-" command! NeotagsVerbosity call DoNeotags_Toggle_Verbosity()
-" command! NeotagsBinaryToggle call DONeotags_Toggle_C_Binary()
-" command! NeotagsUpdate call DoNeotagsForceUpdate()
+command! -nargs=1 -complete=file NeotagsAddProject call NeotagsAddProject(<f-args>)
+command! -nargs=1 -complete=file NeotagsRemoveProject call NeotagsRemoveProject(<f-args>)
+command! -nargs=? -complete=file NeotagsToggleProject call s:Add_remove_Project(2, <q-args>)
+command! -nargs=? -complete=file NeotagsAddProject call s:Add_Remove_Project(1, <q-args>, 1)
+command! -nargs=? -complete=file NeotagsAddProjectNoCtags call s:Add_Remove_Project(1, <q-args>, 0)
+command! -nargs=? -complete=file NeotagsRemoveProject call s:Add_Remove_Project(0, <q-args>, 0)
+command! NeotagsToggle call DoNeotagsToggle()
+command! NeotagsVerbosity call DoNeotags_Toggle_Verbosity()
+command! NeotagsBinaryToggle call DONeotags_Toggle_C_Binary()
+command! NeotagsUpdate call DoNeotagsForceUpdate()
 
-" nnoremap <unique> <Plug>NeotagsToggle :call DoNeotagsToggle()<CR>
+nnoremap <unique> <Plug>NeotagsToggle :call DoNeotagsToggle()<CR>
 nnoremap <unique> <Plug>NeotagsUpdate :call DoNeotagsForceUpdate()<CR>
 nmap <silent> <leader>tag <Plug>NeotagsUpdate
 
