@@ -1,3 +1,10 @@
+# ============================================================================
+# File:        neotags.py
+# Author:      Christian Persson <c0r73x@gmail.com>
+# Repository:  https://github.com/c0r73x/neotags.nvim
+#              Released under the MIT license
+# ============================================================================
+
 import gzip
 import os
 import re
@@ -293,7 +300,8 @@ class Bufdata():
                     destfile.write(self.raw_tag_file)
         except IOError as err:
             error('Unexpected IO Error when writing compressed file:')
-            error(str(err), fatal=True)
+            error(str(err))
+            raise
 
     def _get_ctags_info(self):
         """Calculates the name of the cache file for the compressed ctags
