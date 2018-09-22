@@ -25,15 +25,11 @@ def echo(mes, force=False):
     mes = '%s: %s\n' % (PACKAGE_NAME, mes)
     if force or settings.verbose:
         vim.out_write(mes)
-    with open('/home/bml/why.log', 'ab') as fp:
-        fp.write(mes.encode('utf-8', errors='replace'))
 
 
 def error(mes):
     mes = "%s (ERROR): %s\n" % (PACKAGE_NAME, mes)
     vim.err_write(mes)
-    with open('/home/bml/why.log', 'ab') as fp:
-        fp.write(mes.encode('utf-8', errors='replace'))
 
 
 def vimvar(varname, SET=None, NS=False, EV=False):
