@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 from copy import deepcopy
-from neovim.api.nvim import NvimError
+from pynvim.api import NvimError
 
 # sys.path.append(os.path.dirname(__file__))
 from neotags.utils import (do_set_base, do_remove_base, find_tags, strip_c,
