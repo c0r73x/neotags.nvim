@@ -70,7 +70,7 @@ running the included `autogen.sh` if you really prefer.
 The build process can be easily automated with a package manager such as dein.
 Just add
 
-    call dein#add('c0r73x/neotags.nvim', {'build:' 'make'})
+    call dein#add('c0r73x/neotags.nvim', {'build': 'make'})
 
 to your .vimrc or init.nvim file and dein will handle the rest. To disable it
 after installing either delete the binary or add `let g:neotags_bin = ''` to
