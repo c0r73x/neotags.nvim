@@ -326,7 +326,7 @@ class Neotags(object):
             self.vim.command(full_cmd, async_=True)
             success = True
         else:
-            dia.error('Buffer changed, aborting.')
+            dia.debug_echo('Buffer changed, aborting.')
             success = False
 
         try:
