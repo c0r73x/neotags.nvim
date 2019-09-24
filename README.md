@@ -236,12 +236,15 @@ let g:neotags#perl#order = 's'
 
 ### Php
 ```vim
-let g:neotags#php#order = 'fc'
+let g:neotags#php#order = 'cfdi'
 ```
 | Option | Group Name      |
 |--------|-----------------|
-| f      | phpFunctionsTag |
 | c      | phpClassesTag   |
+| f      | phpFunctionsTag |
+| d      | phpConstantTag  |
+| i      | phpInterfaceTag |
+| a      | phpInterfaceTag |
 
 ## Tips
 To use `the_silver_searcher` or similar applications when generating tags you can do something like this.
