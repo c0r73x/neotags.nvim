@@ -218,6 +218,7 @@ class Neotags(object):
             fgroup = self._exists(hl.key, '.filter.group', None)
 
             if hl.group is not None and hl.key in groups:
+                hl.allow_keyword = self._exists(hl.key, '.allow_keyword', 1)
                 hl.prefix = self._exists(hl.key, '.prefix', self.__prefix)
                 hl.suffix = self._exists(hl.key, '.suffix', self.__suffix)
                 hl.notin = self._exists(hl.key, '.notin', [])
@@ -231,6 +232,7 @@ class Neotags(object):
             if fgroup is not None and fkey in groups:
                 fhl = deepcopy(hl)
                 fhl.key = fkey
+                fhl.allow_keyword = self._exists(hl.key, '.allow_keyword', 1)
                 fhl.prefix = self._exists(hl.key, '.filter.prefix', self.__prefix)
                 fhl.suffix = self._exists(hl.key, '.filter.suffix', self.__suffix)
                 fhl.notin = self._exists(hl.key, '.filter.notin', [])
@@ -302,6 +304,7 @@ class Neotags(object):
                                  hl.suffix, ','.join(hl.notin)))
                 elif (hl.prefix == self.__prefix and
                       hl.suffix == self.__suffix and
+                      hl.allow_keyword == 1 and
                       '.' not in r''.join(current)):
                     cmds.append(self.__keyword_pattern %
                                 (hl.key, r' '.join(current)))
