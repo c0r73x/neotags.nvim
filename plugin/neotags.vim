@@ -85,10 +85,29 @@ call InitVar('events_rehighlight', [
             \   'Syntax',
             \ ])
 
+let s:no_autoconf = []
+if g:neotags_no_autoconf == 1
+    let s:no_autoconf = [
+                \   "--exclude='*Makefile'",
+                \   "--exclude='*Makefile.in'",
+                \   "--exclude='*aclocal.m4'",
+                \   "--exclude='*config.guess'",
+                \   "--exclude='*config.h.in'",
+                \   "--exclude='*config.log'",
+                \   "--exclude='*config.status'",
+                \   "--exclude='*configure'",
+                \   "--exclude='*depcomp'",
+                \   "--exclude='*install-sh'",
+                \   "--exclude='*missing'",
+                \ ]
+endif
+
 if g:neotags_run_ctags
     let s:found = 0
 
-    if executable(g:neotags_ctags_bin) && system(g:neotags_ctags_bin . ' --version') =~# 'Universal'
+    if executable(g:neotags_ctags_bin) && system('ptags --version') =~# 'ptags'
+        let s:found = 1
+    elseif executable(g:neotags_ctags_bin) && system(g:neotags_ctags_bin . ' --version') =~# 'Universal'
         let s:found = 1
     elseif executable('ctags') && system('ctags --version') =~# 'Universal'
         let g:neotags_ctags_bin = 'ctags'
@@ -98,8 +117,10 @@ if g:neotags_run_ctags
         let s:found = 1
     endif
 
+    " TODO: better ctags args if using ptags
+
     if s:found
-        call InitVar('ctags_args', [
+        call InitVar('ctags_args', s:no_autoconf + [
                     \   '--fields=+l',
                     \   '--c-kinds=+p',
                     \   '--c++-kinds=+p',
@@ -113,22 +134,6 @@ if g:neotags_run_ctags
         echohl None
         let g:neotags_run_ctags = 0
     endif
-endif
-
-if g:neotags_run_ctags && g:neotags_no_autoconf == 1
-    call extend(g:neotags_ctags_args, [
-                \   "--exclude='*Makefile'",
-                \   "--exclude='*Makefile.in'",
-                \   "--exclude='*aclocal.m4'",
-                \   "--exclude='*config.guess'",
-                \   "--exclude='*config.h.in'",
-                \   "--exclude='*config.log'",
-                \   "--exclude='*config.status'",
-                \   "--exclude='*configure'",
-                \   "--exclude='*depcomp'",
-                \   "--exclude='*install-sh'",
-                \   "--exclude='*missing'",
-                \])
 endif
 
 call InitVar('global_notin', [

@@ -681,7 +681,12 @@ class Neotags(object):
         ctags_binary = None
 
         if recurse:
-            if self.vv('find_tool'):
+            if self.vv('ctags_bin') == 'ptags':
+                ctags_binary = self.vv('ctags_bin')
+                ctags_args.append('"%s"' % path)
+
+                dia.debug_echo("Running ptags on dir '%s'" % path)
+            elif self.vv('find_tool'):
                 ctags_args.append('-L-')
                 ctags_binary = "%s %s | %s" % (
                     self.vv('find_tool'), path,
