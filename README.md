@@ -270,7 +270,7 @@ let g:neotags#cpp#order = 'ced'
 ```
 The above will only highlight `cppTypeTag, cppPreProcTag, cppEnumTag`.
 
-## ptags
+### ptags
 Neotags have support for [ptags](https://github.com/dalance/ptags) by adding
 let `g:neotags_ctags_bin = 'ptags'` to your vimrc.
 
