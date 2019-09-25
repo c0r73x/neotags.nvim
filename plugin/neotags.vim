@@ -101,11 +101,20 @@ if g:neotags_no_autoconf == 1
                 \   "--exclude='*missing'",
                 \ ]
 endif
+let s:ctags_args = [
+            \   '--fields=+l',
+            \   '--c-kinds=+p',
+            \   '--c++-kinds=+p',
+            \   '--sort=yes',
+            \   "--exclude='.mypy_cache'",
+            \   '--regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/'''
+            \ ] + s:no_autoconf
 
 if g:neotags_run_ctags
     let s:found = 0
 
-    if executable(g:neotags_ctags_bin) && system('ptags --version') =~# 'ptags'
+    if executable(g:neotags_ctags_bin) && system(g:neotags_ctags_bin . ' --version') =~# 'ptags'
+        let s:ctags_args = map(s:ctags_args, '"-c " . v:val')
         let s:found = 1
     elseif executable(g:neotags_ctags_bin) && system(g:neotags_ctags_bin . ' --version') =~# 'Universal'
         let s:found = 1
@@ -120,14 +129,7 @@ if g:neotags_run_ctags
     " TODO: better ctags args if using ptags
 
     if s:found
-        call InitVar('ctags_args', s:no_autoconf + [
-                    \   '--fields=+l',
-                    \   '--c-kinds=+p',
-                    \   '--c++-kinds=+p',
-                    \   '--sort=yes',
-                    \   "--exclude='.mypy_cache'",
-                    \   '--regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/'''
-                    \ ])
+        call InitVar('ctags_args', s:ctags_args)
     else
         echohl ErrorMsg
         echom 'Neotags: Universal Ctags not found, cannot run ctags.'
