@@ -282,10 +282,50 @@ This is my setup using ptags for git repositories and ctags for other folders.
 
 ```vim
 function s:neotagsCtagsCheck()
-    if system('git rev-parse --is-inside-work-tree') ==# 'true'
+    if system('git rev-parse --is-inside-work-tree') =~# 'true'
         let g:neotags_ctags_bin = 'ptags'
+        echom 'Neotags using ptags'
+        let g:neotags_ctags_args = [
+                    \   '-c --fields=+l',
+                    \   '-c --c-kinds=+p',
+                    \   '-c --c++-kinds=+p',
+                    \   '-c --sort=yes',
+                    \   "-c --exclude='.mypy_cache'",
+                    \   '-c --regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/''',
+                    \   "-c --exclude='*Makefile'",
+                    \   "-c --exclude='*Makefile.in'",
+                    \   "-c --exclude='*aclocal.m4'",
+                    \   "-c --exclude='*config.guess'",
+                    \   "-c --exclude='*config.h.in'",
+                    \   "-c --exclude='*config.log'",
+                    \   "-c --exclude='*config.status'",
+                    \   "-c --exclude='*configure'",
+                    \   "-c --exclude='*depcomp'",
+                    \   "-c --exclude='*install-sh'",
+                    \   "-c --exclude='*missing'",
+                    \ ]
     else
         let g:neotags_ctags_bin = 'ctags'
+        echom 'Neotags using ctags'
+        let g:neotags_ctags_args = [
+                    \   '--fields=+l',
+                    \   '--c-kinds=+p',
+                    \   '--c++-kinds=+p',
+                    \   '--sort=yes',
+                    \   "--exclude='.mypy_cache'",
+                    \   '--regex-go=''/^\s*(var)?\s*(\w*)\s*:?=\s*func/\2/f/''',
+                    \   "--exclude='*Makefile'",
+                    \   "--exclude='*Makefile.in'",
+                    \   "--exclude='*aclocal.m4'",
+                    \   "--exclude='*config.guess'",
+                    \   "--exclude='*config.h.in'",
+                    \   "--exclude='*config.log'",
+                    \   "--exclude='*config.status'",
+                    \   "--exclude='*configure'",
+                    \   "--exclude='*depcomp'",
+                    \   "--exclude='*install-sh'",
+                    \   "--exclude='*missing'",
+                    \ ]
     endif
 endfunction
 
