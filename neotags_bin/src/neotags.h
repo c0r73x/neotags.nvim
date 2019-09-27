@@ -85,6 +85,7 @@ enum lang_e {
         _SH_,
         _VIM_,
         _ZSH_,
+        _VUE_,
 };
 
 extern const struct language_id {

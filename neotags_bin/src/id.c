@@ -21,6 +21,7 @@ const struct language_id languages[] = {
     { mkstring("sh"),          _SH_     },
     { mkstring("vim"),         _VIM_    },
     { mkstring("zsh"),         _ZSH_    },
+    { mkstring("vue"),         _VUE_    },
 };
 
 
