@@ -1,5 +1,8 @@
 cmake_minimum_required (VERSION 3.6.0)
-project (neotags C)
+
+set(PROJECT_NAME neotags)
+project(${PROJECT_NAME})
+
 include (FindPkgConfig)
 include (CheckFunctionExists)
 include (CheckSymbolExists)
@@ -90,8 +93,10 @@ else()
     set (CMAKE_C_FLAGS_RELEASE        "${MARCH_SETTING} ${WARNS} -Ofast")
 
     set (CMAKE_EXE_LINKER_FLAGS "-L/usr/local/lib")
-    set (CMAKE_EXE_LINKER_FLAGS_RELEASE "-s")
-    set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-s")
+    if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set (CMAKE_EXE_LINKER_FLAGS_RELEASE "-s")
+        set (CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-s")
+    endif()
 endif()
 
 add_definitions(-D_GNU_SOURCE -DHAVE_CONFIG_H)
