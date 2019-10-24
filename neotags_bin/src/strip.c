@@ -19,6 +19,7 @@ static const struct lang_s {
     { _TS_,     C_LIKE, },
     { _FLOW_,   C_LIKE, },
     { _VUE_,    C_LIKE, },
+    { _SWIFT_,  C_LIKE, },
     { _PYTHON_, PYTHON, },
 };
 
