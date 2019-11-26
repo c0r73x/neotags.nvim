@@ -7,3 +7,5 @@ let g:neotags#sh#a = { 'group': 'shAliasTag' }
 
 highlight def link shFunctionTag	neotags_FunctionTag
 highlight def link shAliasTag	neotags_PreProcTag
+
+let g:loaded_neotags_sh = 1
