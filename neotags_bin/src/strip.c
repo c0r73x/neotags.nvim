@@ -179,8 +179,7 @@ handle_cstyle(struct String *vim_buf)
 
                 break;
 
-            case '#':
-                ;
+            case '#': {
                 /* Strip out include directives as well. */
                 const char *endln;
 
@@ -200,6 +199,7 @@ handle_cstyle(struct String *vim_buf)
 
                 slash = false;
                 break;
+            }
 
             case '\\':
                 break;

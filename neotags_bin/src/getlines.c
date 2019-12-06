@@ -1,10 +1,10 @@
 #include "archive_util.h"
 #include "neotags.h"
 #include <assert.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #define safe_stat(PATH, ST)                                     \
     do {                                                       \
