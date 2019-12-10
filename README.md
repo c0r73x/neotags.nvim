@@ -275,8 +275,8 @@ Neotags have support for [ptags](https://github.com/dalance/ptags) by adding
 let `g:neotags_ctags_bin = 'ptags'` to your vimrc.
 
 Do note that if you have your own custom settings for `g:neotags_ctags_args` you
-need to prepend these with -c. Also since ptags do not support -L- the
-`g:neotags_find_tool` will be ignored.
+need to prepend these with -c. ~~Also since ptags do not support -L- the
+`g:neotags_find_tool` will be ignored.~~ (-L was added in the latest version).
 
 This is my setup using ptags for git repositories and ctags for other folders.
 
