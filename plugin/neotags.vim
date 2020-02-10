@@ -176,6 +176,9 @@ call InitVar('ft_ext', {
             \   'cpp': ['cpp', 'cxx', 'c', 'h', 'hpp'],
             \   'c': ['c', 'h'],
             \   'ruby': ['rb'],
+            \   'javascript': ['js', 'jsx', 'vue'],
+            \   'vue': ['js', 'vue'],
+            \   'typescript': ['ts', 'tsx'],
             \ })
 
 if !isdirectory(g:neotags_directory)
