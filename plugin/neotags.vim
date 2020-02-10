@@ -37,18 +37,20 @@ call InitVar('use_compression',   1)
 call InitVar('compression_level', 9)
 call InitVar('compression_type', 'gzip')
 
-call InitVar('enabled',     1)
-call InitVar('appendpath',  1)
-call InitVar('find_tool',   0)
-call InitVar('highlight',   1)
-call InitVar('no_autoconf', 1)
-call InitVar('recursive',   1)
-call InitVar('run_ctags',   1)
-call InitVar('verbose',     0)
-call InitVar('strip_comments', 1)
-call InitVar('silent_timeout', 0)
-call InitVar('ctags_timeout',  240)
-call InitVar('patternlength',  2048)
+call InitVar('enabled',          1)
+call InitVar('appendpath',       1)
+call InitVar('find_tool',        0)
+call InitVar('tagfiles_by_type', 0)
+call InitVar('regex_tool',       'ag')
+call InitVar('highlight',        1)
+call InitVar('no_autoconf',      1)
+call InitVar('recursive',        1)
+call InitVar('run_ctags',        1)
+call InitVar('verbose',          0)
+call InitVar('strip_comments',   1)
+call InitVar('silent_timeout',   0)
+call InitVar('ctags_timeout',    240)
+call InitVar('patternlength',    2048)
 
 " People often make annoying #defines for C and C++ keywords, types, etc. Avoid
 " highlighting these by default, leaving the built in vim highlighting intact.
@@ -166,6 +168,14 @@ call InitVar('ft_conv', {
             \   "C++": 'cpp',
             \   'C#': 'cs',
             \   'Sh': 'zsh',
+            \ })
+
+call InitVar('ft_ext', {
+            \   'python': ['py'],
+            \   'perl': ['pl', 'pm'],
+            \   'cpp': ['cpp', 'cxx', 'c', 'h', 'hpp'],
+            \   'c': ['c', 'h'],
+            \   'ruby': ['rb'],
             \ })
 
 if !isdirectory(g:neotags_directory)

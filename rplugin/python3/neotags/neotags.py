@@ -76,6 +76,7 @@ class Neotags(object):
         if self.__initialized:
             return
         self.__ctov = self.vv('ft_conv')
+        self.__vtoe = self.vv('ft_ext')
         self.__init_tagfiles = self.vim.api.eval('&tags').split(",")
         self.__to_escape = re.compile(r'[.*^$/\\~\[\]]')
 
@@ -91,6 +92,7 @@ class Neotags(object):
         self.__match_pattern_not = r'syntax match %s /%s\%%(%s\)%s/ containedin=ALLBUT,%s display'
         self.__match_pattern = r'syntax match %s /%s\%%(%s\)%s/ display'
         self.__keyword_pattern = r'syntax keyword %s %s'
+        self.__tagfiles_by_type = self.vv('tagfiles_by_type')
 
         if self.vv('use_binary') == 1:
             self.__neotags_bin = self._get_binary()
@@ -132,9 +134,12 @@ class Neotags(object):
 
             self.__patternlength = self.vv('patternlength')
 
-            self.vim.command('autocmd %s * call NeotagsUpdate()' % evupd, async_=True)
-            self.vim.command('autocmd %s * call NeotagsHighlight()' % evhl, async_=True)
-            self.vim.command('autocmd %s * call NeotagsRehighlight()' % evre, async_=True)
+            self.vim.command('autocmd %s * call NeotagsUpdate()' %
+                             evupd, async_=True)
+            self.vim.command(
+                'autocmd %s * call NeotagsHighlight()' % evhl, async_=True)
+            self.vim.command(
+                'autocmd %s * call NeotagsRehighlight()' % evre, async_=True)
 
             if self.vv('loaded'):
                 self.update(False)
@@ -233,8 +238,10 @@ class Neotags(object):
                 fhl = deepcopy(hl)
                 fhl.key = fkey
                 fhl.allow_keyword = self._exists(hl.key, '.allow_keyword', 1)
-                fhl.prefix = self._exists(hl.key, '.filter.prefix', self.__prefix)
-                fhl.suffix = self._exists(hl.key, '.filter.suffix', self.__suffix)
+                fhl.prefix = self._exists(
+                    hl.key, '.filter.prefix', self.__prefix)
+                fhl.suffix = self._exists(
+                    hl.key, '.filter.suffix', self.__suffix)
                 fhl.notin = self._exists(hl.key, '.filter.notin', [])
 
                 if not self._highlight(fhl, groups[fhl.key], force):
@@ -386,7 +393,8 @@ class Neotags(object):
 
     def _get_backup(self, ft, group):
         tmp = self.vim.api.eval("execute('syn list %s')" % group)
-        tmp = re.sub(r'.*xxx\s*(.*)\s*links to (.*)', r'\1 \2', tmp, flags=re.S)
+        tmp = re.sub(r'.*xxx\s*(.*)\s*links to (.*)',
+                     r'\1 \2', tmp, flags=re.S)
         tmp = re.sub(r'(?:\s+|\n)', ' ', tmp).split()
 
         try:
@@ -578,7 +586,8 @@ class Neotags(object):
             comp_type = None
 
         match_list = [i for s in match_list for i in s]
-        self._parse(ft, match_list, groups, languages, ignored_tags, equivalent, order)
+        self._parse(ft, match_list, groups, languages,
+                    ignored_tags, equivalent, order)
         for grp in groups.keys():
             groups[grp] = list(set(groups[grp]))
 
@@ -682,9 +691,16 @@ class Neotags(object):
 
         if recurse:
             if self.vv('find_tool'):
+                find_tool = "%s %s" % (self.vv('find_tool'), path)
+                if (self.__tagfiles_by_type == 1):
+                    ft = self.vim.api.eval('&ft')
+                    languages = self._vim_to_ext(ft.lower().split('.'))
+                    find_tool = '%s | %s "\\.(%s)$"' % (
+                        find_tool, self.vv('regex_tool'), '|'.join(languages))
+
                 ctags_args.append('-L -')
-                ctags_binary = "%s %s | %s" % (
-                    self.vv('find_tool'), path,
+                ctags_binary = "%s | %s" % (
+                    find_tool,
                     self.vv('ctags_bin'))
                 dia.debug_echo(
                     "Using %s to find files recursively in dir '%s'" %
@@ -777,6 +793,14 @@ class Neotags(object):
 
         return lang.lower()
 
+    def _vim_to_ext(self, languages):
+        for i, lang in enumerate(languages):
+            if lang in self.__vtoe:
+                for ext in self.__vtoe[lang]:
+                    languages[i] = ext
+
+        return languages
+
     def _vim_to_ctags(self, languages):
         for i, lang in enumerate(languages):
             if lang in self.__vtoc:
@@ -835,7 +859,8 @@ class Neotags(object):
             run = 1
             self._path_replace(File)
 
-        self.vim.command('let g:neotags_file = "%s"' % self.__tagfile, async_=True)
+        self.vim.command('let g:neotags_file = "%s"' %
+                         self.__tagfile, async_=True)
 
         return recurse, path, run
 
@@ -847,8 +872,14 @@ class Neotags(object):
         else:
             sep_char = '/'
 
-        self.__tagfile = "%s/%s.tags" % (self.vv('directory'),
-                                         path.replace(sep_char, '__'))
+        if (self.__tagfiles_by_type == 1):
+            ft = self.vim.api.eval('&ft')
+            self.__tagfile = "%s/%s_%s.tags" % (self.vv('directory'),
+                                                path.replace(sep_char, '__'),
+                                                ft)
+        else:
+            self.__tagfile = "%s/%s.tags" % (self.vv('directory'),
+                                             path.replace(sep_char, '__'))
         self.__gzfile = self.__tagfile + self.__fsuffix
 
     def _get_binary(self, loud=False):
@@ -864,7 +895,7 @@ class Neotags(object):
             binary = None
             if loud:
                 dia.inform_echo("Binary '%s' doesn't exist. Cannot enable." %
-                                  self.__neotags_bin)
+                                self.__neotags_bin)
             else:
                 dia.debug_echo(
                     "Binary '%s' doesn't exist." % self.__neotags_bin)
@@ -966,6 +997,7 @@ class Neotags(object):
 
 class HighlightGroup:
     """Exists to keep the number of arguments being passed around down."""
+
     def __init__(self):
         self.file = None
         self.ft = None
