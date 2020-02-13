@@ -695,6 +695,7 @@ class Neotags(object):
                 if (self.__tagfiles_by_type == 1):
                     ft = self.vim.api.eval('&ft')
                     languages = self._vim_to_ext(ft.lower().split('.'))
+
                     find_tool = '%s | %s "\\.(%s)$"' % (
                         find_tool, self.vv('regex_tool'), '|'.join(languages))
 
@@ -796,8 +797,7 @@ class Neotags(object):
     def _vim_to_ext(self, languages):
         for i, lang in enumerate(languages):
             if lang in self.__vtoe:
-                for ext in self.__vtoe[lang]:
-                    languages[i] = ext
+                languages[i] = '|'.join(self.__vtoe[lang])
 
         return languages
 
