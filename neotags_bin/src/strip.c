@@ -106,7 +106,8 @@ handle_cstyle(struct String *vim_buf)
     buf_orig = buf = malloc(vim_buf->len + 2);
 
     if (!*pos) {
-        errx(1, "Empty vim buffer!");
+        warnx("Empty vim buffer!");
+        return;
     }
 
     /*  Add a non-offensive character to the buffer so we never have to worry

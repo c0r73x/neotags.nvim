@@ -69,7 +69,7 @@ typedef struct String string;
 typedef struct StringLst strlist;
 
 enum lang_e {
-    _NONE_,
+    _NONE_ = 0,
     _C_,
     _CPP_,
     _CSHARP_,
