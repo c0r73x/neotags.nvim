@@ -222,6 +222,8 @@ command! -nargs=? -complete=file NeotagsToggleProject call s:Add_remove_Project(
 command! -nargs=? -complete=file NeotagsAddProject call s:Add_Remove_Project(1, <q-args>, 1)
 command! -nargs=? -complete=file NeotagsAddProjectNoCtags call s:Add_Remove_Project(1, <q-args>, 0)
 command! -nargs=? -complete=file NeotagsRemoveProject call s:Add_Remove_Project(0, <q-args>, 0)
+command! -nargs=1 -complete=file NeotagsAddProjectDirectory call NeotagsAddProjectDir(getcwd(), <f-args>)
+command! -nargs=1 -complete=file NeotagsRemoveProjectDirectory call NeotagsRemoveProjectDir(getcwd(), <f-args>)
 command! NeotagsToggle call NeotagsToggle()
 command! NeotagsVerbosity call Neotags_Toggle_Verbosity()
 command! NeotagsBinaryToggle call Neotags_Toggle_C_Binary()

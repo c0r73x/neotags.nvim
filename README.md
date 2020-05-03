@@ -92,12 +92,14 @@ plenty fast enough for the majority of cases.
 
 ## Commands
 
-| Command                             | Description                                                         |
-| ----------------------------------- | ------------------------------------------------------
-| `NeotagsToggle`                     | Toggle neotags on the fly                                           |
-| `NeotagsAddProject <DIRECTORY>`     | Add a directory to the global list of "project" top directories     |
-| `NeotagsRemoveProject <DIRECTORY`   | Remove a directry from the global list of "project" top directories |
-| `NeotagsBinToggle`                  | Toggle usage of the compiled C binary                               |
+| Command                                       | Description                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| `NeotagsToggle`                               | Toggle neotags on the fly                                           |
+| `NeotagsAddProject <DIRECTORY>`               | Add a directory to the global list of "project" top directories     |
+| `NeotagsRemoveProject <DIRECTORY`             | Remove a directry from the global list of "project" top directories |
+| `NeotagsAddProjectDirectory <DIRECTORY>`      | Add an extra directory to the current "project"                     |
+| `NeotagsRemoveProjectDirectory <DIRECTORY`    | Remove a directry from the current "project"                        |
+| `NeotagsBinToggle`                            | Toggle usage of the compiled C binary                               |
 
 ## Options
 
