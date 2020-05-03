@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import time
+import json
 from copy import deepcopy
 from pynvim.api import NvimError
 
@@ -814,42 +815,25 @@ class Neotags(object):
     def _get_file(self):
         File = self.__cur['file']
         path = os.path.dirname(File)
-        projects = {}
         recurse = (self.vv('recursive')
                    and path not in self.vv('norecurse_dirs'))
 
         if recurse:
             try:
-                try:
-                    with open(self.vv('settings_file'), 'r') as fp:
-                        projects = {
-                            p: int(run) for p, run in
-                            [j.split('\t') for j in [i.rstrip() for i in fp]]
-                        }
-
-                except FileNotFoundError:
-                    with open(self.vv('settings_file'), 'x') as fp:
-                        fp.write('')
-
-            except ValueError:
-                projects = {}  # Just reset projects
                 with open(self.vv('settings_file'), 'r') as fp:
-                    for line in fp:
-                        line = line.rstrip()
-                        if line.find('\t') == (-1):
-                            projects[line] = 1
-                        else:
-                            path, run = line.split('\t')
-                            projects[path] = int(run)
+                    projects = json.load(fp)
+
+            except (json.JSONDecodeError, FileNotFoundError):
+                # Just reset the projects file
+                projects = {}
                 with open(self.vv('settings_file'), 'w') as fp:
-                    for item in projects:
-                        fp.write("%s\t%d\n" % (item, projects[item]))
+                    fp.write('')
 
             run = 1
             for proj_path in projects:
                 if os.path.commonpath([path, proj_path]) == proj_path:
                     path = proj_path
-                    run = projects[path]
+                    run = projects[path].get('run', 1)
                     break
 
             path = os.path.realpath(path)

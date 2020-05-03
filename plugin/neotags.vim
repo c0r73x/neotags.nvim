@@ -25,7 +25,7 @@ call InitVar('ignored_dirs', [])
 
 call InitVar('directory',     expand('~/.vim_tags'))
 call InitVar('bin',           expand(g:neotags_directory . '/bin/neotags'))
-call InitVar('settings_file', expand(g:neotags_directory . '/neotags.txt'))
+call InitVar('settings_file', expand(g:neotags_directory . '/neotags.json'))
 
 if file_readable(g:neotags_bin)
     call InitVar('use_binary',  1)

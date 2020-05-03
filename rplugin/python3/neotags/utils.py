@@ -1,4 +1,5 @@
 import bisect
+import json
 import re
 import os.path
 
@@ -6,44 +7,40 @@ import os.path
 def do_set_base(dia, settings_file, args):
     try:
         with open(settings_file, 'r') as fp:
-            projects = {
-                p: int(run) for p, run in
-                [j.split('\t') for j in [i.rstrip() for i in fp]]
-            }
-    except FileNotFoundError:
+            projects = json.load(fp)
+    except (json.JSONDecodeError, FileNotFoundError):
         projects = {}
 
-    with open(settings_file, 'a') as fp:
-        path, run_ctags = args
-        path = os.path.realpath(path)
-        if os.path.exists(path):
-            if path not in projects:
-                fp.write("%s\t%d\n" % (path, run_ctags))
-                dia.inform_echo("Saved directory '%s' as a project base." % path)
-            else:
-                dia.error("Error: directory '%s' is already saved as a project base." % path)
+    path, run_ctags = args
+    path = os.path.realpath(path)
+    if os.path.exists(path):
+        if path not in projects:
+            projects[path] = {
+                'run': run_ctags,
+            }
+            with open(settings_file, 'w') as fp:
+                json.dump(projects, fp)
+            dia.inform_echo("Saved directory '%s' as a project base." % path)
         else:
-            dia.error("Error: directory '%s' does not exist." % path)
+            dia.error("Error: directory '%s' is already saved as a project base." % path)
+    else:
+        dia.error("Error: directory '%s' does not exist." % path)
 
 
 def do_remove_base(dia, settings_file, args):
     try:
         with open(settings_file, 'r') as fp:
-            projects = {
-                p: int(run) for p, run in
-                [j.split('\t') for j in [i.rstrip() for i in fp]]
-            }
-    except FileNotFoundError:
+            projects = json.load(fp)
+    except (json.JSONDecodeError, FileNotFoundError):
         return
 
     path = os.path.realpath(args[0])
 
     if path in projects:
         projects.pop(path)
-        dia.inform_echo("Removed directory '%s' from project list." % path)
         with open(settings_file, 'w') as fp:
-            for item in projects.items():
-                fp.write("%s\t%d\n" % item)
+            json.dump(projects, fp)
+        dia.inform_echo("Removed directory '%s' from project list." % path)
     else:
         dia.inform_echo("Error: directory '%s' is not a known project base." % path)
 
