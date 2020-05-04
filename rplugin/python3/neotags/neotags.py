@@ -15,12 +15,14 @@ import re
 import subprocess
 import sys
 import time
+import json
 from copy import deepcopy
 from pynvim.api import NvimError
 
 # sys.path.append(os.path.dirname(__file__))
-from neotags.utils import (do_set_base, do_remove_base, find_tags, strip_c,
-                           tokenize, bindex)
+from neotags.utils import (do_set_base, do_remove_base, get_project_path,
+                           do_add_extra_dir, do_remove_extra_dir, find_tags,
+                           strip_c, tokenize, bindex)
 from neotags.diagnostics import Diagnostics
 
 CLIB = None
@@ -262,6 +264,12 @@ class Neotags(object):
     def removeBase(self, args):
         do_remove_base(dia, self.vv('settings_file'), args)
 
+    def addExtraDir(self, args):
+        do_add_extra_dir(dia, self.vv('settings_file'), args)
+
+    def removeExtraDir(self, args):
+        do_remove_extra_dir(dia, self.vv('settings_file'), args)
+
 ##############################################################################
 # Private
 
@@ -349,7 +357,7 @@ class Neotags(object):
             return True
 
     def _parseTags(self, ft):
-        self._get_file()
+        self._get_files()
         files = []
 
         dia.debug_start()
@@ -680,8 +688,8 @@ class Neotags(object):
         """Create the commandline to be invoked when running ctags."""
         ctags_args = self.vv('ctags_args')
 
-        # NOTE: _get_file() sets self.__tagfile and self.__gzfile!
-        recurse, path, run = self._get_file()
+        # NOTE: _get_files() sets self.__tagfile and self.__gzfile!
+        recurse, paths, run = self._get_files()
         if not run or (not force and os.path.exists(self.__gzfile)
                        and os.stat(self.__gzfile).st_size > 0):
             return None
@@ -689,9 +697,10 @@ class Neotags(object):
         ctags_args.append('-f "%s"' % self.__tagfile)
         ctags_binary = None
 
+        path_args = ' '.join(['"%s"' % p for p in paths])
         if recurse:
             if self.vv('find_tool'):
-                find_tool = "%s %s" % (self.vv('find_tool'), path)
+                find_tool = "%s %s" % (self.vv('find_tool'), path_args)
                 if (self.__tagfiles_by_type == 1):
                     ft = self.vim.api.eval('&ft')
                     languages = self._vim_to_ext(ft.lower().split('.'))
@@ -704,18 +713,17 @@ class Neotags(object):
                     find_tool,
                     self.vv('ctags_bin'))
                 dia.debug_echo(
-                    "Using %s to find files recursively in dir '%s'" %
-                    (self.vv('find_tool'), path))
+                    "Using %s to find files recursively in dir(s) %s" %
+                    (self.vv('find_tool'), path_args))
             else:
-                ctags_args.append('-R')
-                ctags_args.append('"%s"' % path)
+                ctags_args.append('-R %s' % path_args)
                 ctags_binary = self.vv('ctags_bin')
 
-                dia.debug_echo("Running ctags on dir '%s'" % path)
+                dia.debug_echo("Running ctags on dir(s) %s" % path_args)
 
         else:
             dia.debug_echo(
-                "Not running ctags recursively for dir '%s'" % path)
+                "Not running ctags recursively for dir(s) %s" % path_args)
             File = self.__cur['file']
             ctags_args.append('"%s"' % File)
             ctags_binary = self.vv('ctags_bin')
@@ -811,58 +819,41 @@ class Neotags(object):
 
         return languages
 
-    def _get_file(self):
+    def _get_files(self):
         File = self.__cur['file']
         path = os.path.dirname(File)
-        projects = {}
+        run = 1
+        extra_dirs = []
         recurse = (self.vv('recursive')
                    and path not in self.vv('norecurse_dirs'))
 
         if recurse:
             try:
-                try:
-                    with open(self.vv('settings_file'), 'r') as fp:
-                        projects = {
-                            p: int(run) for p, run in
-                            [j.split('\t') for j in [i.rstrip() for i in fp]]
-                        }
-
-                except FileNotFoundError:
-                    with open(self.vv('settings_file'), 'x') as fp:
-                        fp.write('')
-
-            except ValueError:
-                projects = {}  # Just reset projects
                 with open(self.vv('settings_file'), 'r') as fp:
-                    for line in fp:
-                        line = line.rstrip()
-                        if line.find('\t') == (-1):
-                            projects[line] = 1
-                        else:
-                            path, run = line.split('\t')
-                            projects[path] = int(run)
-                with open(self.vv('settings_file'), 'w') as fp:
-                    for item in projects:
-                        fp.write("%s\t%d\n" % (item, projects[item]))
+                    projects = json.load(fp)
 
-            run = 1
-            for proj_path in projects:
-                if os.path.commonpath([path, proj_path]) == proj_path:
-                    path = proj_path
-                    run = projects[path]
-                    break
+            except (json.JSONDecodeError, FileNotFoundError):
+                # Just reset the projects file
+                projects = {}
+                with open(self.vv('settings_file'), 'w') as fp:
+                    fp.write('')
+
+            proj_path = get_project_path(projects, path)
+            if proj_path is not None:
+                path = proj_path
+                run = projects[path].get('run', 1)
+                extra_dirs = projects[path].get('extra_dirs', [])
 
             path = os.path.realpath(path)
             self._path_replace(path)
 
         else:
-            run = 1
             self._path_replace(File)
 
         self.vim.command('let g:neotags_file = "%s"' %
                          self.__tagfile, async_=True)
 
-        return recurse, path, run
+        return recurse, [path] + extra_dirs, run
 
     def _path_replace(self, path):
         if (sys.platform == 'win32'):

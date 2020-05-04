@@ -1,4 +1,5 @@
 import bisect
+import json
 import re
 import os.path
 
@@ -6,47 +7,100 @@ import os.path
 def do_set_base(dia, settings_file, args):
     try:
         with open(settings_file, 'r') as fp:
-            projects = {
-                p: int(run) for p, run in
-                [j.split('\t') for j in [i.rstrip() for i in fp]]
-            }
-    except FileNotFoundError:
+            projects = json.load(fp)
+    except (json.JSONDecodeError, FileNotFoundError):
         projects = {}
 
-    with open(settings_file, 'a') as fp:
-        path, run_ctags = args
-        path = os.path.realpath(path)
-        if os.path.exists(path):
-            if path not in projects:
-                fp.write("%s\t%d\n" % (path, run_ctags))
-                dia.inform_echo("Saved directory '%s' as a project base." % path)
-            else:
-                dia.error("Error: directory '%s' is already saved as a project base." % path)
+    path, run_ctags = args
+    path = os.path.realpath(path)
+    if os.path.exists(path):
+        if path not in projects:
+            projects[path] = {
+                'run': run_ctags,
+                'extra_dirs': [],
+            }
+            with open(settings_file, 'w') as fp:
+                json.dump(projects, fp)
+            dia.inform_echo("Saved directory '%s' as a project base." % path)
         else:
-            dia.error("Error: directory '%s' does not exist." % path)
+            dia.error("Error: directory '%s' is already saved as a project base." % path)
+    else:
+        dia.error("Error: directory '%s' does not exist." % path)
 
 
 def do_remove_base(dia, settings_file, args):
     try:
         with open(settings_file, 'r') as fp:
-            projects = {
-                p: int(run) for p, run in
-                [j.split('\t') for j in [i.rstrip() for i in fp]]
-            }
-    except FileNotFoundError:
+            projects = json.load(fp)
+    except (json.JSONDecodeError, FileNotFoundError):
         return
 
     path = os.path.realpath(args[0])
 
     if path in projects:
         projects.pop(path)
-        dia.inform_echo("Removed directory '%s' from project list." % path)
         with open(settings_file, 'w') as fp:
-            for item in projects.items():
-                fp.write("%s\t%d\n" % item)
+            json.dump(projects, fp)
+        dia.inform_echo("Removed directory '%s' from project list." % path)
     else:
         dia.inform_echo("Error: directory '%s' is not a known project base." % path)
 
+def get_project_path(projects, path):
+    for proj_path in projects:
+        if os.path.commonpath([path, proj_path]) == proj_path:
+            return proj_path
+
+    return None
+
+def do_add_extra_dir(dia, settings_file, args):
+    try:
+        with open(settings_file, 'r') as fp:
+            projects = json.load(fp)
+
+    except (json.JSONDecodeError, FileNotFoundError):
+        projects = {}
+
+    path, extra_dir = args
+    path = get_project_path(projects, os.path.realpath(path))
+    extra_dir = os.path.realpath(extra_dir)
+
+    if path is not None:
+        extra_dirs = projects[path].get('extra_dirs', [])
+        if extra_dir not in extra_dirs:
+            extra_dirs.append(extra_dir)
+            projects[path]['extra_dirs'] = extra_dirs
+            with open(settings_file, 'w') as fp:
+                json.dump(projects, fp)
+            dia.inform_echo("Added directory '%s' to project '%s'." % (extra_dir, path))
+        else:
+            dia.error("Error: directory '%s' is already added to project '%s'." % (extra_dir, path))
+    else:
+        dia.inform_echo("Error: directory '%s' is not a known project base." % path)
+
+def do_remove_extra_dir(dia, settings_file, args):
+    try:
+        with open(settings_file, 'r') as fp:
+            projects = json.load(fp)
+
+    except (json.JSONDecodeError, FileNotFoundError):
+        return
+
+    path, extra_dir = args
+    path = get_project_path(projects, os.path.realpath(path))
+    extra_dir = os.path.realpath(extra_dir)
+
+    if path is not None:
+        extra_dirs = projects[path].get('extra_dirs', [])
+        if extra_dir in extra_dirs:
+            extra_dirs.remove(extra_dir)
+            projects[path]['extra_dirs'] = extra_dirs
+            with open(settings_file, 'w') as fp:
+                json.dump(projects, fp)
+            dia.inform_echo("Removed directory '%s' from project '%s'." % (extra_dir, path))
+        else:
+            dia.error("Error: directory '%s' is not present in project '%s'." % (extra_dir, path))
+    else:
+        dia.inform_echo("Error: directory '%s' is not a known project base." % path)
 
 def find_tags(dia, matches, key_lang, order, ignored_tags, equivalent):
     ret = []

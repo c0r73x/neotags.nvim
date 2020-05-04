@@ -44,6 +44,14 @@ class NeotagsHandlers(object):
     def removebase(self, args):
         self.__vim.async_call(self.__neotags.removeBase, args)
 
+    @pynvim.function('NeotagsAddProjectDir')
+    def adddir(self, args):
+        self.__vim.async_call(self.__neotags.addExtraDir, args)
+
+    @pynvim.function('NeotagsRemoveProjectDir')
+    def removedir(self, args):
+        self.__vim.async_call(self.__neotags.removeExtraDir, args)
+
     @pynvim.function('Neotags_Toggle_C_Binary')
     def toggle_C_bin(self, args):
         self.__vim.async_call(self.__neotags.toggle_C_bin)

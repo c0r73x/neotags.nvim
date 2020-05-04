@@ -92,12 +92,14 @@ plenty fast enough for the majority of cases.
 
 ## Commands
 
-| Command                             | Description                                                         |
-| ----------------------------------- | ------------------------------------------------------
-| `NeotagsToggle`                     | Toggle neotags on the fly                                           |
-| `NeotagsAddProject <DIRECTORY>`     | Add a directory to the global list of "project" top directories     |
-| `NeotagsRemoveProject <DIRECTORY`   | Remove a directry from the global list of "project" top directories |
-| `NeotagsBinToggle`                  | Toggle usage of the compiled C binary                               |
+| Command                                       | Description                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------- |
+| `NeotagsToggle`                               | Toggle neotags on the fly                                           |
+| `NeotagsAddProject <DIRECTORY>`               | Add a directory to the global list of "project" top directories     |
+| `NeotagsRemoveProject <DIRECTORY`             | Remove a directry from the global list of "project" top directories |
+| `NeotagsAddProjectDirectory <DIRECTORY>`      | Add an extra directory to the current "project"                     |
+| `NeotagsRemoveProjectDirectory <DIRECTORY`    | Remove a directry from the current "project"                        |
+| `NeotagsBinToggle`                            | Toggle usage of the compiled C binary                               |
 
 ## Options
 
@@ -105,7 +107,7 @@ plenty fast enough for the majority of cases.
 | ------------------------------ | --------------------------------------------------------------------                                                   | --------------------------------------------------------------                                                                                                                                               |
 | g:neotags_enabled              | Option to enable/disable neotags                                                                                       | `0`                                                                                                                                                                                                          |
 | g:neotags_directory            | Global directory in which to store all generated tags files                                                            | `~/.vim_tags`                                                                                                                                                                                                |
-| g:neotags_settings_file        | Global file in which to store all saved "project" directories                                                          | `g:neotags_directory/neotags.txt`                                                                                                                                                                            |
+| g:neotags_settings_file        | Global file in which to store all saved "project" directories                                                          | `g:neotags_directory/neotags.json`                                                                                                                                                                           |
 | g:neotags_ignored_tags         | List of tag names globally excluded from ever being highlighted (eg. try `NULL` in C)                                  | `""`                                                                                                                                                                                                         |
 | g:neotags_no_autoconf          | Automatically exclude all standard GNU autotools files (except `Makefile`) to speed up processing by having fewer tags | `1`                                                                                                                                                                                                          |
 | g:neotags_events_update        | List of vim events when to run tag generation and update highlight                                                     | `BufWritePost`                                                                                                                                                                                               |
