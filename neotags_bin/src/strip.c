@@ -20,6 +20,7 @@ static const struct lang_s {
     { _FLOW_,   C_LIKE, },
     { _VUE_,    C_LIKE, },
     { _SWIFT_,  C_LIKE, },
+    { _HAXE_,   C_LIKE, },
     { _PYTHON_, PYTHON, },
 };
 
