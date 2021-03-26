@@ -224,7 +224,10 @@ class Neotags(object):
             hl.group = self._exists(hl.key, '.group', None)
             fgroup = self._exists(hl.key, '.filter.group', None)
 
-            if hl.group is not None and hl.key in groups:
+            if hl.group is None or fgroup is None:
+                continue
+
+            if hl.key in groups:
                 hl.allow_keyword = self._exists(hl.key, '.allow_keyword', 1)
                 hl.prefix = self._exists(hl.key, '.prefix', self.__prefix)
                 hl.suffix = self._exists(hl.key, '.suffix', self.__suffix)
@@ -236,7 +239,7 @@ class Neotags(object):
                 dia.error("Unexpected error")
 
             fkey = hl.key + '_filter'
-            if fgroup is not None and fkey in groups:
+            if fkey in groups:
                 fhl = deepcopy(hl)
                 fhl.key = fkey
                 fhl.allow_keyword = self._exists(hl.key, '.allow_keyword', 1)

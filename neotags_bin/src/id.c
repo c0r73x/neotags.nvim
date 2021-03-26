@@ -37,7 +37,7 @@ id_lang(const string *lang)
 {
     for (size_t i = 1; i < ARRSIZ(languages); ++i) {
         if (string_eq(lang, &languages[i].lang)) {
-            warnx("Recognized ft as language \"%s\".", languages[i].lang.s);
+            printf("Recognized ft as language \"%s\".", languages[i].lang.s);
             return &languages[i];
         }
     }

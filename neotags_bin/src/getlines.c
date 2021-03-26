@@ -102,7 +102,8 @@ plain_getlines(struct StringLst *tags, const char *filename)
     char *buffer = malloc(st.st_size + 1LL);
 
     if (fread(buffer, 1, st.st_size, fp) != (size_t)st.st_size || ferror(fp)) {
-        err(1, "Error reading file %s", filename);
+        warn("Error reading file %s", filename);
+        return;
     }
 
     buffer[st.st_size] = '\0';
@@ -128,7 +129,8 @@ gz_getlines(struct StringLst *tags, const char *filename)
     gzFile gfp = gzopen(filename, "rb");
 
     if (!gfp) {
-        err(1, "Failed to open file");
+        warn("Failed to open file");
+        return;
     }
 
     /* Magic macros to the rescue. */

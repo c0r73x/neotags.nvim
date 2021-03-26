@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef DOSISH
     #include <malloc.h>
@@ -21,6 +22,10 @@
         for (int i = 0; i < (LST)->num; ++i) \
             free((LST)->lst[i]);             \
     } while (0)
+
+const struct language_id *lang_id;
+char *program_name;
+struct Backups backup_pointers;
 
 static const strlist *get_colon_data(char *oarg);
 static void print_tags(const strlist *lst, const char *ft);
@@ -45,7 +50,7 @@ main(int argc, char *argv[])
              argc, REQUIRED_INPUT);
     }
 
-    eputs("Program ID: " PROG_ID "\n");
+    printf("Program ID: %s\n",  PROG_ID);
 
     int nread = 0;
     program_name = handle_progname(*argv++);
@@ -70,7 +75,7 @@ main(int argc, char *argv[])
     strlist tags   = { nmalloc(INIT_TAGS, sizeof(*tags.lst)), 0, INIT_TAGS };
     string vim_buf = { malloc(nchars + 1llu), 0, 0 };
 
-    /* Read all of the tag files and combine the tags into one list. */
+    /* Read all of the tag existing files and combine the tags into one list. */
     for (unsigned i = 0; i < files->num; i += 2) {
         nread += getlines(&tags, files->lst[i]->s, files->lst[i + 1]->s);
     }
@@ -295,7 +300,7 @@ tok_search(strlist *tags,
 
     pthread_t *tid = alloca(num_threads * sizeof(*tid));
     strlist **out  = alloca(num_threads * sizeof(*out));
-    warnx("Sorting through %lld tags with %d cpus.", tags->num, num_threads);
+    warn("Sorting through %" PRIi64 " tags with %d cpus.", tags->num, num_threads);
 
     /*  Because we may have examined multiple tags files, it's very possible
         for there to be duplicate tags. Sort the list and remove any. */

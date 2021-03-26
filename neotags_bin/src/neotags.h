@@ -99,9 +99,9 @@ extern const struct language_id {
     const enum lang_e id;
 } languages[];
 
-const struct language_id *lang_id;
-char *program_name;
-struct Backups backup_pointers;
+extern const struct language_id *lang_id;
+extern char *program_name;
+extern struct Backups backup_pointers;
 
 /*===========================================================================*/
 

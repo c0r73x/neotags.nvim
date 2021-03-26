@@ -71,7 +71,7 @@ safe_fopen(const char *const __restrict filename,
 bool
 file_is_reg(const char *filename)
 {
-    struct stat st = {0, 0, 0, 0, 0, 0, 0, {0, 0}, {0, 0}, {0}, {0}, 0, 0};
+    struct stat st = {0};
     safe_stat(filename, &st);
     return S_ISREG(st.st_mode);
 }
