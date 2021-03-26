@@ -49,8 +49,7 @@ class Diagnostics:
 
     def clear_stack(self):
         while self.__start_time:
-            self.debug_end("Value:")
-            self.error("Extra value in self.__start_time...")
+            self.__start_time.pop()
 
     def toggle(self):
         if self.debug_echo == self.__void:

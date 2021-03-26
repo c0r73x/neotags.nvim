@@ -224,7 +224,7 @@ class Neotags(object):
             hl.group = self._exists(hl.key, '.group', None)
             fgroup = self._exists(hl.key, '.filter.group', None)
 
-            if hl.group is None or fgroup is None:
+            if hl.group is None:
                 continue
 
             if hl.key in groups:
