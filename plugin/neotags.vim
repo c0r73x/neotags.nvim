@@ -195,11 +195,15 @@ runtime! plugin/neotags/*.vim
 
 let g:neotags_loaded = 1
 
+function! neotags#initNeotags(...)
+	call NeotagsInit()
+endfunction
+
 if v:vim_did_enter
-    call NeotagsInit()
+    call timer_start(100, function('neotags#initNeotags'))
 else
     augroup NeoTags
-        autocmd VimEnter * call NeotagsInit()
+        autocmd VimEnter * call timer_start(100, function('ineotags#initNeotags'))
     augroup END
 endif
 
