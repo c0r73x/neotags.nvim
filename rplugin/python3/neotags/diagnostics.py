@@ -57,7 +57,6 @@ class Diagnostics:
             (self.debug_echo, self.debug_start, self.debug_end) = self.__backup
             self.vv('verbose', SET=1)
         else:
-            self.inform_echo('Switching off verbose output.')
             self.debug_start = self.debug_echo = self.debug_end = self.__void
             self.vv('verbose', SET=0)
 
