@@ -203,7 +203,7 @@ if v:vim_did_enter
     call timer_start(100, function('neotags#initNeotags'))
 else
     augroup NeoTags
-        autocmd VimEnter * call timer_start(100, function('ineotags#initNeotags'))
+        autocmd VimEnter * call timer_start(100, function('neotags#initNeotags'))
     augroup END
 endif
 
