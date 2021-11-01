@@ -92,6 +92,7 @@ enum lang_e {
     _LUA_,
     _MOON_,
     _HAXE_,
+    _ZIG_,
 };
 
 extern const struct language_id {

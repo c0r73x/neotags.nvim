@@ -29,6 +29,7 @@ const struct language_id languages[] = {
     { mkstring("lua"),         _LUA_    },
     { mkstring("moon"),        _MOON_   },
     { mkstring("haxe"),        _HAXE_   },
+    { mkstring("zig"),         _ZIG_    },
 };
 
 

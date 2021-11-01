@@ -21,6 +21,7 @@ static const struct lang_s {
     { _VUE_,    C_LIKE, },
     { _SWIFT_,  C_LIKE, },
     { _HAXE_,   C_LIKE, },
+    { _ZIG_,    C_LIKE, },
     { _PYTHON_, PYTHON, },
 };
 
