@@ -32,10 +32,21 @@ const struct language_id languages[] = {
     { mkstring("zig"),         _ZIG_    },
 };
 
+void lower_string(char s[]) {
+   int c = 0;
+   
+   while (s[c] != '\0') {
+      if (s[c] >= 'A' && s[c] <= 'Z') {
+         s[c] = s[c] + 32;
+      }
+      c++;
+   }
+}
 
 const struct language_id *
 id_lang(const string *lang)
 {
+    lower_string(lang->s);
     for (size_t i = 1; i < ARRSIZ(languages); ++i) {
         if (string_eq(lang, &languages[i].lang)) {
             printf("Recognized ft as language \"%s\".", languages[i].lang.s);
