@@ -1,3 +1,5 @@
+Archived beacuse of lua rewrite https://github.com/c0r73x/neotags.lua
+
 # neotags.nvim
 
 A neovim plugin that generates and highlight ctags similar to easytags.
